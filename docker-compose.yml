@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:17.4
+    container_name: petconnect_db
+    restart: unless-stopped # Restarts if stopped, unless we stop it manually
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB} # Read from the .env file
+      POSTGRES_USER: ${POSTGRES_USER} # Read from the .env file
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Read from the .env file
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Named volume for persistence
+    ports:
+     - "5432:5432"
+    networks:
+      - petconnect-network
+
+#   Adminer Service (Graphical Interface for the Database)
+  adminer:
+    image: adminer
+    container_name: petconnect_adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080" # Map Adminer's internal port 8080 to 8081 on your host machine
+    networks:
+      - petconnect-network
+    depends_on: # Ensures the database attempts to start first
+      - db
+
+  # Servicio Backend
+#  backend:
+#    container_name: petconnect_backend
+#    # ... .
+#    networks:
+#      - petconnect-network
+#    depends_on: # The backend needs the DB to be ready
+#      - db
+
+  # Servicio Frontend
+#  frontend:
+#    container_name: petconnect_frontend
+#    # ...  ...
+#    networks:
+#      - petconnect-network
+#    depends_on: # The backend needs the DB to be ready
+#      - db
+
+networks:
+  petconnect-network:
+    driver: bridge
+
+# Defines the named volume for PostgreSQL data persistence
+volumes:
+  postgres_data:
+    driver: local
