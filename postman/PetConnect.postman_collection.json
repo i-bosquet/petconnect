@@ -1,0 +1,36 @@
+{
+	"info": {
+		"_postman_id": "8f424b7b-7fb3-4735-9479-cb28812f4512",
+		"name": "PetConnect",
+		"description": "Collection of HTTP requests for testing the PetConnect project's RESTful API. Includes endpoints for authentication, user management, clinics, pets, medical records, and digital certificates. Organized by functional domains.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16442630"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [],
+			"description": "Login, register"
+		},
+		{
+			"name": "User Management",
+			"item": [],
+			"description": "Endpoints for managing user profiles (owners, clinical staff) and staff administration operations by clinic administrators (creating, activating/deactivating VET/ADMIN users)."
+		},
+		{
+			"name": "Pet Management",
+			"item": [],
+			"description": "Endpoints for complete pet management: owner registration, clinic activation/update, veterinary partnership management, list and detail viewing."
+		},
+		{
+			"name": "Records Management",
+			"item": [],
+			"description": "Endpoints to create, read, update (if applicable), and delete pet medical history records, including vaccination details and digital signature management."
+		},
+		{
+			"name": "Certificates Manegement",
+			"item": [],
+			"description": "Endpoints related to the generation, visualization and (conceptually) verification of digital vaccination/health certificates."
+		}
+	]
+}
