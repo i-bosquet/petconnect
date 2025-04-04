@@ -47,6 +47,29 @@ services:
 #    depends_on: # The backend needs the DB to be ready
 #      - db
 
+  # SonarQube Service
+  sonarqube:
+    image: sonarqube:latest
+    container_name: petconnect_sonarqube
+    restart: unless-stopped
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      # Optional: Configure SonarQube to use your PostgreSQL instead of the embedded H2
+      # - sonar.jdbc.url=jdbc:postgresql://db:5432/${POSTGRES_DB} # 'db' es el nombre del servicio postgres
+      # - sonar.jdbc.username=${POSTGRES_USER}
+      # - sonar.jdbc.password=${POSTGRES_PASSWORD}
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+      # - sonarqube_conf:/opt/sonarqube/conf # # Uncomment if you need to persist conf
+    ports:
+      - "9000:9000" # Port for the SonarQube web interface
+    networks:
+      - petconnect-network
+    depends_on: # SonarQube is database dependent if you configure it to use Postgres
+      - db # Remove if you use embedded H2
+
 networks:
   petconnect-network:
     driver: bridge
@@ -55,3 +78,11 @@ networks:
 volumes:
   postgres_data:
     driver: local
+  sonarqube_data:
+    driver: local
+  sonarqube_extensions:
+    driver: local
+  sonarqube_logs:
+    driver: local
+# sonarqube_conf: # Uncomment if you use the conf volume
+#   driver: local
