@@ -105,15 +105,15 @@ npm install
 npm run dev
 ```
 - Vite will start the development server.
-Open your web browser to the URL provided `http://localhost:5173`.
+Open your web browser to the URL provided http://localhost:5173.
 
 ## 8. Accessing Tools & Application
 - Once everything is running:
-- Frontend Application: `http://localhost:5173`
-- Backend API Base URL: `http://localhost:8080`
-- Swagger UI (API Docs): `http://localhost:8080/swagger-ui.html`
-- SonarQube Server: `http://localhost:9000` (Initial login: admin / admin - Change it!)
-- Adminer (DB Management): `http://localhost:8081`
+- Frontend Application: http://localhost:5173
+- Backend API Base URL: http://localhost:8080
+- Swagger UI (API Docs): http://localhost:8080/swagger-ui.html
+- SonarQube Server: http://localhost:9000 (Initial login: admin / admin - Change it!)
+- Adminer (DB Management): http://localhost:8081
   - System: PostgreSQL
   - Server: petconnect_db (The service name/container name)
   - Username: root (from  `.env` file)
@@ -133,14 +133,14 @@ Open your web browser to the URL provided `http://localhost:5173`.
   - Windows (PowerShell): `.\run-sonar-analysis.ps1`
   - Linux / macOS (Bash): `bash run-sonar-analysis.sh` (or `./run-sonar-analysis.sh` after `chmod +x run-sonar-analysis.sh`)
 - Maven will build the project, run tests (generating Jacoco reports), and send the analysis results to the SonarQube server. 
-- You can view the report at `http://localhost:9000`.
+- You can view the report at http://localhost:9000.
 
 ## 10. Testing the API with Postman
 - Open Postman.
 - Import the collection: "File" > "Import..." and select the `postman/PetConnect.postman_collection.json` file.
 - Import the environment: "File" > "Import..." and select the `postman/PetConnect_Local_Dev.postman_environment.json` file.
 - Ensure the `PetConnect Local Dev` environment is selected in the top-right corner.
-- You can now explore the folders and execute requests against your locally running backend (`http://localhost:8080`).
+- You can now explore the folders and execute requests against your locally running backend (http://localhost:8080).
 
 <!-- TODO: Add a screenshot of Postman with the imported collection/environment -->
 <!-- ![Postman Setup](.github/readme-assets/postman-setup.png) -->

@@ -1,0 +1,66 @@
+package com.petconnect.backend.user.domain.model;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
+
+/**
+ * Abstract base class for entities requiring auditing information.
+ * Includes common fields like id, created/updated timestamps, and created/updated user identifiers.
+ * Uses Spring Data JPA Auditing for automatic population of audit fields.
+ *
+ * @author ibosquet
+ */
+@Data
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class) // JPA Auditing: Enables automatic audit field population
+public abstract class BaseEntity {
+    /**
+     * The unique identifier for the entity.
+     * Generated automatically using a sequence strategy.
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "entity_id_seq")
+    @SequenceGenerator(name = "entity_id_seq", sequenceName = "entity_id_sequence", allocationSize = 1)
+    private Long id;
+
+    /**
+     * Timestamp when the entity was first created.
+     * Automatically set by Spring Data JPA Auditing.
+     */
+    @CreatedDate // JPA Auditing
+    @Column(name = "created_at", nullable = false, updatable = false) // Ensure column name and constraints
+    private LocalDateTime createdAt;
+
+    /**
+     * Timestamp when the entity was last modified.
+     * Automatically set by Spring Data JPA Auditing.
+     */
+    @LastModifiedDate // JPA Auditing
+    @Column(name = "updated_at") // Nullable by default
+    private LocalDateTime updatedAt;
+
+    /**
+     * Identifier (e.g., username/email) of the user who created the entity.
+     * Automatically set by Spring Data JPA Auditing via AuditorAware.
+     * Nullable to handle system-generated entities or initial data.
+     */
+    @CreatedBy // JPA Auditing
+    @Column(name = "created_by", updatable = false) // Nullable by default, not updatable
+    private String createdBy;
+
+    /**
+     * Identifier (e.g., username/email) of the user who last modified the entity.
+     * Automatically set by Spring Data JPA Auditing via AuditorAware.
+     * Nullable.
+     */
+    @LastModifiedBy // JPA Auditing
+    @Column(name = "updated_by") // Nullable by default
+    private String updatedBy;
+}
