@@ -1,5 +1,6 @@
 package com.petconnect.backend.user.application.service.impl;
 
+import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.application.mapper.ClinicMapper;
@@ -10,7 +11,6 @@ import com.petconnect.backend.user.domain.model.RoleEnum;
 import com.petconnect.backend.user.domain.model.UserEntity;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -81,7 +81,7 @@ public class ClinicServiceImpl implements ClinicService {
      */
     @Override
     @Transactional // Default transaction (read-write)
-    public ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, Long updatingAdminId) { // MODIFIED SIGNATURE
+    public ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, Long updatingAdminId) {
 
         // Find the admin performing the action
         UserEntity adminUser = userRepository.findById(updatingAdminId)
@@ -107,11 +107,8 @@ public class ClinicServiceImpl implements ClinicService {
         // Map updates from DTO to the existing entity
         clinicMapper.updateFromDto(clinicUpdateDTO, existingClinic);
 
-        // Save the updated entity
-        Clinic updatedClinic = clinicRepository.save(existingClinic);
-
         // Map the updated entity back to DTO
-        return clinicMapper.toDto(updatedClinic);
+        return clinicMapper.toDto(clinicRepository.save(existingClinic));
     }
 
 

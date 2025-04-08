@@ -40,10 +40,13 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
 
-    private static final String DEFAULT_VET_AVATAR = "images/avatars/users/vet.png";
-    private static final String DEFAULT_ADMIN_AVATAR = "images/avatars/users/admin.png";
+    static final String DEFAULT_VET_AVATAR = "images/avatars/users/vet.png";
+    static final String DEFAULT_ADMIN_AVATAR = "images/avatars/users/admin.png";
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, Long creatingAdminId) {
@@ -65,6 +68,9 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         return userMapper.toClinicStaffProfileDto(savedStaff);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, Long updatingAdminId) {
@@ -85,10 +91,13 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
             log.info("No changes detected for staff ID {}, update skipped.", staffId);
         }
 
-        // 5. Map and return
+        // Map and return
         return userMapper.toClinicStaffProfileDto(updatedStaff);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public ClinicStaffProfileDto activateStaff(Long staffId, Long activatingAdminId) {
@@ -104,6 +113,9 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         return userMapper.toClinicStaffProfileDto(updatedStaff);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public ClinicStaffProfileDto deactivateStaff(Long staffId, Long deactivatingAdminId) {
@@ -123,6 +135,9 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         return userMapper.toClinicStaffProfileDto(updatedStaff);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public List<ClinicStaffProfileDto> findActiveStaffByClinic(Long clinicId, Long requesterUserId) {
@@ -131,6 +146,9 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         return userMapper.toClinicStaffProfileDtoList(staffList); // Use mapper
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public List<ClinicStaffProfileDto> findAllStaffByClinic(Long clinicId, Long requesterUserId) {
@@ -220,6 +238,11 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         UserEntity requesterUser = userRepository.findById(requesterUserId)
                 .orElseThrow(() -> new EntityNotFoundException("Requesting user not found with id: " + requesterUserId));
 
+        // check if the target clinic actually exist
+        if (!clinicRepository.existsById(targetClinicId)) {
+            throw new EntityNotFoundException("Target clinic not found with id: " + targetClinicId);
+        }
+
         if (!(requesterUser instanceof ClinicStaff requesterStaff)) {
             throw new AccessDeniedException("User " + requesterUserId + " is not Clinic Staff and cannot " + actionDescription + " clinic " + targetClinicId);
         }
@@ -239,11 +262,6 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         if (!requesterClinic.getId().equals(targetClinicId)) {
             throw new AccessDeniedException(String.format("User (ID: %d, Clinic: %d) cannot %s clinic %d.",
                     requesterUserId, requesterClinic.getId(), actionDescription, targetClinicId));
-        }
-
-        // Final check: does the target clinic actually exist?
-        if (!clinicRepository.existsById(targetClinicId)) {
-            throw new EntityNotFoundException("Target clinic not found with id: " + targetClinicId);
         }
     }
 
@@ -275,53 +293,68 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     }
 
     /**
-     * Validates Vet-specific fields (license number, public key) including uniqueness checks.
+     * Validates Vet license number for requirement and uniqueness.
+     *
      * @param licenseNumber The license number to validate.
-     * @param vetPublicKey The public key to validate.
-     * @param vetIdToExclude The ID of the vet being updated (null if creating).
-     * @throws IllegalArgumentException if required fields are blank.
-     * @throws LicenseNumberAlreadyExistsException if license number is duplicate.
+     * @param vetIdToExclude The ID of the Vet being updated (null if creating a new Vet).
+     * @throws IllegalArgumentException if license number is blank.
+     * @throws LicenseNumberAlreadyExistsException if license number is already in use by another Vet.
      */
-    private void validateVetFields(String licenseNumber, String vetPublicKey, Long vetIdToExclude) {
-        // Check required fields
-        if (!StringUtils.hasText(licenseNumber)) { // Use StringUtils.hasText to check for null, empty, and whitespace
+    private void validateVetLicenseNumber(String licenseNumber, Long vetIdToExclude) {
+        if (!StringUtils.hasText(licenseNumber)) {
             throw new IllegalArgumentException("License number is required for VET role.");
         }
-        if (!StringUtils.hasText(vetPublicKey)) {
-            throw new IllegalArgumentException("Veterinarian public key is required for VET role.");
-        }
-
-        // Check license number uniqueness
-        boolean licenseExists = vetIdToExclude == null
-                ? vetRepository.existsByLicenseNumberAndIdNot(licenseNumber, -1L)
-                : vetRepository.existsByLicenseNumberAndIdNot(licenseNumber, vetIdToExclude);
-        // Check against all (use -1L or similar non-existent ID)
-        if (licenseExists) {
+        boolean exists = (vetIdToExclude == null)
+                ? vetRepository.existsByLicenseNumberAndIdNot(licenseNumber, -1L) // Check all if creating
+                : vetRepository.existsByLicenseNumberAndIdNot(licenseNumber, vetIdToExclude); // Exclude self if updating
+        if (exists) {
             throw new LicenseNumberAlreadyExistsException(licenseNumber);
         }
-
-        // Add uniqueness check for vetPublicKey
-         boolean keyExists = vetIdToExclude == null
-                 ? vetRepository.existsByVetPublicKeyAndIdNot(vetPublicKey, -1L)
-                 : vetRepository.existsByVetPublicKeyAndIdNot(vetPublicKey, vetIdToExclude);
-        if (keyExists) {
-             throw new VetPublicKeyAlreadyExistsException();
-         }
     }
 
     /**
-     * Builds a new Vet or ClinicStaff (Admin) entity based on the creation DTO and target clinic.
-     * Does NOT save the entity.
-     * @param dto The creation DTO.
-     * @param targetClinic The clinic the new staff will belong to.
-     * @return The newly built (but unsaved) ClinicStaff or Vet entity.
+     * Validates Vet public key for requirement and uniqueness.
+     *
+     * @param vetPublicKey The public key to validate.
+     * @param vetIdToExclude The ID of the Vet being updated (null if creating a new Vet).
+     * @throws IllegalArgumentException if public key is blank.
+     * @throws VetPublicKeyAlreadyExistsException if public key is already in use by another Vet.
+     */
+    private void validateVetPublicKey(String vetPublicKey, Long vetIdToExclude) {
+        if (!StringUtils.hasText(vetPublicKey)) {
+            throw new IllegalArgumentException("Veterinarian public key is required for VET role.");
+        }
+        // Check public key uniqueness
+        boolean keyExists = (vetIdToExclude == null)
+                ? vetRepository.existsByVetPublicKey(vetPublicKey) // Use simpler check for creation
+                : vetRepository.existsByVetPublicKeyAndIdNot(vetPublicKey, vetIdToExclude); // Exclude self for update
+        if (keyExists) {
+            throw new VetPublicKeyAlreadyExistsException();
+        }
+    }
+
+    /**
+     * Builds a new {@link Vet} or {@link ClinicStaff} (for ADMIN role) entity based on the provided DTO and clinic.
+     * This method populates common fields and role-specific fields (for Vet), including validation.
+     * It does *not* save the entity to the database.
+     *
+     * @param dto The DTO containing the data for the new staff member.
+     * @param targetClinic The {@link Clinic} the new staff member will belong to.
+     * @return The constructed (but not persisted) {@link ClinicStaff} or {@link Vet} entity.
+     * @throws IllegalArgumentException if VET role specific fields (license, key) are invalid or missing.
+     * @throws LicenseNumberAlreadyExistsException if the VET license number is already in use.
+     * @throws VetPublicKeyAlreadyExistsException if the VET public key is already in use.
      */
     private ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto, Clinic targetClinic) {
         ClinicStaff newStaff;
         if (dto.role() == RoleEnum.VET) {
-            validateVetFields(dto.licenseNumber(), dto.vetPublicKey(), null); // Validate before creating
+            // Validate VET specific fields first
+            validateVetLicenseNumber(dto.licenseNumber(), null);
+            validateVetPublicKey(dto.vetPublicKey(), null);
+
             Vet newVet = new Vet();
             setCommonStaffFields(newVet, dto, targetClinic); // Populate common fields
+            // Set Vet specific fields
             newVet.setLicenseNumber(dto.licenseNumber());
             newVet.setVetPublicKey(dto.vetPublicKey());
             newVet.setAvatar(DEFAULT_VET_AVATAR);
@@ -337,11 +370,13 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
 
 
     /**
-     * Helper method to set common fields (username, email, password hash, name, surname, roles, clinic, active status)
-     * for ClinicStaff entities during creation.
-     * @param staff The ClinicStaff (or Vet subclass) entity to populate.
-     * @param dto The DTO containing the creation data.
-     * @param clinic The associated Clinic entity.
+     * Sets common fields shared by all ClinicStaff (including Vets) during entity creation.
+     * Hashes the password, assigns the role, associates the clinic, and sets default statuses.
+     *
+     * @param staff The {@link ClinicStaff} or {@link Vet} entity being created.
+     * @param dto The {@link ClinicStaffCreationDto} containing the source data.
+     * @param clinic The {@link Clinic} to associate the staff member with.
+     * @throws IllegalStateException if the specified role is not found in the database.
      */
     private void setCommonStaffFields(ClinicStaff staff, ClinicStaffCreationDto dto, Clinic clinic) {
         staff.setUsername(dto.username());
@@ -362,11 +397,16 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     }
 
     /**
-     * Applies updates from ClinicStaffUpdateDto to a ClinicStaff entity.
-     * Handles common fields and Vet-specific fields with validation.
-     * @param staffToUpdate The entity to update.
-     * @param updateDTO The DTO containing update data.
-     * @return true if any field was actually changed, false otherwise.
+     * Applies updates from a {@link ClinicStaffUpdateDto} to an existing {@link ClinicStaff} entity.
+     * Updates name, surname, and Vet-specific fields (license number, public key) if the entity is a Vet
+     * and the new values are provided and different from existing ones. Includes validation for Vet fields.
+     *
+     * @param staffToUpdate The {@link ClinicStaff} entity to be modified.
+     * @param updateDTO The DTO containing the potential updates.
+     * @return {@code true} if any field on the entity was actually changed, {@code false} otherwise.
+     * @throws IllegalArgumentException if attempting to update Vet fields with invalid data.
+     * @throws LicenseNumberAlreadyExistsException if the new license number conflicts with another Vet.
+     * @throws VetPublicKeyAlreadyExistsException if the new public key conflicts with another Vet.
      */
     private boolean applyStaffUpdates(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO) {
         boolean changed = false;
@@ -384,14 +424,14 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         // Update Vet-specific fields only if the entity is a Vet
         if (staffToUpdate instanceof Vet vetToUpdate) {
             // Update License Number if provided and different
-            if (updateDTO.licenseNumber() != null && !updateDTO.licenseNumber().isBlank() && !updateDTO.licenseNumber().equals(vetToUpdate.getLicenseNumber())) {
-                validateVetFields(updateDTO.licenseNumber(), vetToUpdate.getVetPublicKey(), vetToUpdate.getId()); // Validate new license# (and existing key implicitly)
+            if (StringUtils.hasText(updateDTO.licenseNumber()) && !updateDTO.licenseNumber().equals(vetToUpdate.getLicenseNumber())) {
+                validateVetLicenseNumber(updateDTO.licenseNumber(), vetToUpdate.getId()); // Validate license# only
                 vetToUpdate.setLicenseNumber(updateDTO.licenseNumber());
                 changed = true;
             }
             // Update Public Key if provided and different
-            if (updateDTO.vetPublicKey() != null && !updateDTO.vetPublicKey().isBlank() && !updateDTO.vetPublicKey().equals(vetToUpdate.getVetPublicKey())) {
-                validateVetFields(vetToUpdate.getLicenseNumber(), updateDTO.vetPublicKey(), vetToUpdate.getId()); // Validate existing license# and new key
+            if (StringUtils.hasText(updateDTO.vetPublicKey()) && !updateDTO.vetPublicKey().equals(vetToUpdate.getVetPublicKey())) {
+                validateVetPublicKey(updateDTO.vetPublicKey(), vetToUpdate.getId()); // Validate public key only
                 vetToUpdate.setVetPublicKey(updateDTO.vetPublicKey());
                 changed = true;
             }

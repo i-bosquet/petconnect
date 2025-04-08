@@ -22,6 +22,15 @@ public interface VetRepository extends JpaRepository<Vet, Long> {
     boolean existsByLicenseNumberAndIdNot(String licenseNumber, Long userIdToExclude);
 
     /**
+     * Checks if a Vet with the given public key exists.
+     * Useful for validating uniqueness when creating a new Vet or checking before update.
+     *
+     * @param vetPublicKey The public key to check.
+     * @return true if a vet with the public key exists, false otherwise.
+     */
+    boolean existsByVetPublicKey(String vetPublicKey);
+
+    /**
      * Checks if a Vet with the given public key exists, excluding a specific user ID.
      * Useful for validating uniqueness when updating a public key.
      *
