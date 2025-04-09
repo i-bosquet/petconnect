@@ -23,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.access.AccessDeniedHandler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -45,9 +46,11 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
+
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_VET = "VET";
     public static final String ROLE_OWNER = "OWNER";
+    public static final String MESSAGE = "message";
 
 
     /**
@@ -113,6 +116,7 @@ public class SecurityConfig {
                 .addFilterBefore(new JwtTokenFilter(jwtUtils), UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                                 .authenticationEntryPoint(customAuthenticationEntryPoint())
+                                .accessDeniedHandler(customAccessDeniedHandler())
                 )
                 .build();
     }
@@ -163,14 +167,39 @@ public class SecurityConfig {
 
             // Provide a more specific message for bad credentials
             if (authException instanceof BadCredentialsException) {
-                body.put("message", "Invalid username or password.");
+                body.put(MESSAGE, "Invalid username or password.");
             } else {
-                body.put("message", authException.getMessage()); // Use message from the exception
+                body.put(MESSAGE, authException.getMessage()); // Use message from the exception
             }
 
             body.put("path", request.getRequestURI());
 
             // Use ObjectMapper to write the JSON response
+            objectMapper.writeValue(response.getWriter(), body);
+        };
+    }
+
+    /**
+     * Creates a custom AccessDeniedHandler bean.
+     * This handler is invoked when an authenticated user tries to access a resource
+     * they do not have permission for (resulting in AccessDeniedException).
+     * It returns a 403 Forbidden response with a standardized JSON error body.
+     *
+     * @return The custom AccessDeniedHandler.
+     */
+    @Bean
+    public AccessDeniedHandler customAccessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("timestamp", System.currentTimeMillis());
+            body.put("status", HttpStatus.FORBIDDEN.value());
+            body.put("error", "Forbidden");
+            body.put(MESSAGE, "Access Denied: You do not have the required permissions to access this resource.");
+            body.put("path", request.getRequestURI());
+
             objectMapper.writeValue(response.getWriter(), body);
         };
     }

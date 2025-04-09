@@ -7,6 +7,7 @@ import com.petconnect.backend.user.application.service.UserService;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,6 +27,7 @@ import java.util.Optional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -61,6 +63,7 @@ public class UserServiceImpl implements UserService {
     // Or compare ID directly if principal holds UserEntity/UserDetails with ID
     @PreAuthorize("#id == @userServiceHelper.getAuthenticatedUserId() or hasRole('ADMIN')")
     public Optional<UserProfileDto> findUserById(Long id) {
+        log.debug("Attempting to find user by ID: {} (Authorized check passed)", id);
         return userRepository.findById(id)
                 .map(userMapper::mapToBaseProfileDTO); // Uses the refactored mapper
     }

@@ -39,4 +39,6 @@ public interface VetRepository extends JpaRepository<Vet, Long> {
      * @return true if another vet with the public key exists, false otherwise.
      */
     boolean existsByVetPublicKeyAndIdNot(String vetPublicKey, Long userIdToExclude); // For checking on update
+
+    boolean existsByLicenseNumber(String licenseNumber);
 }

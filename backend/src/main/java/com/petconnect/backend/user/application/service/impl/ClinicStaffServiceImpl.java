@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -296,17 +297,14 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
      * Validates Vet license number for requirement and uniqueness.
      *
      * @param licenseNumber The license number to validate.
-     * @param vetIdToExclude The ID of the Vet being updated (null if creating a new Vet).
      * @throws IllegalArgumentException if license number is blank.
      * @throws LicenseNumberAlreadyExistsException if license number is already in use by another Vet.
      */
-    private void validateVetLicenseNumber(String licenseNumber, Long vetIdToExclude) {
+    private void validateVetLicenseNumber(String licenseNumber) {
         if (!StringUtils.hasText(licenseNumber)) {
             throw new IllegalArgumentException("License number is required for VET role.");
         }
-        boolean exists = (vetIdToExclude == null)
-                ? vetRepository.existsByLicenseNumberAndIdNot(licenseNumber, -1L) // Check all if creating
-                : vetRepository.existsByLicenseNumberAndIdNot(licenseNumber, vetIdToExclude); // Exclude self if updating
+        boolean exists = vetRepository.existsByLicenseNumber(licenseNumber);
         if (exists) {
             throw new LicenseNumberAlreadyExistsException(licenseNumber);
         }
@@ -324,13 +322,11 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         if (!StringUtils.hasText(vetPublicKey)) {
             throw new IllegalArgumentException("Veterinarian public key is required for VET role.");
         }
+        log.debug("Validating public key uniqueness: key={}, excludingId={}", vetPublicKey, vetIdToExclude);
         // Check public key uniqueness
-        boolean keyExists = (vetIdToExclude == null)
-                ? vetRepository.existsByVetPublicKey(vetPublicKey) // Use simpler check for creation
-                : vetRepository.existsByVetPublicKeyAndIdNot(vetPublicKey, vetIdToExclude); // Exclude self for update
-        if (keyExists) {
-            throw new VetPublicKeyAlreadyExistsException();
-        }
+        boolean keyExists = vetRepository.existsByVetPublicKey(vetPublicKey);
+        log.debug("Result from existsByVetPublicKeyAndIdNot: {}", keyExists);
+        if (keyExists) throw new VetPublicKeyAlreadyExistsException();
     }
 
     /**
@@ -349,7 +345,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         ClinicStaff newStaff;
         if (dto.role() == RoleEnum.VET) {
             // Validate VET specific fields first
-            validateVetLicenseNumber(dto.licenseNumber(), null);
+            validateVetLicenseNumber(dto.licenseNumber());
             validateVetPublicKey(dto.vetPublicKey(), null);
 
             Vet newVet = new Vet();
@@ -384,9 +380,13 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         staff.setPassword(passwordEncoder.encode(dto.password())); // Hash password
         staff.setName(dto.name());
         staff.setSurname(dto.surname());
+
         RoleEntity staffRole = roleRepository.findByRoleEnum(dto.role())
                 .orElseThrow(() -> new IllegalStateException("Role " + dto.role().name() + " not found in database! Check data.sql."));
-        staff.setRoles(Set.of(staffRole)); // Assign the single role (VET or ADMIN)
+        Set<RoleEntity> roles = new HashSet<>();
+        roles.add(staffRole);
+        staff.setRoles(roles);
+
         staff.setClinic(clinic);        // Assign the clinic
         staff.setActive(true);          // New staff are active by default
         staff.setEnabled(true);         // Enable user account fields from UserEntity
@@ -425,7 +425,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         if (staffToUpdate instanceof Vet vetToUpdate) {
             // Update License Number if provided and different
             if (StringUtils.hasText(updateDTO.licenseNumber()) && !updateDTO.licenseNumber().equals(vetToUpdate.getLicenseNumber())) {
-                validateVetLicenseNumber(updateDTO.licenseNumber(), vetToUpdate.getId()); // Validate license# only
+                validateVetLicenseNumber(updateDTO.licenseNumber()); // Validate license# only
                 vetToUpdate.setLicenseNumber(updateDTO.licenseNumber());
                 changed = true;
             }

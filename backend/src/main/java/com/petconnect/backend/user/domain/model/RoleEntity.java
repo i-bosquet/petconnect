@@ -3,6 +3,7 @@ package com.petconnect.backend.user.domain.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -47,5 +48,5 @@ public class RoleEntity {
             name="role_permission",
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "permission_id"))
-    private Set<PermissionEntity> permissionList;
+    private Set<PermissionEntity> permissionList = new HashSet<>();
 }

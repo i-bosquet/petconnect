@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -121,7 +122,9 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         // Set defaults
         RoleEntity ownerRole = roleRepository.findByRoleEnum(RoleEnum.OWNER)
                 .orElseThrow(() -> new IllegalStateException("OWNER role not found in database!"));
-        newOwner.setRoles(Set.of(ownerRole));
+        Set<RoleEntity> roles = new HashSet<>();
+        roles.add(ownerRole);
+        newOwner.setRoles(roles);
         newOwner.setAvatar(DEFAULT_OWNER_AVATAR); // Set default avatar path
 
         // Save the new Owner

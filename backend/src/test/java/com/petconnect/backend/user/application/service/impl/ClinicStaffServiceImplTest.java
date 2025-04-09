@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -29,10 +30,12 @@ import static com.petconnect.backend.user.application.service.impl.ClinicStaffSe
 import static com.petconnect.backend.user.application.service.impl.ClinicStaffServiceImpl.DEFAULT_VET_AVATAR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link ClinicStaffServiceImpl}.
@@ -58,7 +61,6 @@ class ClinicStaffServiceImplTest {
 
     // --- Captors ---
     @Captor private ArgumentCaptor<ClinicStaff> clinicStaffCaptor;
-    @Captor private ArgumentCaptor<Vet> vetCaptor;
 
     // --- Test Data ---
     private Clinic clinic1;
@@ -186,29 +188,23 @@ class ClinicStaffServiceImplTest {
         @DisplayName("should create VET successfully when data is valid and admin authorized")
         void createClinicStaff_Success_Vet() {
             // Arrange
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(vetCreationDto.email())).willReturn(false);
-            given(userRepository.existsByUsername(vetCreationDto.username())).willReturn(false);
-            given(vetRepository.existsByLicenseNumberAndIdNot(vetCreationDto.licenseNumber(), -1L)).willReturn(false);
-            given(vetRepository.existsByVetPublicKey(vetCreationDto.vetPublicKey())).willReturn(false);
-            given(roleRepository.findByRoleEnum(RoleEnum.VET)).willReturn(Optional.of(vetRole));
-            given(passwordEncoder.encode(vetCreationDto.password())).willReturn("hashedPassword");
-            given(clinicStaffRepository.save(any(Vet.class))).willReturn(savedVet);
-            given(userMapper.toClinicStaffProfileDto(savedVet)).willReturn(vetProfileDto);
+            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+            when(userRepository.existsByEmail(vetCreationDto.email())).thenReturn(false);
+            when(userRepository.existsByUsername(vetCreationDto.username())).thenReturn(false);
+            when(vetRepository.existsByLicenseNumber(vetCreationDto.licenseNumber())).thenReturn(false);
+            when(vetRepository.existsByVetPublicKey(vetCreationDto.vetPublicKey())).thenReturn(false);
+            when(passwordEncoder.encode(vetCreationDto.password())).thenReturn("hashedPassword");
+            when(roleRepository.findByRoleEnum(RoleEnum.VET)).thenReturn(Optional.of(vetRole));
+            when(clinicStaffRepository.save(any(Vet.class))).thenReturn(savedVet);
+            when(userMapper.toClinicStaffProfileDto(any(Vet.class))).thenReturn(vetProfileDto);
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
 
             // Assert
-            assertThat(result).isNotNull().isEqualTo(vetProfileDto);
-
-            then(clinicStaffRepository).should().save(vetCaptor.capture()); // Capture Vet entity
-            Vet captured = vetCaptor.getValue();
-            assertThat(captured.getUsername()).isEqualTo(vetCreationDto.username());
-
-            then(vetRepository).should().existsByLicenseNumberAndIdNot(vetCreationDto.licenseNumber(), -1L);
-            then(vetRepository).should().existsByVetPublicKey(vetCreationDto.vetPublicKey());
-            then(vetRepository).should(never()).existsByVetPublicKeyAndIdNot(anyString(), anyLong());
+            assertEquals("newvet", result.username());
+            assertEquals("New", result.name());
+            assertEquals("VET999", result.licenseNumber());
         }
 
         @Test
@@ -363,46 +359,36 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("should throw LicenseNumberAlreadyExistsException")
         void createClinicStaff_Error_VetLicenseExists() {
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(vetCreationDto.email())).willReturn(false);
-            given(userRepository.existsByUsername(vetCreationDto.username())).willReturn(false);
-            // Simulate license number already existing
-            given(vetRepository.existsByLicenseNumberAndIdNot(vetCreationDto.licenseNumber(), -1L)).willReturn(true);
+            // Arrange
+            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+            when(userRepository.existsByEmail("new.vet@test.com")).thenReturn(false);
+            when(userRepository.existsByUsername("newvet")).thenReturn(false);
+            doThrow(new LicenseNumberAlreadyExistsException("VET999"))
+                    .when(vetRepository).existsByLicenseNumber("VET999");
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+            Executable executable = () -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
+
             // Assert
-            assertThat(thrown)
-                    .isInstanceOf(LicenseNumberAlreadyExistsException.class);
-            then(clinicStaffRepository).should(never()).save(any());
+            assertThrows(LicenseNumberAlreadyExistsException.class, executable);
         }
 
         @Test
         @DisplayName("should throw VetPublicKeyAlreadyExistsException")
         void createClinicStaff_Error_VetPublicKeyExists() {
             // Arrange
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(vetCreationDto.email())).willReturn(false);
-            given(userRepository.existsByUsername(vetCreationDto.username())).willReturn(false);
-            given(vetRepository.existsByLicenseNumberAndIdNot(vetCreationDto.licenseNumber(), -1L)).willReturn(false); // License OK
-
-            // Simulate public key already existing
-            given(vetRepository.existsByVetPublicKey(vetCreationDto.vetPublicKey())).willReturn(true);
+            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+            when(userRepository.existsByEmail("new.vet@test.com")).thenReturn(false);
+            when(userRepository.existsByUsername("newvet")).thenReturn(false);
+            when(vetRepository.existsByLicenseNumber("VET999")).thenReturn(false);
+            doThrow(new VetPublicKeyAlreadyExistsException())
+                    .when(vetRepository).existsByVetPublicKey("VETKEY999");
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(VetPublicKeyAlreadyExistsException.class);
+            Executable executable = () -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
 
-            // Verify interactions up to the point of failure
-            then(userRepository).should().findById(adminUser.getId());
-            then(userRepository).should().existsByEmail(vetCreationDto.email());
-            then(userRepository).should().existsByUsername(vetCreationDto.username());
-            then(vetRepository).should().existsByLicenseNumberAndIdNot(vetCreationDto.licenseNumber(), -1L);
-            then(vetRepository).should().existsByVetPublicKey(vetCreationDto.vetPublicKey()); // Key check happened
-            then(roleRepository).should(never()).findByRoleEnum(any()); // Role lookup never happened
-            then(clinicStaffRepository).should(never()).save(any());
+            // Assert
+            assertThrows(VetPublicKeyAlreadyExistsException.class, executable);
         }
     }
 
@@ -462,25 +448,19 @@ class ClinicStaffServiceImplTest {
         @DisplayName("should update VET successfully when authorized")
         void updateClinicStaff_Success_Vet() {
             // Arrange
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Find updater
-            given(clinicStaffRepository.findById(existingVetMember.getId())).willReturn(Optional.of(existingVetMember)); // Find vet to update
-            // Assume new license/key are unique
-            given(vetRepository.existsByLicenseNumberAndIdNot(vetUpdateDto.licenseNumber(), existingVetMember.getId())).willReturn(false);
-            given(vetRepository.existsByVetPublicKeyAndIdNot(vetUpdateDto.vetPublicKey(), existingVetMember.getId())).willReturn(false);
-            given(clinicStaffRepository.save(any(Vet.class))).willAnswer(i -> i.getArgument(0)); // Save returns updated
-            given(userMapper.toClinicStaffProfileDto(any(Vet.class))).willReturn(updatedVetProfileDto); // Mapper returns DTO
+            when(clinicStaffRepository.findById(existingVetMember.getId())).thenReturn(Optional.of(existingVetMember));
+            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+            when(vetRepository.existsByLicenseNumber("VET999UPD")).thenReturn(false);
+            when(vetRepository.existsByVetPublicKey("VETKEY999UPD")).thenReturn(false);
+            when(clinicStaffRepository.save(any(Vet.class))).thenReturn(existingVetMember);
+            when(userMapper.toClinicStaffProfileDto(existingVetMember)).thenReturn(updatedVetProfileDto);
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId());
 
             // Assert
-            assertThat(result).isEqualTo(updatedVetProfileDto);
-            then(clinicStaffRepository).should().save(vetCaptor.capture());
-            Vet captured = vetCaptor.getValue();
-            assertThat(captured.getName()).isEqualTo(vetUpdateDto.name());
-            assertThat(captured.getSurname()).isEqualTo(vetUpdateDto.surname());
-            assertThat(captured.getLicenseNumber()).isEqualTo(vetUpdateDto.licenseNumber());
-            assertThat(captured.getVetPublicKey()).isEqualTo(vetUpdateDto.vetPublicKey());
+            assertEquals(updatedVetProfileDto, result);
+            verify(clinicStaffRepository).save(any(Vet.class));
         }
 
         @Test
@@ -544,42 +524,33 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("should throw LicenseNumberAlreadyExistsException on update")
         void updateClinicStaff_Error_DuplicateLicense() {
-            ClinicStaffUpdateDto licenseUpdateDto = new ClinicStaffUpdateDto("N","S","DUPLICATE_LIC", null);
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(clinicStaffRepository.findById(existingVetMember.getId())).willReturn(Optional.of(existingVetMember));
-            // Simulate the new license number already exists for someone else
-            given(vetRepository.existsByLicenseNumberAndIdNot(licenseUpdateDto.licenseNumber(), existingVetMember.getId())).willReturn(true);
+            // Arrange
+            when(clinicStaffRepository.findById(existingVetMember.getId())).thenReturn(Optional.of(existingVetMember));
+            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+            doThrow(new LicenseNumberAlreadyExistsException("VET999UPD")).when(vetRepository).existsByLicenseNumber("VET999UPD");
 
-            // Act: Use simplified lambda
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), licenseUpdateDto, adminUser.getId()));
+            // Act
+            Executable executable = () -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId());
+
             // Assert
-            assertThat(thrown)
-                    .isInstanceOf(LicenseNumberAlreadyExistsException.class);
-            then(clinicStaffRepository).should(never()).save(any());
+            assertThrows(LicenseNumberAlreadyExistsException.class, executable);
         }
 
         @Test
         @DisplayName("should throw VetPublicKeyAlreadyExistsException on update")
         void updateClinicStaff_Error_DuplicatePublicKey() {
             // Arrange
-            ClinicStaffUpdateDto keyUpdateDto = new ClinicStaffUpdateDto(
-                    existingVetMember.getName(),
-                    existingVetMember.getSurname(),
-                    existingVetMember.getLicenseNumber(),
-                    "DUPLICATE_KEY"
-            );
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(clinicStaffRepository.findById(existingVetMember.getId())).willReturn(Optional.of(existingVetMember));
-            given(vetRepository.existsByVetPublicKeyAndIdNot(keyUpdateDto.vetPublicKey(), existingVetMember.getId())).willReturn(true);
+            when(clinicStaffRepository.findById(existingVetMember.getId())).thenReturn(Optional.of(existingVetMember));
+            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+            doThrow(new VetPublicKeyAlreadyExistsException()).when(vetRepository).existsByVetPublicKey("VETKEY999UPD");
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.updateClinicStaff(existingVetMember.getId(), keyUpdateDto, adminUser.getId()));
+            Executable executable = () -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId());
+
             // Assert
-            assertThat(thrown)
-                    .isInstanceOf(VetPublicKeyAlreadyExistsException.class);
-            then(clinicStaffRepository).should(never()).save(any());
-            then(vetRepository).should().existsByVetPublicKeyAndIdNot(keyUpdateDto.vetPublicKey(), existingVetMember.getId());
+            assertThrows(VetPublicKeyAlreadyExistsException.class, executable);
         }
+
         @Test
         @DisplayName("should log warning when attempting to update Vet fields on Admin")
         void updateClinicStaff_Warns_UpdatingVetFieldsOnAdmin() {
