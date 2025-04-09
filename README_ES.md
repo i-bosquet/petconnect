@@ -134,21 +134,22 @@ Una vez todo esté en ejecución:
 
 ## 9. Ejecutar Análisis con SonarQube
 
-*   Asegúrate de haber generado un token en SonarQube (http://localhost:9000) y haberlo añadido a tu archivo `.env` (Paso 3).
-*   Abre una terminal en la raíz del proyecto (`petconnect/`).
-*   Navega al directorio `scripts/`: `cd scripts`
-*   Ejecuta el script apropiado para tu sistema operativo:
-    *   **Windows (PowerShell):** `.\run-sonar-analysis.ps1`
-    *   **Linux / macOS (Bash):** `bash run-sonar-analysis.sh` (o `./run-sonar-analysis.sh` tras `chmod +x run-sonar-analysis.sh`)
-*   Maven construirá el proyecto, ejecutará los tests (generando reportes Jacoco) y enviará los resultados al servidor SonarQube. Podrás ver el análisis en `http://localhost:9000`.
+- Asegúrate de haber generado un token en SonarQube (http://localhost:9000) y haberlo añadido a tu archivo `.env` (Paso 3).
+- Abre una terminal en la raíz del proyecto (`petconnect/`).
+- Navega al directorio `scripts/`: `cd scripts`
+- Ejecuta el script apropiado para tu sistema operativo:
+    - **Windows (PowerShell):** `.\run-sonar-analysis.ps1`
+    - **Linux / macOS (Bash):** `bash run-sonar-analysis.sh` (o `./run-sonar-analysis.sh` tras `chmod +x run-sonar-analysis.sh`)
+- Maven construirá el proyecto, ejecutará los tests (generando reportes Jacoco) y enviará los resultados al servidor SonarQube. Podrás ver el análisis en `http://localhost:9000`.
+- [![Quality Gate Status](http://localhost:9000/api/project_badges/measure?project=petconnect_backend&metric=alert_status&token=sqa_761d07dc5cd239cee77d9ee6bcc7d4391b39f53f)](http://localhost:9000/dashboard?id=petconnect_backend&codeScope=overall)
 
 ## 10. Probar la API con Postman
 
-*   Abre Postman.
-*   Importa la colección: "Archivo" > "Importar..." y selecciona el archivo `postman/PetConnect.postman_collection.json`.
-*   Importa el entorno: "Archivo" > "Importar..." y selecciona el archivo `postman/PetConnect_Local_Dev.postman_environment.json`.
-*   Asegúrate de que el entorno "PetConnect Local Dev" está seleccionado en la esquina superior derecha.
-*   Ahora puedes explorar las carpetas y ejecutar las peticiones contra tu backend local (http://localhost:8080).
+-   Abre Postman.
+-   Importa la colección: "Archivo" > "Importar..." y selecciona el archivo `postman/PetConnect.postman_collection.json`.
+-   Importa el entorno: "Archivo" > "Importar..." y selecciona el archivo `postman/PetConnect_Local_Dev.postman_environment.json`.
+-   Asegúrate de que el entorno "PetConnect Local Dev" está seleccionado en la esquina superior derecha.
+-   Ahora puedes explorar las carpetas y ejecutar las peticiones contra tu backend local (http://localhost:8080).
 
 <!-- TODO: Añadir captura de Postman con la colección/entorno importado -->
 <!-- ![Configuración Postman](.github/readme-assets/postman-setup.png) -->

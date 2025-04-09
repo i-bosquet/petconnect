@@ -134,6 +134,7 @@ Open your web browser to the URL provided http://localhost:5173.
   - Linux / macOS (Bash): `bash run-sonar-analysis.sh` (or `./run-sonar-analysis.sh` after `chmod +x run-sonar-analysis.sh`)
 - Maven will build the project, run tests (generating Jacoco reports), and send the analysis results to the SonarQube server. 
 - You can view the report at http://localhost:9000.
+- [![Quality Gate Status](http://localhost:9000/api/project_badges/measure?project=petconnect_backend&metric=alert_status&token=sqa_761d07dc5cd239cee77d9ee6bcc7d4391b39f53f)](http://localhost:9000/dashboard?id=petconnect_backend&codeScope=overall)
 
 ## 10. Testing the API with Postman
 - Open Postman.
