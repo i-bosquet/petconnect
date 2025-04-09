@@ -13,33 +13,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for managing Clinic Staff (Vets and Admins).
- * These endpoints are typically restricted to users with the ADMIN role
- * for the relevant clinic.
- * Base path is "/api/staff". Endpoints for listing staff might be under "/api/clinics".
+ * Implementation of {@link ClinicStaffControllerApi}.
+ * Handles incoming HTTP requests for clinic staff management and delegates to the {@link ClinicStaffService}.
  *
  * @author ibosquet
  */
 @RestController
 @RequestMapping("/api/staff")
 @RequiredArgsConstructor
-public class ClinicStaffController {
+public class ClinicStaffController implements ClinicStaffControllerApi {
 
     private final ClinicStaffService clinicStaffService;
     private final UserServiceHelper userAuthenticationHelper;
 
     /**
-     * Handles POST requests to create a new Clinic Staff member (Vet or Admin).
-     * Requires ADMIN role for the clinic specified in the DTO.
-     * Validates the incoming creation data.
-     *
-     * @param creationDTO The DTO containing the details of the staff to create.
-     * @return A ResponseEntity containing the profile DTO of the newly created staff member
-     *         and HTTP status 201 (Created).
+     * {@inheritDoc}
      */
-    @PostMapping("") // Endpoint for creating staff
-    @ResponseStatus(HttpStatus.CREATED)
-    @SecurityRequirement(name = "bearerAuth")
+    @Override
+    @PostMapping("")
     public ResponseEntity<ClinicStaffProfileDto> createClinicStaff(@Valid @RequestBody ClinicStaffCreationDto creationDTO) {
         // --- Get the ID of the currently authenticated admin
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
@@ -47,8 +38,11 @@ public class ClinicStaffController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdStaff);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     @PutMapping("/{staffId}")
-    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ClinicStaffProfileDto> updateClinicStaff(
             @PathVariable Long staffId,
             @Valid @RequestBody ClinicStaffUpdateDto updateDTO) {
@@ -59,14 +53,10 @@ public class ClinicStaffController {
     }
 
     /**
-     * Handles PUT requests to activate a Clinic Staff member's account.
-     * Requires ADMIN role for the clinic of the staff member being activated.
-     *
-     * @param staffId The ID of the staff member to activate.
-     * @return A ResponseEntity containing the profile DTO of the activated staff member.
+     * {@inheritDoc}
      */
+    @Override
     @PutMapping("/{staffId}/activate")
-    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ClinicStaffProfileDto> activateStaff(@PathVariable Long staffId) {
         // --- Get the ID of the currently authenticated admin
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
@@ -75,12 +65,9 @@ public class ClinicStaffController {
     }
 
     /**
-     * Handles PUT requests to deactivate a Clinic Staff member's account.
-     * Requires ADMIN role for the clinic of the staff member being deactivated.
-     *
-     * @param staffId The ID of the staff member to deactivate.
-     * @return A ResponseEntity containing the profile DTO of the deactivated staff member.
+     * {@inheritDoc}
      */
+    @Override
     @PutMapping("/{staffId}/deactivate")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ClinicStaffProfileDto> deactivateStaff(@PathVariable Long staffId) {

@@ -12,54 +12,35 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+
 /**
- * REST Controller for handling authentication-related requests,
- * such as user registration and login (login to be implemented later).
- * Base path is "/api/auth".
+ * Implementation of the {@link AuthControllerApi}.
+ * Handles incoming HTTP requests for authentication and delegates to the {@link AuthService}.
  *
  * @author ibosquet
  */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-public class AuthController {
+public class AuthController implements AuthControllerApi {
 
     private final AuthService authService;
 
     /**
-     * Handles POST requests to register a new Pet Owner.
-     * Validates the incoming registration data.
-     * Delegates the registration logic to the AuthService.
-     *
-     * @param registrationDTO The registration data received in the request body.
-     * @return A ResponseEntity containing the profile DTO of the newly created owner
-     *         and HTTP status 201 (Created).
-     *         Returns HTTP status 400 (Bad Request) if validation fails.
-     *         Returns HTTP status 409 (Conflict) if email or username already exist
-     *         (handled by global exception handler later).
+     * {@inheritDoc}
      */
     @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<OwnerProfileDto> registerOwner(@Valid @RequestBody OwnerRegistrationDto registrationDTO) {
+    public ResponseEntity<OwnerProfileDto> registerOwner(@Valid @RequestBody OwnerRegistrationDto registrationDTO){
         OwnerProfileDto createdOwner = authService.registerOwner(registrationDTO);
         // Return 201 Created status along with the created owner's profile
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
-    }
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);}
 
     /**
-     * Handles POST requests for user login.
-     * Validates the incoming login credentials and delegates authentication to the AuthService.
-     *
-     * @param userRequest The authentication request data containing username and password.
-     * @return A ResponseEntity containing the authentication response DTO (with JWT token)
-     *         and HTTP status 200 (OK).
+     * {@inheritDoc}
      */
     @PostMapping("/login")
-    @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody AuthLoginRequestDto userRequest) {
-        return new ResponseEntity<>(this.authService.loginUser(userRequest), HttpStatus.OK);
-    }
+    public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody AuthLoginRequestDto userRequest){
+        return new ResponseEntity<>(this.authService.loginUser(userRequest), HttpStatus.OK);}
 }
