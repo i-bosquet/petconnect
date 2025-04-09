@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class) // JPA Auditing: Enables automatic audit field population
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
     /**
      * The unique identifier for the entity.
@@ -34,16 +34,16 @@ public abstract class BaseEntity {
      * Timestamp when the entity was first created.
      * Automatically set by Spring Data JPA Auditing.
      */
-    @CreatedDate // JPA Auditing
-    @Column(name = "created_at", nullable = false, updatable = false) // Ensure column name and constraints
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     /**
      * Timestamp when the entity was last modified.
      * Automatically set by Spring Data JPA Auditing.
      */
-    @LastModifiedDate // JPA Auditing
-    @Column(name = "updated_at") // Nullable by default
+    @LastModifiedDate
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     /**
@@ -51,8 +51,8 @@ public abstract class BaseEntity {
      * Automatically set by Spring Data JPA Auditing via AuditorAware.
      * Nullable to handle system-generated entities or initial data.
      */
-    @CreatedBy // JPA Auditing
-    @Column(name = "created_by", updatable = false) // Nullable by default, not updatable
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
     private String createdBy;
 
     /**
@@ -60,7 +60,7 @@ public abstract class BaseEntity {
      * Automatically set by Spring Data JPA Auditing via AuditorAware.
      * Nullable.
      */
-    @LastModifiedBy // JPA Auditing
-    @Column(name = "updated_by") // Nullable by default
+    @LastModifiedBy
+    @Column(name = "updated_by")
     private String updatedBy;
 }
