@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -44,7 +46,7 @@ public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificatio
      * Finds a list of pets that are PENDING activation at a specific clinic.
      *
      * @param clinicId The ID of the clinic.
-     * @param status The status to filter by (should typically be PetStatus.PENDING).
+     * @param status The status to filter by (should typically be PetStatus PENDING).
      * @return A List of Pet entities pending activation at the clinic.
      */
     List<Pet> findByPendingActivationClinicIdAndStatus(Long clinicId, PetStatus status);
@@ -76,4 +78,8 @@ public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificatio
      */
     boolean existsByMicrochipAndIdNot(String microchip, Long petIdToExclude);
 
+    @Query("SELECT p FROM Pet p LEFT JOIN p.associatedVets vet " +
+            "WHERE p.pendingActivationClinic.id = :clinicId OR vet.clinic.id = :clinicId " +
+            "GROUP BY p") // Group by to avoid duplicates if you have multiple vets from the same clinic
+    Page<Pet> findPetsAssociatedWithClinic(@Param("clinicId") Long clinicId, Pageable pageable);
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Spring Data JPA repository for {@link Breed} entities.
@@ -25,4 +26,14 @@ public interface BreedRepository extends JpaRepository<Breed, Long> {
      * @return A list of {@link Breed} objects for the given species, sorted by name.
      */
     List<Breed> findBySpecieOrderByNameAsc(@NotNull Specie specie);
+
+    /**
+     * Finds a specific breed by its name and species.
+     * Used primarily for finding fallback breeds like "Mixed/Other".
+     *
+     * @param name The exact name of the breed (case-sensitive depending on DB collation).
+     * @param specie The species the breed belongs to.
+     * @return An Optional containing the Breed if found, empty otherwise.
+     */
+    Optional<Breed> findByNameAndSpecie(String name, Specie specie);
 }

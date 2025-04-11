@@ -103,15 +103,17 @@ public class Pet extends BaseEntity {
      */
     @NotNull(message = "Pet must have an owner")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "owner_id", nullable = false)
+    @JoinColumn(name = "owner_id", nullable = false, foreignKey = @ForeignKey(name = "fk_pet_owner"))
     private Owner owner;
 
     /**
-     * The Breed of the pet. Optional.
+     * The Breed of the pet. Required. A default 'Mixed/Other' breed should be
+     * assigned if a specific one is not selected during registration/update.
      * Fetched lazily.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "breed_id")
+    @NotNull(message = "Pet must have a breed assigned (use 'Mixed/Other' if specific breed is unknown)")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "breed_id", nullable = false, foreignKey = @ForeignKey(name = "fk_pet_breed"))
     private Breed breed;
 
     /**
@@ -121,7 +123,7 @@ public class Pet extends BaseEntity {
      * once the pet becomes ACTIVE. Fetched lazily.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pending_activation_clinic_id")
+    @JoinColumn(name = "pending_activation_clinic_id", foreignKey = @ForeignKey(name = "fk_pet_pending_clinic"))
     private Clinic pendingActivationClinic;
 
     /**
@@ -132,8 +134,8 @@ public class Pet extends BaseEntity {
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "pet_vet_association",
-            joinColumns = @JoinColumn(name = "pet_id", referencedColumnName = "id"), // FK to pet table
-            inverseJoinColumns = @JoinColumn(name = "vet_id", referencedColumnName = "user_id"), // FK to vet table (user_id)
+            joinColumns = @JoinColumn(name = "pet_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "vet_id", referencedColumnName = "user_id"),
             foreignKey = @ForeignKey(name = "fk_petvet_pet"),
             inverseForeignKey = @ForeignKey(name = "fk_petvet_vet")
     )

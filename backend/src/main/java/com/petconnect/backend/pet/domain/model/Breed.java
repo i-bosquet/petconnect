@@ -21,7 +21,8 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "breed")
+@Table(name = "breed", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"name", "specie"}, name = "en_breed_name_specie")})
 public class Breed{
 
     /**
@@ -38,8 +39,8 @@ public class Breed{
      * Cannot be blank and has a maximum length.
      */
     @NotBlank(message = "Breed name cannot be blank")
-    @Size(max = 100, message = "Breed name cannot exceed 100 characters")
-    @Column(name = "name", nullable = false, length = 100)
+    @Size(max = 50, message = "Breed name cannot exceed 50 characters")
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
     /**
@@ -60,7 +61,7 @@ public class Breed{
     /**
      * The list of pets associated with this breed.
      * This is the inverse side of the ManyToOne relationship in Pet.
-     * Typically fetched lazily. Cascade operations are usually not needed here
+     * Typically, fetched lazily. Cascade operations are usually not needed here
      * (managing pets lifecycle independently).
      */
     @OneToMany(

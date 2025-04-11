@@ -10,6 +10,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
@@ -35,7 +36,7 @@ public class GlobalExceptionHandler {
      * @return A ResponseEntity containing the standardized error body and status 400.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    // @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -56,7 +57,7 @@ public class GlobalExceptionHandler {
      * @return A ResponseEntity containing the standardized error body and status 404.
      */
     @ExceptionHandler(EntityNotFoundException.class)
-    // @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     public ResponseEntity<Map<String, Object>> handleEntityNotFoundException(EntityNotFoundException ex) {
         log.warn("Entity not found: {}", ex.getMessage());
         Map<String, Object> body = createErrorBody(HttpStatus.NOT_FOUND, "Resource Not Found", ex.getMessage());
@@ -73,10 +74,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             EmailAlreadyExistsException.class,
             UsernameAlreadyExistsException.class,
-            LicenseNumberAlreadyExistsException.class, // Asegúrate que existan estas clases
-            VetPublicKeyAlreadyExistsException.class   // Asegúrate que existan estas clases
+            LicenseNumberAlreadyExistsException.class,
+            VetPublicKeyAlreadyExistsException.class,
+            MicrochipAlreadyExistsException.class
     })
-    // @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<Map<String, Object>> handleConflictExceptions(RuntimeException ex) {
         log.warn("Conflict detected: {}", ex.getMessage());
         Map<String, Object> body = createErrorBody(HttpStatus.CONFLICT, "Data Conflict", ex.getMessage());
@@ -88,10 +90,10 @@ public class GlobalExceptionHandler {
      * Returns 401 Unauthorized with a standardized error body format.
      */
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class, AuthenticationException.class})
-    // @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
-        String message = "Invalid credentials or user could not be authenticated."; // Mensaje más genérico
+        String message = "Invalid credentials or user could not be authenticated.";
         if (ex instanceof BadCredentialsException) {
             message = "Invalid username or password provided.";
         } else if (ex instanceof UsernameNotFoundException) {
@@ -106,7 +108,7 @@ public class GlobalExceptionHandler {
      * Returns 403 Forbidden with a standardized error body format.
      */
     @ExceptionHandler(AccessDeniedException.class)
-    // @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
     public ResponseEntity<Map<String, Object>> handleAccessDeniedException(AccessDeniedException ex) {
         log.warn("Access Denied: {}", ex.getMessage());
         Map<String, Object> body = createErrorBody(HttpStatus.FORBIDDEN, "Forbidden", "You do not have permission to perform this action or access this resource.");
@@ -123,7 +125,7 @@ public class GlobalExceptionHandler {
      * @return A ResponseEntity containing the standardized error body and status 500.
      */
     @ExceptionHandler(Exception.class)
-    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         log.error("An unexpected error occurred: {}", ex.getMessage(), ex);
         // *** USA EL HELPER y devuelve ResponseEntity ***
