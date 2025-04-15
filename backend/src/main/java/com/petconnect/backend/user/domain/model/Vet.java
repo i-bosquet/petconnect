@@ -42,5 +42,5 @@ public class Vet extends ClinicStaff {
      */
     @NotBlank(message = "Veterinarian public key cannot be blank")
     @Column(name = "vet_public_key", nullable = false, unique = true, columnDefinition = "TEXT")
-    private String vetPublicKey; // Consider byte[] if storing raw key bytes
+    private String vetPublicKey;
 }

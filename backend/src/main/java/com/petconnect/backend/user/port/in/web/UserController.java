@@ -2,11 +2,10 @@ package com.petconnect.backend.user.port.in.web;
 
 import com.petconnect.backend.user.application.dto.*;
 import com.petconnect.backend.user.application.service.UserService;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*; // Standard web annotations
+import org.springframework.web.bind.annotation.*;
 
 /**
  * Implementation of {@link UserControllerApi}.

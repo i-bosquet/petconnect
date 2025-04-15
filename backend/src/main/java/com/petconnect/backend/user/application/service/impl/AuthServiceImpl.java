@@ -126,6 +126,10 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         roles.add(ownerRole);
         newOwner.setRoles(roles);
         newOwner.setAvatar(DEFAULT_OWNER_AVATAR); // Set default avatar path
+        newOwner.setEnabled(true);
+        newOwner.setAccountNonExpired(true);
+        newOwner.setAccountNonLocked(true);
+        newOwner.setCredentialsNonExpired(true);
 
         // Save the new Owner
         // Because Owner extends UserEntity with JOINED strategy, saving Owner will also insert into UserEntity table.

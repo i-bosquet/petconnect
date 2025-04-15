@@ -3,6 +3,7 @@ package com.petconnect.backend.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -167,5 +169,39 @@ public class GlobalExceptionHandler {
         body.put("error", error);
         body.put("message", message);
         return body;
+    }
+
+    /**
+     * Handles exceptions caused by type mismatches in request parameters or path variables
+     * (e.g., providing text when a number is expected, or an invalid enum value).
+     * Returns HTTP 400 (Bad Request).
+     *
+     * @param ex The MethodArgumentTypeMismatchException caught.
+     * @return A ResponseEntity containing the standardized error body and status 400.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatchException(MethodArgumentTypeMismatchException ex) {
+        String error = String.format("Invalid value '%s' provided for parameter '%s'. Required type is '%s'.",
+                ex.getValue(), ex.getName(), ex.getRequiredType().getSimpleName());
+        log.warn("Type mismatch error: {}", error);
+        Map<String, Object> body = createErrorBody(HttpStatus.BAD_REQUEST, "Invalid Parameter Type", error);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * Handles exceptions occurring when the request body is missing or cannot be parsed
+     * (e.g., invalid JSON format) before validation occurs.
+     * Returns HTTP 400 (Bad Request).
+     *
+     * @param ex The HttpMessageNotReadableException caught.
+     * @return A ResponseEntity containing the standardized error body and status 400.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<Map<String, Object>> handleMessageNotReadableException(HttpMessageNotReadableException ex) {
+        log.warn("Failed to read request body: {}", ex.getMessage());
+        Map<String, Object> body = createErrorBody(HttpStatus.BAD_REQUEST, "Invalid Request Body", "Request body is missing or cannot be parsed.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 }

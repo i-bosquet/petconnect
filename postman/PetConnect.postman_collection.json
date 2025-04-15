@@ -8,44 +8,37 @@
 	},
 	"item": [
 		{
-			"name": "Auth",
+			"name": "Public",
 			"item": [
 				{
-					"name": "SignUp",
+					"name": "clinics - getAll",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"Test\",\r\n  \"surname\": \"Owner\",\r\n  \"email\": \"test.owner@example.com\",\r\n  \"password\": \"password123\",\r\n  \"phone\": \"+1234567890\",\r\n  \"avatar\": \"https://example.com/avatar.png\" \r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{URL_BASE}}/api/auth/signup",
+							"raw": "{{URL_BASE}}/api/clinics",
 							"host": [
 								"{{URL_BASE}}"
 							],
 							"path": [
 								"api",
-								"auth",
-								"signup"
+								"clinics"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "SignIn (owner)",
+					"name": "clinics/{clinic_id} - getClinicById",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"email\": \"test.owner@example.com\",\r\n  \"password\": \"password123\"\r\n}",
+							"raw": "",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -53,27 +46,99 @@
 							}
 						},
 						"url": {
-							"raw": "{{URL_BASE}}/api/auth/signin",
+							"raw": "{{URL_BASE}}/api/clinics/{{clinicId}}",
 							"host": [
 								"{{URL_BASE}}"
 							],
 							"path": [
 								"api",
-								"auth",
-								"signin"
+								"clinics",
+								"{{clinicId}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "SignIn (admin)",
+					"name": "clinics?name getByName",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_BASE}}/api/clinics?name=Vet",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"clinics"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "Vet"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "clinics?city - getByCity",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_BASE}}/api/clinics?city=Paris",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"clinics"
+							],
+							"query": [
+								{
+									"key": "city",
+									"value": "Paris"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "clinics?country - getByCountry",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_BASE}}/api/clinics?country=United%20Kingdom",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"clinics"
+							],
+							"query": [
+								{
+									"key": "country",
+									"value": "United%20Kingdom"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "auth/register - Owner",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"email\": \"admin@petconnect.com\",\r\n  \"password\": \"password123\"\r\n}",
+							"raw": "{\r\n  \"username\": \"Owner1\",\r\n  \"email\": \"owner1@test.com\",\r\n  \"password\": \"password123\", \r\n  \"phone\": \"555-555-555\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -81,195 +146,1133 @@
 							}
 						},
 						"url": {
-							"raw": "{{URL_BASE}}/api/auth/signin",
+							"raw": "{{URL_BASE}}/api/auth/register",
 							"host": [
 								"{{URL_BASE}}"
 							],
 							"path": [
 								"api",
 								"auth",
-								"signin"
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "auth/login - Owner",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"username\": \"Owner1\",\r\n  \"password\": \"password123\" \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/auth/login",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "auth/login - admin London",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"username\": \"admin_london\",\r\n  \"password\": \"password123\" \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/auth/login",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "auth/login - admin Paris",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"username\": \"admin_paris\",\r\n  \"password\": \"password123\" \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/auth/login",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "auth/login - vet London",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"username\": \"vet-london\",\r\n  \"password\": \"password123\" \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/auth/login",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
 							]
 						}
 					},
 					"response": []
 				}
-			],
-			"description": "Login, register"
+			]
 		},
 		{
-			"name": "User Management",
+			"name": "Private",
 			"item": [
 				{
-					"name": "Auth - Owner register",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"testowner1\",\r\n  \"email\": \"owner1@test.com\",\r\n  \"password\": \"password123\", \r\n  \"phone\": \"123-456-7890\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+					"name": "Private Owner",
+					"item": [
+						{
+							"name": "users/me - Owner Update profile",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"phone\": \"555-555-555\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/users/me",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me"
+									]
 								}
-							}
+							},
+							"response": []
 						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/register",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"register"
-							]
+						{
+							"name": "pets - create pet min",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{ \r\n    \"name\": \"Buddy\", \r\n    \"specie\": \"DOG\", \r\n    \"birthDate\": \"2023-05-15\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets - create petcomplet",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"name\": \"Whiskers\",\r\n  \"specie\": \"CAT\",\r\n  \"birthDate\": \"2022-11-01\",\r\n  \"color\": \"Tabby\",\r\n  \"gender\": \"FEMALE\",\r\n  \"microchip\": \"9876543210ABCDEF\",\r\n  \"breedId\": 12, \r\n  \"image\": \"my_cat.jpg\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets - Pet owner list",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/owner-update - update pet",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"color\": \"black\",\r\n    \"microchip\": \"9876543210FEDCBA\",\r\n    \"image\": \"buddy_new.png\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/owner-update",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"owner-update"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/deactivate - deactivate pet",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/deactivate",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"deactivate"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/associate-clinic/{clinic_Id} - asociate pet to clinic",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/associate-clinic/{{clinicId-London}}",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"associate-clinic",
+										"{{clinicId-London}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/associate-vet - asociate vet",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/associate-vet/{{vetId-Paris}}",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"associate-vet",
+										"{{vetId-Paris}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/associate-vet - diasociate vet Paris",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/associate-vet/{{vetId-Paris}}",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"associate-vet",
+										"{{vetId-Paris}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/associate-vet - diasociate vet London",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/associate-vet/{{vetId-London}}",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"associate-vet",
+										"{{vetId-London}}"
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					],
+					"description": "All private endpoints that only the owners can access"
 				},
 				{
-					"name": "Auth - Owner register duplicated data",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"testowner1\",\r\n  \"email\": \"owner1@test.com\",\r\n  \"password\": \"password123\", \r\n  \"phone\": \"123-456-7890\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+					"name": "Private staff",
+					"item": [
+						{
+							"name": "Private staff admin",
+							"item": [
+								{
+									"name": "clinics/{clinic_id} - update clinic",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"phone\": \"777 666 777\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/clinics/{{clinicId-London}}",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"clinics",
+												"{{clinicId-London}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "staff - create ADMIN London",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"username\": \"admin_london1\",\r\n  \"email\": \"admin.london1@petconnect.dev\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Bob\",\r\n  \"surname\": \"Admin\",\r\n  \"role\": \"ADMIN\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/staff",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"staff"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "staff -  create VET-London",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"username\": \"vet-london\",\r\n  \"email\": \"vet.london@petconnect.dev\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Bob\",\r\n  \"surname\": \"vet1\",\r\n  \"role\": \"VET\",\r\n  \"licenseNumber\": \"VET-LON-12345\", \r\n  \"vetPublicKey\": \"VET_LON_PUB_KEY_XYZ\" \r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/staff",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"staff"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "staff -  create VET Paris",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenParis}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"username\": \"vet-paris\",\r\n  \"email\": \"vet.paris@petconnect.dev\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Bob\",\r\n  \"surname\": \"vet1\",\r\n  \"role\": \"VET\",\r\n  \"licenseNumber\": \"VET-PAR-12345\", \r\n  \"vetPublicKey\": \"VET_PAR_PUB_KEY_XYZ\" \r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/staff",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"staff"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Staff/{user_id} - update staff London",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"name\": \"Bob_updated\",\r\n  \"surname\": \"Admin_updated\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/staff/14",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"staff",
+												"14"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Staff/{user_id}/activate - activate staff London",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/staff/12/activate",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"staff",
+												"12",
+												"activate"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Staff/{user_id}/deactivate - deactivate staff London",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/staff/11/deactivate",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"staff",
+												"11",
+												"deactivate"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "users/{user_id} -  getUserById",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{URL_BASE}}/api/users/4",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"users",
+												"4"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "users/by-email -  getUserByEmail",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{adminTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{URL_BASE}}/api/users/by-email?email=admin.london1@petconnect.dev",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"users",
+												"by-email"
+											],
+											"query": [
+												{
+													"key": "email",
+													"value": "admin.london1@petconnect.dev"
+												}
+											]
+										}
+									},
+									"response": []
 								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/register",
-							"host": [
-								"{{URL_BASE}}"
 							],
-							"path": [
-								"api",
-								"auth",
-								"register"
-							]
+							"description": "All private endpoints that only admins can access"
+						},
+						{
+							"name": "Private staff vet",
+							"item": [
+								{
+									"name": "pets/{pet_Id}/activate - activate pet by clinic",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{vetTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "PUT",
+										"header": [],
+										"url": {
+											"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/activate",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"pets",
+												"{{petId-1}}",
+												"activate"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "All private endpoints that only vets can access"
+						},
+						{
+							"name": "clinics/{clinic_id}/staff/all - getAllStaff London",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{URL_BASE}}/api/clinics/{{clinicId-London}}/staff/all",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"clinics",
+										"{{clinicId-London}}",
+										"staff",
+										"all"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "users/me/staff - Staff Update profile",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hX3VwZGF0ZWQiLCJhdXRob3JpdGllcyI6IkNFUlRJRklDQVRFX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsQ0xJTklDX1JFQURfUFVCTElDLENMSU5JQ19TVEFGRl9DUkVBVEUsQ0xJTklDX1NUQUZGX1JFQURfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVE9HR0xFX0FDVElWRV9PV05fQ0xJTklDLENMSU5JQ19TVEFGRl9VUERBVEVfT1dOX0NMSU5JQyxDTElOSUNfVVBEQVRFX09XTixQRVRfQUNUSVZBVEVfQVNTT0NJQVRFRF9DTElOSUMsUEVUX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUEVUX1VQREFURV9DTElOSUNBTF9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfQ1JFQVRFX0FTU09DSUFURURfQ0xJTklDLFJFQ09SRF9ERUxFVEVfVU5TSUdORURfT1dOX0NMSU5JQyxSRUNPUkRfUkVBRF9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfVVBEQVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUk9MRV9BRE1JTixVU0VSX1JFQURfUFJPRklMRV9PV04sVVNFUl9VUERBVEVfUFJPRklMRV9PV04iLCJpYXQiOjE3NDQ1NjgxMTcsImV4cCI6MTc0NDU2OTkxNywianRpIjoiMmE5OGExNDAtMjNhYS00NTE0LTk1MzgtODA0ZjAxMjljODA2IiwibmJmIjoxNzQ0NTY4MTE3fQ.Swr-gc12YNH1JgYHKZ-vsFndlfT9o572PXfHGw7iLv0",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"username\": \"admin_barcelona_updated\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/users/me/staff",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"staff"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "clinics/{clinic_id}/staff/active - getAllActiveStaff London",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0NjIwNzExLCJleHAiOjE3NDQ2MjI1MTEsImp0aSI6ImE4ZThlZmUzLTg4NWYtNDQ2NS1iOWQ3LTZkYWFkZjk2NWRmNCIsIm5iZiI6MTc0NDYyMDcxMX0.FHlt94ELzcuaiDEV-aIluliqL3SV5SEy4lgyLJKgcgk",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{URL_BASE}}/api/clinics/{{clinicId-London}}/staff/active",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"clinics",
+										"{{clinicId-London}}",
+										"staff",
+										"active"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/clinic - get clinic's pets",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{adminTokenLondon}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/clinic",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"clinic"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/clinic/pending - get pendig clinic's pets",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{adminTokenLondon}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"microchip\": \"987654321_NEW\", \r\n  \"birthDate\": \"2023-05-16\",\r\n  \"breedId\": 22 \r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/clinic",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"clinic"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/clinic-update -  update",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{vetTokenLondon}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"microchip\": \"987654321_NEW\", \r\n  \"birthDate\": \"2023-05-16\",\r\n  \"breedId\": 22 ,\r\n  \"gender\": \"FEMALE\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/clinic-update",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"clinic-update"
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					],
+					"description": "All private endpoints that can only be accessed by any staff user"
 				},
 				{
-					"name": "Auth - Owner register missing data",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"testowner1\",\r\n  \"email\": \"\",\r\n  \"password\": \"password123\", \r\n  \"phone\": \"123-456-7890\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/register",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"register"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Auth - User login admin",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"admin_barcelona\",\r\n  \"password\": \"password123\" \r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/login",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Auth - User login owner",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"testowner1\",\r\n  \"password\": \"password123\" \r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/login",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Auth - User login bad data",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"testowner1\",\r\n  \"password\": \"password\" \r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/login",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "User Me profile",
+					"name": "users/me - getMeProfile",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -298,502 +1301,7 @@
 					"response": []
 				},
 				{
-					"name": "Owner Update profile",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoidGVzdG93bmVyMSIsImF1dGhvcml0aWVzIjoiQ0VSVElGSUNBVEVfUkVBRF9PV04sQ0VSVElGSUNBVEVfUkVRVUVTVF9PV04sQ0VSVElGSUNBVEVfU0hBUkVfUVJfT1dOLENMSU5JQ19SRUFEX1BVQkxJQyxQRVRfQ1JFQVRFX09XTixQRVRfREVBQ1RJVkFURV9PV04sUEVUX01BTkFHRV9WRVRfQVNTT0NJQVRJT05fT1dOLFBFVF9SRUFEX09XTixQRVRfVVBEQVRFX0JBU0lDX09XTixSRUNPUkRfQ1JFQVRFX09XTl9JTkZPUk1BVElWRSxSRUNPUkRfREVMRVRFX09XTl9JTkZPUk1BVElWRSxSRUNPUkRfUkVBRF9PV04sUkVDT1JEX1VQREFURV9PV05fSU5GT1JNQVRJVkUsUk9MRV9PV05FUixVU0VSX1JFQURfUFJPRklMRV9PV04sVVNFUl9VUERBVEVfUFJPRklMRV9PV04iLCJpYXQiOjE3NDQwMzY1NjgsImV4cCI6MTc0NDAzODM2OCwianRpIjoiMWJlNWM3MWMtZjY2Yi00MGRlLTg2MjUtNDc4MDZiN2Q0NjgxIiwibmJmIjoxNzQ0MDM2NTY4fQ.sLqnH8SLByXcXdEH59dzBL2-jfRcFbggrgvIafQNEJw",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"phone\": \"555-555-555\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/users/me",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff Update profile",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fbG9uZG9uIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDM3MjIwLCJleHAiOjE3NDQwMzkwMjAsImp0aSI6IjliYzZiYWYzLTIyMTUtNDdiOC1iZGRmLWUzMGVlYTBjMDc1NSIsIm5iZiI6MTc0NDAzNzIyMH0.aUTh5t70e6sxRlJCsTeGXz9op1lDYOafEg-Jql46oic",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"Test\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/users/me/staff",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me",
-								"staff"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff Create ADMIN",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQxMDIyLCJleHAiOjE3NDQwNDI4MjIsImp0aSI6IjM1NGFlOWUwLTFkMmMtNDMzZS04MjM3LTFkYmM1OWNkMWMxOSIsIm5iZiI6MTc0NDA0MTAyMn0.61EVBAubYdy7yn_Ty3AXw3W-qoKZ9evtSuvmKM5x7vE",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"admin_staff_3\",\r\n  \"email\": \"admin3@petconnect.dev\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Bob\",\r\n  \"surname\": \"Admin\",\r\n  \"role\": \"ADMIN\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/staff",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"staff"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff  Create VET",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQxMDIyLCJleHAiOjE3NDQwNDI4MjIsImp0aSI6IjM1NGFlOWUwLTFkMmMtNDMzZS04MjM3LTFkYmM1OWNkMWMxOSIsIm5iZiI6MTc0NDA0MTAyMn0.61EVBAubYdy7yn_Ty3AXw3W-qoKZ9evtSuvmKM5x7vE",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"vet_staff_2\",\r\n  \"email\": \"vet@petconnect.dev\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Bob\",\r\n  \"surname\": \"vet\",\r\n  \"role\": \"VET\",\r\n  \"licenseNumber\": \"VET-LON-12345\", // Dato obligatorio para VET\r\n  \"vetPublicKey\": \"VET_CHARLIE_PUB_KEY_XYZ\" // Dato obligatorio para VET\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/staff",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"staff"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff  login VET",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQxMDIyLCJleHAiOjE3NDQwNDI4MjIsImp0aSI6IjM1NGFlOWUwLTFkMmMtNDMzZS04MjM3LTFkYmM1OWNkMWMxOSIsIm5iZiI6MTc0NDA0MTAyMn0.61EVBAubYdy7yn_Ty3AXw3W-qoKZ9evtSuvmKM5x7vE",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"username\": \"vet_staff_2\",\r\n  \"password\": \"password123\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/auth/login",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff update",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fbG9uZG9uIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQxODg4LCJleHAiOjE3NDQwNDM2ODgsImp0aSI6IjE3NTExMzQ0LTJlNDYtNDA0Zi05MWVhLWNlM2MxZTgxMjM0MiIsIm5iZiI6MTc0NDA0MTg4OH0.YeZ-81max1xb54zuQ4-4egdUY9OR6_EWDhjwEnv6yKw",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"AliceUpdated\",\r\n  \"surname\": \"AdminUpdated\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/staff/12",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"staff",
-								"12"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff activate",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fbG9uZG9uIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQxODg4LCJleHAiOjE3NDQwNDM2ODgsImp0aSI6IjE3NTExMzQ0LTJlNDYtNDA0Zi05MWVhLWNlM2MxZTgxMjM0MiIsIm5iZiI6MTc0NDA0MTg4OH0.YeZ-81max1xb54zuQ4-4egdUY9OR6_EWDhjwEnv6yKw",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/staff/12/activate",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"staff",
-								"12",
-								"activate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Staff deactivate",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fbG9uZG9uIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQxODg4LCJleHAiOjE3NDQwNDM2ODgsImp0aSI6IjE3NTExMzQ0LTJlNDYtNDA0Zi05MWVhLWNlM2MxZTgxMjM0MiIsIm5iZiI6MTc0NDA0MTg4OH0.YeZ-81max1xb54zuQ4-4egdUY9OR6_EWDhjwEnv6yKw",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/staff/12/deactivate",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"staff",
-								"12",
-								"deactivate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getAll",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getByCountry",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics?country=United%20Kingdom",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics"
-							],
-							"query": [
-								{
-									"key": "country",
-									"value": "United%20Kingdom"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getByCity",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics?city=Paris",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics"
-							],
-							"query": [
-								{
-									"key": "city",
-									"value": "Paris"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getByName",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics?name=Vet",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics"
-							],
-							"query": [
-								{
-									"key": "name",
-									"value": "Vet"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic updateClinicById",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQ1MDE4LCJleHAiOjE3NDQwNDY4MTgsImp0aSI6IjhmZGM2MjUxLTBkZTEtNGVkOC05ZWZhLTczYmUzNGYzZTMyOCIsIm5iZiI6MTc0NDA0NTAxOH0.FB045GC86Hxldu0DhmP6qNR7RgA7uFujIdtxOJNHYSM",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"name\": \"The Updated London Vet Clinic\",\r\n  \"address\": \"123 Updated Regent Street\",\r\n  \"city\": \"London\",\r\n  \"country\": \"United Kingdom\",\r\n  \"phone\": \"+44 20 9999 8888\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics/3",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics",
-								"3"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getAllStaff",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQ1MDE4LCJleHAiOjE3NDQwNDY4MTgsImp0aSI6IjhmZGM2MjUxLTBkZTEtNGVkOC05ZWZhLTczYmUzNGYzZTMyOCIsIm5iZiI6MTc0NDA0NTAxOH0.FB045GC86Hxldu0DhmP6qNR7RgA7uFujIdtxOJNHYSM",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics/3/staff/all",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics",
-								"3",
-								"staff",
-								"all"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getAllActiveStaff",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQ0ODUwLCJleHAiOjE3NDQwNDY2NTAsImp0aSI6IjU5Njc3MWMxLWFjNDEtNDg3Yy04NDVmLWIxMGEyYWE1MWI0ZSIsIm5iZiI6MTc0NDA0NDg1MH0.ATwKeHN-VqMqCMs7Nwue6jOqhXaEIQ0HHd8vYhkrUl8",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/clinics/3/staff/active",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"clinics",
-								"3",
-								"staff",
-								"active"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Clinic getClinicById",
+					"name": "pets/breeds/{specie} - list breed by specie",
 					"protocolProfileBehavior": {
 						"disableBodyPruning": true
 					},
@@ -803,7 +1311,7 @@
 							"bearer": [
 								{
 									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiYWRtaW5fYmFyY2Vsb25hIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX0FTU09DSUFURURfQ0xJTklDLENMSU5JQ19SRUFEX1BVQkxJQyxDTElOSUNfU1RBRkZfQ1JFQVRFLENMSU5JQ19TVEFGRl9SRUFEX09XTl9DTElOSUMsQ0xJTklDX1NUQUZGX1RPR0dMRV9BQ1RJVkVfT1dOX0NMSU5JQyxDTElOSUNfU1RBRkZfVVBEQVRFX09XTl9DTElOSUMsQ0xJTklDX1VQREFURV9PV04sUEVUX0FDVElWQVRFX0FTU09DSUFURURfQ0xJTklDLFBFVF9SRUFEX0FTU09DSUFURURfQ0xJTklDLFBFVF9VUERBVEVfQ0xJTklDQUxfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX0NSRUFURV9BU1NPQ0lBVEVEX0NMSU5JQyxSRUNPUkRfREVMRVRFX1VOU0lHTkVEX09XTl9DTElOSUMsUkVDT1JEX1JFQURfQVNTT0NJQVRFRF9DTElOSUMsUkVDT1JEX1VQREFURV9VTlNJR05FRF9PV05fQ0xJTklDLFJPTEVfQURNSU4sVVNFUl9SRUFEX1BST0ZJTEVfT1dOLFVTRVJfVVBEQVRFX1BST0ZJTEVfT1dOIiwiaWF0IjoxNzQ0MDQ0NjIxLCJleHAiOjE3NDQwNDY0MjEsImp0aSI6IjhmM2Y1MTY3LTQ0NmUtNDJiMy05M2JkLTYzMDA3OTYzZTU1MiIsIm5iZiI6MTc0NDA0NDYyMX0.nVRED_LA45X88lelplwhpelZsaAZHS-rPZZ967O-LM0",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoiT3duZXIxIiwiYXV0aG9yaXRpZXMiOiJDRVJUSUZJQ0FURV9SRUFEX09XTixDRVJUSUZJQ0FURV9SRVFVRVNUX09XTixDRVJUSUZJQ0FURV9TSEFSRV9RUl9PV04sQ0xJTklDX1JFQURfUFVCTElDLFBFVF9DUkVBVEVfT1dOLFBFVF9ERUFDVElWQVRFX09XTixQRVRfTUFOQUdFX1ZFVF9BU1NPQ0lBVElPTl9PV04sUEVUX1JFQURfT1dOLFBFVF9VUERBVEVfQkFTSUNfT1dOLFJFQ09SRF9DUkVBVEVfT1dOX0lORk9STUFUSVZFLFJFQ09SRF9ERUxFVEVfT1dOX0lORk9STUFUSVZFLFJFQ09SRF9SRUFEX09XTixSRUNPUkRfVVBEQVRFX09XTl9JTkZPUk1BVElWRSxST0xFX09XTkVSLFVTRVJfUkVBRF9QUk9GSUxFX09XTixVU0VSX1VQREFURV9QUk9GSUxFX09XTiIsImlhdCI6MTc0NDY0OTgxMSwiZXhwIjoxNzQ0NjUxNjExLCJqdGkiOiIxZWE3MTY1NC1hZmIyLTQyN2YtOGE1Mi01MjQwZTE5NGMyNDQiLCJuYmYiOjE3NDQ2NDk4MTF9.Dl1kG9-ergPlWRlHBc7G5PQ4kNK4mmaAIElGXpESZKg",
 									"type": "string"
 								}
 							]
@@ -820,100 +1328,63 @@
 							}
 						},
 						"url": {
-							"raw": "{{URL_BASE}}/api/clinics/1",
+							"raw": "{{URL_BASE}}/api/pets/breeds/DOG",
 							"host": [
 								"{{URL_BASE}}"
 							],
 							"path": [
 								"api",
-								"clinics",
-								"1"
+								"pets",
+								"breeds",
+								"DOG"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "User getUserById",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoidGVzdG93bmVyMSIsImF1dGhvcml0aWVzIjoiQ0VSVElGSUNBVEVfUkVBRF9PV04sQ0VSVElGSUNBVEVfUkVRVUVTVF9PV04sQ0VSVElGSUNBVEVfU0hBUkVfUVJfT1dOLENMSU5JQ19SRUFEX1BVQkxJQyxQRVRfQ1JFQVRFX09XTixQRVRfREVBQ1RJVkFURV9PV04sUEVUX01BTkFHRV9WRVRfQVNTT0NJQVRJT05fT1dOLFBFVF9SRUFEX09XTixQRVRfVVBEQVRFX0JBU0lDX09XTixSRUNPUkRfQ1JFQVRFX09XTl9JTkZPUk1BVElWRSxSRUNPUkRfREVMRVRFX09XTl9JTkZPUk1BVElWRSxSRUNPUkRfUkVBRF9PV04sUkVDT1JEX1VQREFURV9PV05fSU5GT1JNQVRJVkUsUk9MRV9PV05FUixVU0VSX1JFQURfUFJPRklMRV9PV04sVVNFUl9VUERBVEVfUFJPRklMRV9PV04iLCJpYXQiOjE3NDQwNjE0NTQsImV4cCI6MTc0NDA2MzI1NCwianRpIjoiMWE5ZDg3M2QtYTAxNS00YjMwLTgwNmMtYTk0OWU3N2Y0MGU1IiwibmJmIjoxNzQ0MDYxNDU0fQ.jooyIRnBo5myiWYHaXDvR6EKIwpc3XrXzAb1aCHWwEA",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{URL_BASE}}/api/users/4",
-							"host": [
-								"{{URL_BASE}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"4"
-							]
-						}
+					"name": "pets/{pet_id} - Pet detail",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
 					},
-					"response": []
-				},
-				{
-					"name": "User getUserByEmail",
 					"request": {
 						"auth": {
 							"type": "bearer",
 							"bearer": [
 								{
 									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTVVBFUlVTRVItREVWRUxPUEVSIiwic3ViIjoidGVzdG93bmVyMSIsImF1dGhvcml0aWVzIjoiQ0VSVElGSUNBVEVfUkVBRF9PV04sQ0VSVElGSUNBVEVfUkVRVUVTVF9PV04sQ0VSVElGSUNBVEVfU0hBUkVfUVJfT1dOLENMSU5JQ19SRUFEX1BVQkxJQyxQRVRfQ1JFQVRFX09XTixQRVRfREVBQ1RJVkFURV9PV04sUEVUX01BTkFHRV9WRVRfQVNTT0NJQVRJT05fT1dOLFBFVF9SRUFEX09XTixQRVRfVVBEQVRFX0JBU0lDX09XTixSRUNPUkRfQ1JFQVRFX09XTl9JTkZPUk1BVElWRSxSRUNPUkRfREVMRVRFX09XTl9JTkZPUk1BVElWRSxSRUNPUkRfUkVBRF9PV04sUkVDT1JEX1VQREFURV9PV05fSU5GT1JNQVRJVkUsUk9MRV9PV05FUixVU0VSX1JFQURfUFJPRklMRV9PV04sVVNFUl9VUERBVEVfUFJPRklMRV9PV04iLCJpYXQiOjE3NDQwNjE0NTQsImV4cCI6MTc0NDA2MzI1NCwianRpIjoiMWE5ZDg3M2QtYTAxNS00YjMwLTgwNmMtYTk0OWU3N2Y0MGU1IiwibmJmIjoxNzQ0MDYxNDU0fQ.jooyIRnBo5myiWYHaXDvR6EKIwpc3XrXzAb1aCHWwEA",
+									"value": "{{ownerToken}}",
 									"type": "string"
 								}
 							]
 						},
 						"method": "GET",
 						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"Buddy\",\r\n  \"specie\": \"DOG\", \r\n  \"birthDate\": \"2023-05-15\",\r\n  \"breedId\": 21, \r\n  \"image\": null, \r\n  \"color\": \"Golden\", \r\n  \"gender\": \"MALE\",\r\n  \"microchip\": \"987654321012345\" \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
-							"raw": "{{URL_BASE}}/api/users/by-email?email=admin.barcelona@petconnect.dev",
+							"raw": "{{URL_BASE}}/api/pets/{{petId-1}}",
 							"host": [
 								"{{URL_BASE}}"
 							],
 							"path": [
 								"api",
-								"users",
-								"by-email"
-							],
-							"query": [
-								{
-									"key": "email",
-									"value": "admin.barcelona@petconnect.dev"
-								}
+								"pets",
+								"{{petId-1}}"
 							]
 						}
 					},
 					"response": []
 				}
 			],
-			"description": "Endpoints for managing user profiles (owners, clinical staff) and staff administration operations by clinic administrators (creating, activating/deactivating VET/ADMIN users)."
-		},
-		{
-			"name": "Pet Management",
-			"item": [],
-			"description": "Endpoints for complete pet management: owner registration, clinic activation/update, veterinary partnership management, list and detail viewing."
-		},
-		{
-			"name": "Records Management",
-			"item": [],
-			"description": "Endpoints to create, read, update (if applicable), and delete pet medical history records, including vaccination details and digital signature management."
-		},
-		{
-			"name": "Certificates Manegement",
-			"item": [],
-			"description": "Endpoints related to the generation, visualization and (conceptually) verification of digital vaccination/health certificates."
+			"description": "All private endpoints that all users can access"
 		}
 	]
 }

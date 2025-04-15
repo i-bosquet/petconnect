@@ -29,14 +29,14 @@ public class UserMapper {
      */
     public OwnerProfileDto toOwnerProfileDto(Owner owner) {
         if (owner == null) return null;
-        UserProfileDto baseDto = mapToBaseProfileDTO(owner); // Map common fields first
+        UserProfileDto baseDto = mapToBaseProfileDTO(owner);
         return new OwnerProfileDto(
                 baseDto.id(),
                 baseDto.username(),
                 baseDto.email(),
-                baseDto.roles(), // Roles from base DTO
+                baseDto.roles(),
                 baseDto.avatar(),
-                owner.getPhone() // Add owner specific field
+                owner.getPhone()
         );
     }
 
@@ -49,7 +49,7 @@ public class UserMapper {
      */
     public ClinicStaffProfileDto toClinicStaffProfileDto(ClinicStaff staff) {
         if (staff == null) return null;
-        UserProfileDto baseDto = mapToBaseProfileDTO(staff); // Map common fields first
+        UserProfileDto baseDto = mapToBaseProfileDTO(staff);
 
         String licenseNumber = null;
         String vetPublicKey = null;
@@ -65,15 +65,15 @@ public class UserMapper {
                 baseDto.id(),
                 baseDto.username(),
                 baseDto.email(),
-                baseDto.roles(), // Roles from base DTO
+                baseDto.roles(),
                 baseDto.avatar(),
-                staff.getName(),    // Staff specific
-                staff.getSurname(), // Staff specific
-                staff.isActive(),   // Staff specific
-                clinicId,           // Staff specific
-                clinicName,         // Staff specific
-                licenseNumber,      // Vet specific
-                vetPublicKey        // Vet specific
+                staff.getName(),
+                staff.getSurname(),
+                staff.isActive(),
+                clinicId,
+                clinicName,
+                licenseNumber,
+                vetPublicKey
         );
     }
 
@@ -85,14 +85,14 @@ public class UserMapper {
      * @param user The UserEntity entity (Owner, Vet, Admin). Cannot be null.
      * @return The corresponding UserProfileDto.
      */
-    public UserProfileDto mapToBaseProfileDTO(UserEntity user) { // Renamed from mapToGenericProfileDTO for clarity
+    public UserProfileDto mapToBaseProfileDTO(UserEntity user) {
         if (user == null) return null;
         Set<String> roleNames = extractRoleNames(user);
         return new UserProfileDto(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
-                roleNames, // Pass the set of role names
+                roleNames,
                 user.getAvatar()
         );
     }
@@ -155,7 +155,6 @@ public class UserMapper {
      */
     private void updateUserCommonFields(UserEntity user, String newUsername, String newAvatar) {
         // Update username only if it's provided, not blank, AND different from current
-        // Note: Uniqueness check MUST happen in the service layer BEFORE calling this update
         if (newUsername != null && !newUsername.isBlank() && !user.getUsername().equals(newUsername)) {
             user.setUsername(newUsername);
         }
@@ -174,10 +173,40 @@ public class UserMapper {
      */
     public List<ClinicStaffProfileDto> toClinicStaffProfileDtoList(List<ClinicStaff> staffList) {
         if (staffList == null || staffList.isEmpty()) {
-            return List.of(); // Return immutable empty list
+            return List.of();
         }
         return staffList.stream()
-                .map(this::toClinicStaffProfileDto) // Reuse the single DTO mapping method
-                .toList(); // Use List.of() or Collectors.toUnmodifiableList() if preferred
+                .map(this::toClinicStaffProfileDto)
+                .toList();
+    }
+
+    /**
+     * Converts a {@link Vet} entity to a {@link VetSummaryDto}.
+     * Returns null if the input vet is null.
+     *
+     * @param vet The Vet entity.
+     * @return The corresponding VetSummaryDto, or null.
+     */
+    public VetSummaryDto toVetSummaryDto(Vet vet) {
+        if (vet == null) {
+            return null;
+        }
+        return new VetSummaryDto(vet.getId(), vet.getName(), vet.getSurname());
+    }
+
+    /**
+     * Converts a Set of {@link Vet} entities to an immutable Set of {@link VetSummaryDto}.
+     * Returns an empty set if the input set is null or empty.
+     *
+     * @param vets The set of Vet entities.
+     * @return An immutable Set of corresponding VetSummaryDto objects.
+     */
+    public Set<VetSummaryDto> toVetSummaryDtoSet(Set<Vet> vets) {
+        if (vets == null || vets.isEmpty()) {
+            return Set.of(); // Immutable empty set
+        }
+        return vets.stream()
+                .map(this::toVetSummaryDto)
+                .collect(Collectors.toUnmodifiableSet()); // Collect to unmodifiable set
     }
 }

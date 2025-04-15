@@ -30,7 +30,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "pet", indexes = { // Add index for faster lookup by microchip
+@Table(name = "pet", indexes = {
         @Index(name = "idx_pet_microchip", columnList = "microchip", unique = true)
 })
 public class Pet extends BaseEntity {
@@ -142,20 +142,6 @@ public class Pet extends BaseEntity {
     @Builder.Default
     private Set<Vet> associatedVets = new HashSet<>();
 
-    /*
-    @OneToMany(mappedBy = "pet", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Record> medicalRecords = new ArrayList<>(); // Medical Record domain
-    */
-
-    /*
-    @OneToMany(mappedBy = "pet", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE) // Removing pet might remove certs
-    @Builder.Default
-    private List<Certificate> certificates = new ArrayList<>(); // Certificate domain
-    */
-
-    // --- Helper methods for managing associatedVets collection (optional but good practice) ---
-
     /**
      * Associates a Veterinarian with this Pet.
      * @param vet The Vet to associate.
@@ -171,5 +157,4 @@ public class Pet extends BaseEntity {
     public void removeVet(Vet vet) {
         this.associatedVets.remove(vet);
     }
-
 }

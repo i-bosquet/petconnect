@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Spring Data JPA repository for {@link Pet} entities.
@@ -22,14 +21,6 @@ import java.util.Optional;
  */
 public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificationExecutor<Pet> {
 
-    /**
-     * Finds a page of pets belonging to a specific owner.
-     *
-     * @param ownerId The ID of the owner.
-     * @param pageable Pagination information.
-     * @return A Page of Pet entities.
-     */
-    Page<Pet> findByOwnerId(Long ownerId, Pageable pageable);
 
     /**
      * Finds a page of pets belonging to a specific owner, filtered by a list of statuses.
@@ -50,14 +41,6 @@ public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificatio
      * @return A List of Pet entities pending activation at the clinic.
      */
     List<Pet> findByPendingActivationClinicIdAndStatus(Long clinicId, PetStatus status);
-
-    /**
-     * Finds a pet by its unique microchip number.
-     *
-     * @param microchip The microchip number.
-     * @return An Optional containing the Pet if found.
-     */
-    Optional<Pet> findByMicrochip(String microchip);
 
     /**
      * Checks if a pet with the given microchip number exists.

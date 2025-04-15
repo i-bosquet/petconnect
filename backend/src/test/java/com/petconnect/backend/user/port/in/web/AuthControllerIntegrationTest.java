@@ -38,16 +38,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author ibosquet
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK) // Load context, use Mock environment
-@AutoConfigureMockMvc // Configure MockMvc instance (Security filters ARE active by default)
-@Transactional // Rollback database changes after each test
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@AutoConfigureMockMvc
+@Transactional
 class AuthControllerIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc; // To perform HTTP requests
+    private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper; // To convert objects to/from JSON
+    private ObjectMapper objectMapper;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -57,16 +57,16 @@ class AuthControllerIntegrationTest {
 
     // DTOs used in tests
     private OwnerRegistrationDto validRegistrationDto;
-    private AuthLoginRequestDto adminLoginDto;      // For pre-seeded admin from data.sql
-    private AuthLoginRequestDto ownerLoginDto;      // For the owner registered during tests
-    private AuthLoginRequestDto invalidLoginDto;    // For bad credentials tests
-    private AuthLoginRequestDto nonExistentUserLoginDto; // For user not found tests
+    private AuthLoginRequestDto adminLoginDto;
+    private AuthLoginRequestDto ownerLoginDto;
+    private AuthLoginRequestDto invalidLoginDto;
+    private AuthLoginRequestDto nonExistentUserLoginDto;
 
     @BeforeEach
     void setUp() {
         // Prepare DTOs used across multiple tests
         validRegistrationDto = new OwnerRegistrationDto(
-                "integ_owner_" + System.currentTimeMillis(), // Use timestamp for uniqueness across runs if needed
+                "integ_owner_" + System.currentTimeMillis(),
                 "integ_owner_" + System.currentTimeMillis() + "@test.com",
                 "password123",
                 "555-123-456"
@@ -260,7 +260,7 @@ class AuthControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(invalidLoginDto)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.error", is("Authentication Failed"))) // Check response from GlobalExceptionHandler
+                .andExpect(jsonPath("$.error", is("Authentication Failed")))
                 .andExpect(jsonPath("$.message", is("Invalid username or password provided.")));
     }
 

@@ -3,13 +3,15 @@ package com.petconnect.backend.pet.application.dto;
 import com.petconnect.backend.pet.domain.model.Gender;
 import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * Data Transfer Object representing the full profile of a Pet,
- * including details about its owner and breed.
+ * including details about its owner, breed, and associated veterinarians.
  * Used for displaying detailed pet information.
  *
  * @param id The unique identifier of the pet.
@@ -26,6 +28,7 @@ import java.time.LocalDateTime;
  * @param breedId Optional ID of the breed.
  * @param breedName Optional name of the breed.
  * @param pendingActivationClinicId Optional ID of the clinic where activation is pending.
+ * @param associatedVets A set containing summary information of veterinarians associated with the pet. // NUEVO
  * @param createdAt Timestamp of creation (from BaseEntity).
  * @param updatedAt Timestamp of last update (from BaseEntity).
  *
@@ -46,7 +49,9 @@ public record PetProfileDto(
         Long breedId,
         String breedName,
         Long pendingActivationClinicId,
+        Set<VetSummaryDto> associatedVets,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
 }
+

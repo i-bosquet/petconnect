@@ -43,7 +43,7 @@ public class RoleEntity {
      * Set of permissions associated with the role.
      * Mapped using a many-to-many relationship with PermissionEntity.
      */
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name="role_permission",
             joinColumns = @JoinColumn(name = "role_id"),

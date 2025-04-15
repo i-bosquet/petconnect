@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Integration tests for {@link UserController}.
- * Uses PostgreSQL (Docker), security filters, transactional rollback.
+ * Uses PostgresSQL (Docker), security filters, transactional rollback.
  * Verifies retrieving user profiles (own and by ID/email for authorized users)
  * and updating own user profile.
  *
@@ -43,9 +43,9 @@ class UserControllerIntegrationTest {
     @Autowired private UserRepository userRepository;
 
     // --- Tokens ---
-    private String adminToken;    // User: admin_london (ID 2, Clinic 1)
-    private String ownerToken;      // Dynamically registered owner
-    private String vetToken;        // User: admin_barcelona (ID 6, Clinic 5) - used as Vet role example
+    private String adminToken;
+    private String ownerToken;
+    private String vetToken;
 
     // --- User IDs from data.sql ---
     private final Long adminLondonId = 2L;
@@ -156,24 +156,27 @@ class UserControllerIntegrationTest {
         }
 
         @Test
+        @DisplayName("should return profile when Admin requests own ID")
+        void getUserById_whenAdminRequestsSelf_shouldSucceed() throws Exception {
+            mockMvc.perform(get("/api/users/{id}", adminLondonId) // Admin requests own profile
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                    .andExpect(status().isOk()) // <-- Espera 200 OK
+                    .andExpect(jsonPath("$.id", is(adminLondonId.intValue())))
+                    .andExpect(jsonPath("$.username", is("admin_london")));
+        }
+
+        @Test
         @DisplayName("should return profile when Admin requests any valid ID")
-        void getUserById_whenAdminRequestsAnyId_shouldSucceed() throws Exception {
+        void getUserById_whenAdminRequestsOwner_shouldReturnForbidden() throws Exception {
             // Admin requests the dynamically created owner's profile
             UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
             Long ownerId = owner.getId();
 
             mockMvc.perform(get("/api/users/{id}", ownerId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)) // Use Admin token
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id", is(ownerId.intValue())))
-                    .andExpect(jsonPath("$.username", is(ownerRegisteredUsername)));
-
-            // Admin requests own profile (ID 2 from data.sql)
-            mockMvc.perform(get("/api/users/{id}", adminLondonId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)) // Use Admin token
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id", is(adminLondonId.intValue())))
-                    .andExpect(jsonPath("$.username", is("admin_london")));
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status", is(403)))
+                    .andExpect(jsonPath("$.error", is("Forbidden")));
         }
 
         @Test

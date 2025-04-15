@@ -45,6 +45,6 @@ public class BreedMapper {
         }
         return breeds.stream()
                 .map(this::toDto)
-                .toList(); // Use Java 16+ Stream.toList()
+                .toList();
     }
 }

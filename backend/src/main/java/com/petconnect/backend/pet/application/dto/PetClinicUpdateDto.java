@@ -11,7 +11,7 @@ import java.time.LocalDate;
  * Includes fields typically managed or verified by a clinic.
  * Fields are optional; only non-null values will be considered for update.
  *
- * @param color Optional updated color description (max 100 chars).
+ * @param color Optional updated color description (max 30 chars).
  * @param gender Optional updated gender.
  * @param birthDate Optional updated birthdate (must be past or present).
  * @param microchip Optional updated microchip number (max 50 chars, uniqueness checked in service).

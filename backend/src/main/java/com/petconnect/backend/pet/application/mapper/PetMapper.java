@@ -7,11 +7,16 @@ import com.petconnect.backend.pet.application.dto.PetProfileDto;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.Specie;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
+import com.petconnect.backend.user.application.mapper.UserMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -22,10 +27,23 @@ import java.util.function.Supplier;
  * @author ibosquet
  */
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class PetMapper {
+
+    private static final String FIELD_NAME = "name";
+    private static final String FIELD_IMAGE = "image";
+    private static final String FIELD_COLOR = "color";
+    private static final String FIELD_GENDER = "gender";
+    private static final String FIELD_BIRTH_DATE = "birthDate";
+    private static final String FIELD_MICROCHIP = "microchip";
+    private static final String FIELD_BREED = "breed";
+
+    private final UserMapper userMapper;
+
     /**
      * Converts a {@link Pet} entity to a detailed {@link PetProfileDto}.
-     * Includes information from related Owner and Breed entities.
+     * Includes information from related Owner, Breed entities and Associated Vets. // Javadoc Actualizado
      * Returns null if the input entity is null.
      *
      * @param pet The Pet entity to convert.
@@ -36,19 +54,14 @@ public class PetMapper {
             return null;
         }
 
-        // Extract owner info safely
         Long ownerId = (pet.getOwner() != null) ? pet.getOwner().getId() : null;
         String ownerUsername = (pet.getOwner() != null) ? pet.getOwner().getUsername() : null;
-
-        // Extract breed info (Breed is @NotNull on Pet entity)
         Long breedId = pet.getBreed().getId();
         String breedName = pet.getBreed().getName();
-        Specie specie = pet.getBreed().getSpecie();  // Get species from Breed
-
-        // Extract pending clinic ID safely
+        Specie specie = pet.getBreed().getSpecie();
         Long pendingClinicId = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getId() : null;
+        Set<VetSummaryDto> vetSummaries = userMapper.toVetSummaryDtoSet(pet.getAssociatedVets());
 
-        // Construct the DTO
         return new PetProfileDto(
                 pet.getId(),
                 pet.getName(),
@@ -64,6 +77,7 @@ public class PetMapper {
                 breedId,
                 breedName,
                 pendingClinicId,
+                vetSummaries, // Añadir el set mapeado
                 pet.getCreatedAt(),
                 pet.getUpdatedAt()
         );
@@ -95,15 +109,23 @@ public class PetMapper {
      public boolean updateFromOwnerDto(PetOwnerUpdateDto dto, Pet pet, Breed resolvedBreed) {
          if (dto == null || pet == null) return false;
          boolean changed = false;
-         changed |= updateStringFieldIfChanged(pet, dto.name(), pet::getName, Pet::setName);
-         changed |= updateStringFieldIfChanged(pet, dto.image(), pet::getImage, Pet::setImage);
-         changed |= updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor);
-         changed |= updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip);
-         changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender);
-         changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate);
+         log.debug("Mapper updateFromOwnerDto - Checking 'name': DTO='{}', Current='{}'", dto.name(), pet.getName());
+         changed |= updateStringFieldIfChanged(pet, dto.name(), pet::getName, Pet::setName, FIELD_NAME);
+         log.debug("Mapper updateFromOwnerDto - Checking 'image': DTO='{}', Current='{}'", dto.image(), pet.getImage());
+         changed |= updateStringFieldIfChanged(pet, dto.image(), pet::getImage, Pet::setImage, FIELD_IMAGE);
+         log.debug("Mapper updateFromOwnerDto - Checking 'color': DTO='{}', Current='{}'", dto.color(), pet.getColor());
+         changed |= updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor, FIELD_COLOR);
+         log.debug("Mapper updateFromOwnerDto - Checking 'microchip': DTO='{}', Current='{}'", dto.microchip(), pet.getMicrochip());
+         changed |= updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
+         log.debug("Mapper updateFromOwnerDto - Checking 'gender': DTO='{}', Current='{}'", dto.gender(), pet.getGender());
+         changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
+         log.debug("Mapper updateFromOwnerDto - Checking 'birthDate': DTO='{}', Current='{}'", dto.birthDate(), pet.getBirthDate());
+         changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
          // Update breed only if resolvedBreed is not null AND different from current
          if (resolvedBreed != null) {
-             changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed);
+             log.debug("Mapper updateFromOwnerDto - Checking 'breed': ResolvedBreedId='{}', CurrentBreedId='{}'",
+                     resolvedBreed.getId(), (pet.getBreed() != null ? pet.getBreed().getId() : null));
+             changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
          }
          return changed;
      }
@@ -122,11 +144,11 @@ public class PetMapper {
     public boolean updateFromClinicDto(PetClinicUpdateDto dto, Pet pet, Breed resolvedBreed) {
         if (dto == null || pet == null) return false;
         boolean changed = false;
-        changed |= updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor);
-        changed |= updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip);
-        changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender);
-        changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate);
-        changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed);
+        changed |= updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor, FIELD_COLOR);
+        changed |= updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
+        changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
+        changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
+        changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
         return changed;
     }
 
@@ -144,32 +166,15 @@ public class PetMapper {
     public boolean applyActivationData(PetActivationDto dto, Pet petToActivate, Breed resolvedBreed) {
         if (dto == null || petToActivate == null) return false;
         boolean changed = false;
-        changed |= updateStringFieldIfChanged(petToActivate, dto.microchip(), petToActivate::getMicrochip, Pet::setMicrochip);
-        changed |= updateFieldIfChanged(petToActivate, dto.birthDate(), petToActivate::getBirthDate, Pet::setBirthDate);
-        changed |= updateFieldIfChanged(petToActivate, dto.gender(), petToActivate::getGender, Pet::setGender);
-        changed |= updateStringFieldIfChanged(petToActivate, dto.color(), petToActivate::getColor, Pet::setColor);
-        changed |= updateFieldIfChanged(petToActivate, resolvedBreed, petToActivate::getBreed, Pet::setBreed);
+        changed |= updateStringFieldIfChanged(petToActivate, dto.microchip(), petToActivate::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
+        changed |= updateFieldIfChanged(petToActivate, dto.birthDate(), petToActivate::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
+        changed |= updateFieldIfChanged(petToActivate, dto.gender(), petToActivate::getGender, Pet::setGender, FIELD_GENDER);
+        changed |= updateStringFieldIfChanged(petToActivate, dto.color(), petToActivate::getColor, Pet::setColor, FIELD_COLOR);
+        changed |= updateFieldIfChanged(petToActivate, resolvedBreed, petToActivate::getBreed, Pet::setBreed, FIELD_BREED);
         return changed;
     }
 
     // Helpers
-    /**
-     * Updates a target field using a setter if the source value is not null
-     * and different from the current value obtained via a getter.
-     *
-     * @param sourceValue The new value from the DTO (can be null).
-     * @param getter Supplier function to get the current value from the entity.
-     * @param setter BiConsumer function to set the new value on the entity.
-     * @param <T> The type of the field being updated.
-     * @return true if the setter was called (value was updated), false otherwise.
-     */
-    public static <T> boolean updateIfChanged(T sourceValue, Supplier<T> getter, BiConsumer<T, T> setter) {
-        if (sourceValue != null && !Objects.equals(sourceValue, getter.get())) {
-            setter.accept(null, sourceValue); // Passing null as first arg, setter should ignore it
-            return true;
-        }
-        return false;
-    }
 
     /**
      * Updates a target field using a setter if the source value is not null
@@ -184,12 +189,20 @@ public class PetMapper {
      * @param <T> The type of the field being updated.
      * @return true if the setter was called (value was updated), false otherwise.
      */
-    public static <E, T> boolean updateFieldIfChanged(E target, T sourceValue, Supplier<T> getter, BiConsumer<E, T> setter) {
-        if (sourceValue != null && !Objects.equals(sourceValue, getter.get())) {
-            setter.accept(target, sourceValue); // Call the setter with target and new value
-            return true;
+    public static <E, T> boolean updateFieldIfChanged(E target, T sourceValue, Supplier<T> getter, BiConsumer<E, T> setter, String fieldName) {
+        if (sourceValue == null) {
+            log.debug("Skipping field '{}': Source value is null.", fieldName);
+            return false;
         }
-        return false;
+        T currentValue = getter.get();
+        if (!Objects.equals(sourceValue, currentValue)) {
+            log.debug("Updating field '{}': Current='{}', New='{}'", fieldName, currentValue, sourceValue);
+            setter.accept(target, sourceValue);
+            return true;
+        } else {
+            log.debug("Skipping field '{}': Value '{}' is the same as current.", fieldName, sourceValue);
+            return false;
+        }
     }
 
     /**
@@ -204,14 +217,22 @@ public class PetMapper {
      * @param <E> The type of the target entity.
      * @return true if the setter was called (value was updated), false otherwise.
      */
-    public static <E> boolean updateStringFieldIfChanged(E target, String sourceValue, Supplier<String> getter, BiConsumer<E, String> setter) {
-        // Treat blank input string as intent to clear (set to null), unless already null
-        String effectiveSourceValue = (sourceValue != null && sourceValue.isBlank()) ? null : sourceValue;
-        // Update only if the effective source value is different from the current value
-        if (!Objects.equals(effectiveSourceValue, getter.get())) {
+    public static <E> boolean updateStringFieldIfChanged(E target, String sourceValue, Supplier<String> getter, BiConsumer<E, String> setter, String fieldName) {
+        if (sourceValue == null) {
+            log.debug("Field '{}' not updated: Source value is null.", fieldName);
+            return false;
+        }
+
+        String effectiveSourceValue = sourceValue.isBlank() ? null : sourceValue; // Simplificado
+        String currentValue = getter.get();
+
+        if (!Objects.equals(effectiveSourceValue, currentValue)) {
+            log.debug("Updating field '{}': Current='{}', New='{}' (Effective='{}')", fieldName, currentValue, sourceValue, effectiveSourceValue);
             setter.accept(target, effectiveSourceValue);
             return true;
+        } else {
+            log.debug("Skipping field '{}': Effective value '{}' is the same as current '{}'.", fieldName, effectiveSourceValue, currentValue);
+            return false;
         }
-        return false;
     }
 }

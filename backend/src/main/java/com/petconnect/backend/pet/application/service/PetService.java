@@ -34,15 +34,12 @@ public interface PetService {
      * Associates the activating Vet with the pet.
      *
      * @param petId The ID of the pet to activate.
-     * @param activationDto DTO containing required/updated clinical details (microchip, birthDate, gender, color, breedId etc.).
-     * @param staffId The ID of the ClinicStaff (Vet/Admin) performing the activation.
+     * @param vetId The ID of the Vet performing the activation.
      * @return The profile DTO of the activated pet.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if pet, staff, or specified breedId not found.
-     * @throws org.springframework.security.access.AccessDeniedException if staff is not authorized for the pet/clinic.
-     * @throws IllegalStateException if the pet is not in PENDING status.
-     * @throws com.petconnect.backend.exception.MicrochipAlreadyExistsException if the provided microchip is already in use by another pet.
+     * @throws IllegalStateException if required fields (name, birthDate, gender, microchip, breed, image) are missing on the Pet entity or if status is not PENDING.
+     * @throws com.petconnect.backend.exception.MicrochipAlreadyExistsException if the pet's existing microchip conflicts with another pet.
      */
-    PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long staffId);
+    PetProfileDto activatePet(Long petId, Long vetId);
 
     /**
      * Updates basic pet information editable by the owner (e.g., name, image).
@@ -88,12 +85,11 @@ public interface PetService {
      * Filters by status (ACTIVE, PENDING by default). Requires authorization check.
      *
      * @param ownerId The ID of the owner whose pets are requested.
-     * @param requesterUserId The ID of the user making the request (for auth check).
      * @param pageable Pagination information.
      * @return A Page of PetProfileDto objects.
      * @throws org.springframework.security.access.AccessDeniedException if requester is not owner or authorized staff.
      */
-    Page<PetProfileDto> findPetsByOwner(Long ownerId, Long requesterUserId, Pageable pageable);
+    Page<PetProfileDto> findPetsByOwner(Long ownerId, Pageable pageable);
 
     /**
      * Retrieves the detailed profile of a specific pet by its ID.
@@ -156,24 +152,22 @@ public interface PetService {
      * or if it's associated with any Vet working at that clinic.
      * Requires authorization (requester must be staff of that clinic).
      *
-     * @param clinicId The ID of the clinic.
      * @param requesterUserId The ID of the staff member making the request.
      * @param pageable Pagination information.
      * @return A Page of PetProfileDto objects associated with the clinic.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if clinic not found.
      * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
      */
-    Page<PetProfileDto> findPetsByClinic(Long clinicId, Long requesterUserId, Pageable pageable);
+    Page<PetProfileDto> findPetsByClinic(Long requesterUserId, Pageable pageable);
 
     /**
      * Finds pets pending activation at a specific clinic.
      * Requires authorization (requester must be staff of that clinic).
      *
-     * @param clinicId The ID of the clinic.
      * @param requesterUserId The ID of the staff member making the request.
      * @return A List of PetProfileDto for pets pending activation.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if clinic not found.
      * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
      */
-    List<PetProfileDto> findPendingActivationPetsByClinic(Long clinicId, Long requesterUserId);
+    List<PetProfileDto> findPendingActivationPetsByClinic(Long requesterUserId);
 }

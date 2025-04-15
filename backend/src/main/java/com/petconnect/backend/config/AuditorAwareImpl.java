@@ -34,9 +34,9 @@ public class AuditorAwareImpl implements AuditorAware<String> {
     @NonNull // Optional itself handles nullability
     public Optional<String> getCurrentAuditor() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                .filter(Authentication::isAuthenticated) // Ensure it's authenticated
-                .map(Authentication::getPrincipal)       // Get the principal object
-                .map(this::extractIdentifierFromPrincipal); // Extract identifier using private method
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getPrincipal)
+                .map(this::extractIdentifierFromPrincipal);
     }
 
     /**

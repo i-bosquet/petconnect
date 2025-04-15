@@ -6,7 +6,6 @@ import com.petconnect.backend.pet.application.dto.*;
 import com.petconnect.backend.pet.application.mapper.BreedMapper;
 import com.petconnect.backend.pet.application.mapper.PetMapper;
 import com.petconnect.backend.pet.application.service.PetService;
-import com.petconnect.backend.user.application.service.helper.UserServiceHelper;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.PetStatus;
@@ -17,7 +16,10 @@ import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
 import com.petconnect.backend.user.domain.repository.VetRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.groups.Default;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +33,8 @@ import org.springframework.util.StringUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of the {@link PetService} interface.
@@ -55,7 +59,7 @@ public class PetServiceImpl implements PetService {
     // --- Mappers & Helpers ---
     private final PetMapper petMapper;
     private final BreedMapper breedMapper;
-    private final UserServiceHelper userServiceHelper; // Assuming this provides getAuthenticatedUserEntity()
+    private final Validator validator;
 
     // --- Configuration ---
     // Default path base for pet avatars if not provided. Configurable via application properties.
@@ -116,7 +120,7 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional
-    public PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long staffId) {
+    public PetProfileDto activatePet(Long petId, Long staffId) {
         ClinicStaff activatingStaff = findClinicStaffOrFail(staffId, "activate pet");
         Clinic staffClinic = activatingStaff.getClinic();
 
@@ -129,23 +133,20 @@ public class PetServiceImpl implements PetService {
                     " is not authorized to activate pet " + petId + " (not pending at this clinic)");
         }
 
-        // Validate Microchip (Mandatory for activation, checked by DTO @NotBlank)
-        validateMicrochipUniqueness(activationDto.microchip(), petId);
+        // *** VALIDACIÓN USANDO ANOTACIONES DE LA ENTIDAD ***
+        validatePetEntityForActivation(petToActivate); // Llama al nuevo helper
 
-        // Resolve and Validate Breed (must match pet's original species)
-        Specie originalSpecie = petToActivate.getBreed().getSpecie(); // Get species BEFORE potentially changing breed
-        Breed resolvedBreed = resolveBreed(activationDto.breedId(), originalSpecie);
-
-        // Apply activation data (mapper ensures all required fields are set from DTO)
-        petMapper.applyActivationData(activationDto, petToActivate, resolvedBreed);
+        // Validate Microchip uniqueness (using existing value in entity)
+        // Solo necesitamos validar si ya existe *otro* con ese microchip.
+        validateMicrochipUniqueness(petToActivate.getMicrochip(), petId); // Esto ya lo hacía bien
 
         // Update status and clear pending clinic
         petToActivate.setStatus(PetStatus.ACTIVE);
         petToActivate.setPendingActivationClinic(null);
 
-        // Assign a Vet automatically - MUST happen for ACTIVE status
+        // Assign a Vet automatically
         Vet assignedVet = assignVetOnActivation(activatingStaff);
-        petToActivate.addVet(assignedVet); // Add the required vet association
+        petToActivate.addVet(assignedVet);
 
         // Save and Map response
         Pet activatedPet = petRepository.save(petToActivate);
@@ -179,13 +180,22 @@ public class PetServiceImpl implements PetService {
     public PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto, Long ownerId) {
         Pet petToUpdate = findPetByIdAndOwnerOrFail(petId, ownerId);
 
+        log.info("Pet entity found (before update): ID={}, Name='{}', Color='{}', Image='{}', Microchip='{}', BreedId={}, OwnerId={}",
+                petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getColor(), petToUpdate.getImage(),
+                petToUpdate.getMicrochip(), (petToUpdate.getBreed() != null ? petToUpdate.getBreed().getId() : null), ownerId);
+
         boolean changed = applyPetUpdates(petToUpdate, updateDto, null);
+
+        log.info("Pet entity state AFTER applying updates (before save): ID={}, Name='{}', Color='{}', Image='{}', Microchip='{}', BreedId={}, Changed={}",
+                petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getColor(), petToUpdate.getImage(),
+                petToUpdate.getMicrochip(), (petToUpdate.getBreed() != null ? petToUpdate.getBreed().getId() : null), changed);
 
         // Save if changed and map response
         Pet updatedPet = petToUpdate;
         if (changed) {
+            log.info("Changes detected, attempting to save Pet {}", petId);
             updatedPet = petRepository.save(petToUpdate);
-            log.info("Owner {} updated Pet {}", ownerId, petId);
+            log.info("Owner {} successfully updated Pet {}", ownerId, petId);
         } else {
             log.info("No changes detected for Pet {}, update by owner {} skipped.", petId, ownerId);
         }
@@ -219,19 +229,7 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<PetProfileDto> findPetsByOwner(Long ownerId, Long requesterUserId, Pageable pageable) {
-        // Authorization: Allow Owner to see own pets, or Admin to see any owner's pets
-        if (!Objects.equals(ownerId, requesterUserId)) {
-            UserEntity requester = userServiceHelper.getAuthenticatedUserEntity();
-            // Check if requester is Admin (can view any owner's pets)
-            if (requester.getRoles().stream().noneMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN)) {
-                // If not owner and not admin, deny access
-                throw new AccessDeniedException("User " + requesterUserId + " is not authorized to view pets for owner " + ownerId);
-            }
-            log.debug("Admin {} accessing pets for owner {}", requesterUserId, ownerId);
-        }
-
-        // Default to showing ACTIVE and PENDING pets
+    public Page<PetProfileDto> findPetsByOwner(Long ownerId, Pageable pageable) {
         List<PetStatus> defaultStatuses = List.of(PetStatus.ACTIVE, PetStatus.PENDING);
         Page<Pet> petPage = petRepository.findByOwnerIdAndStatusIn(ownerId, defaultStatuses, pageable);
         return petPage.map(petMapper::toProfileDto);
@@ -242,8 +240,9 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<PetProfileDto> findPetsByClinic(Long clinicId, Long requesterUserId, Pageable pageable) {
-        verifyClinicStaffAccess(requesterUserId, clinicId, "find pets for"); // Verify staff belongs to clinic
+    public Page<PetProfileDto> findPetsByClinic(Long requesterUserId, Pageable pageable) {
+        ClinicStaff staff = findClinicStaffOrFail(requesterUserId, "find pets for clinic");
+        Long clinicId = staff.getClinic().getId();
         Page<Pet> petPage = petRepository.findPetsAssociatedWithClinic(clinicId, pageable);
         return petPage.map(petMapper::toProfileDto);
     }
@@ -253,8 +252,9 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional(readOnly = true)
-    public List<PetProfileDto> findPendingActivationPetsByClinic(Long clinicId, Long requesterUserId) {
-        verifyClinicStaffAccess(requesterUserId, clinicId, "find pending activation pets for");
+    public List<PetProfileDto> findPendingActivationPetsByClinic(Long requesterUserId) {
+        ClinicStaff staff = findClinicStaffOrFail(requesterUserId, "find pending pets for clinic");
+        Long clinicId = staff.getClinic().getId();
         List<Pet> pendingPets = petRepository.findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING);
         return petMapper.toProfileDtoList(pendingPets);
     }
@@ -293,9 +293,11 @@ public class PetServiceImpl implements PetService {
         Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
         Vet vet = findVetOrFail(vetId);
 
+        log.debug("Checking existing associations for Pet ID {}. Current associatedVets size: {}", petId, pet.getAssociatedVets().size());
+
         if (pet.getAssociatedVets().contains(vet)) {
             log.warn("Vet {} is already associated with Pet {}", vetId, petId);
-            return;
+            throw new IllegalStateException("Vet " + vetId + " is already associated with pet " + petId + ".");
         }
 
         pet.addVet(vet);
@@ -318,7 +320,7 @@ public class PetServiceImpl implements PetService {
 
         if (!pet.getAssociatedVets().contains(vet)) {
             log.warn("Vet {} is not associated with Pet {}. Cannot disassociate.", vetId, petId);
-            return; // Or throw exception
+            return;
         }
 
         pet.removeVet(vet);
@@ -483,33 +485,6 @@ public class PetServiceImpl implements PetService {
                 requesterUserId, actionDescription, pet.getId()));
     }
 
-
-    /**
-     * Verifies if Clinic Staff (Admin/Vet) belongs to the target clinic.
-     */
-    private void verifyClinicStaffAccess(Long requesterUserId, Long targetClinicId, String actionDescription) {
-        // Find staff user (also verifies they are ClinicStaff and have a clinic)
-        ClinicStaff requesterStaff = findClinicStaffOrFail(requesterUserId, actionDescription + " clinic " + targetClinicId);
-
-        // Check if target clinic exists before comparing IDs
-        if (!clinicRepository.existsById(targetClinicId)) {
-            throw new EntityNotFoundException("Target clinic not found with id: " + targetClinicId);
-        }
-
-        // Check if requester has ADMIN or VET role (might be redundant if methods are protected by @PreAuthorize, but safer)
-        boolean isAuthorizedRole = requesterStaff.getRoles().stream()
-                .anyMatch(role -> role.getRoleEnum() == RoleEnum.ADMIN || role.getRoleEnum() == RoleEnum.VET);
-        if (!isAuthorizedRole) {
-            throw new AccessDeniedException("User " + requesterUserId + " role is not authorized to " + actionDescription + " clinic " + targetClinicId);
-        }
-
-        // Check if requester belongs to the target clinic
-        if (!requesterStaff.getClinic().getId().equals(targetClinicId)) {
-            throw new AccessDeniedException(String.format("User (ID: %d, Clinic: %d) cannot %s clinic %d.",
-                    requesterUserId, requesterStaff.getClinic().getId(), actionDescription, targetClinicId));
-        }
-    }
-
     /**
      * Checks if a pet is associated with any vet from a specific clinic.
      */
@@ -543,20 +518,22 @@ public class PetServiceImpl implements PetService {
     }
 
     /**
-     * Assigns a Vet to the pet upon activation based on the activating staff member.
+     * Returns the Veterinarian performing the activation.
+     * Assumes the activating staff member is guaranteed to be a Vet due to security constraints.
+     *
+     * @param activatingStaff The ClinicStaff member performing the activation (must be a Vet).
+     * @return The activating Vet.
+     * @throws AccessDeniedException if the activating staff member is unexpectedly not a Vet instance
+     *                              (should not happen if security config is correct, defensive check).
      */
     private Vet assignVetOnActivation(ClinicStaff activatingStaff) {
-        if (activatingStaff instanceof Vet activatingVet) {
-            return activatingVet; // If a Vet activates, they are assigned.
-        } else {
-            // If an Admin activates, find ANY Vet from the SAME clinic to assign.
-            Clinic clinic = activatingStaff.getClinic();
-            return vetRepository.findFirstByClinicId(clinic.getId())
-                    .orElseThrow(() -> {
-                        log.error("CRITICAL: Cannot activate pet. No Vets found in clinic {} to associate.", clinic.getId());
-                        return new IllegalStateException("Cannot activate pet: No veterinarians available in clinic " + clinic.getId());
-                    });
+        if (!(activatingStaff instanceof Vet activatingVet)) {
+            // Defensive check - Should ideally be unreachable if SecurityConfig enforces ROLE_VET
+            log.error("CRITICAL: Activation process reached assignVetOnActivation but activator (ID: {}) is not a Vet instance.", activatingStaff.getId());
+            throw new AccessDeniedException("Activation failed: The user performing the activation is not a veterinarian.");
         }
+        log.debug("Assigning activating Vet (ID: {}) to the pet.", activatingVet.getId());
+        return activatingVet;
     }
 
     /**
@@ -629,6 +606,9 @@ public class PetServiceImpl implements PetService {
     private boolean applyPetUpdates(Pet petToUpdate, PetOwnerUpdateDto ownerUpdateDto, PetClinicUpdateDto clinicUpdateDto) {
         Specie originalSpecie = petToUpdate.getBreed().getSpecie();
 
+        // Resolve Breed if ID is provided and different
+        Breed resolvedBreed = petToUpdate.getBreed();
+
         // Determine which fields to potentially update based on which DTO is present
         String newMicrochip;
         if ((ownerUpdateDto != null)) newMicrochip = ownerUpdateDto.microchip();
@@ -640,14 +620,15 @@ public class PetServiceImpl implements PetService {
         else if (clinicUpdateDto != null) newBreedId = clinicUpdateDto.breedId();
         else newBreedId = null;
 
-        // Validate Microchip Uniqueness if it's being changed
-        validateMicrochipUpdate(newMicrochip, petToUpdate);
-
-        // Resolve Breed if ID is provided and different
-        Breed resolvedBreed = petToUpdate.getBreed();
         if (newBreedId != null && !Objects.equals(newBreedId, petToUpdate.getBreed().getId())) {
             resolvedBreed = resolveBreed(newBreedId, originalSpecie);
         }
+
+        log.info("Calling mapper. DTO(Owner): {}, DTO(Clinic): {}, ResolvedBreedId: {}",
+                ownerUpdateDto, clinicUpdateDto, (resolvedBreed != null ? resolvedBreed.getId() : null));
+
+        // Validate Microchip Uniqueness if it's being changed
+        validateMicrochipUpdate(newMicrochip, petToUpdate);
 
         // Call the appropriate mapper method
         boolean changed;
@@ -656,8 +637,33 @@ public class PetServiceImpl implements PetService {
         } else if (clinicUpdateDto != null) {
             changed = petMapper.updateFromClinicDto(clinicUpdateDto, petToUpdate, resolvedBreed);
         } else {
-            changed = false; // No DTO provided
+            changed = false;
         }
+
+        log.info("Mapper finished applying updates. Overall changed status: {}", changed);
         return changed;
+    }
+
+    /**
+     * Validates the Pet entity against its validation constraints defined
+     * via Jakarta Validation annotations (@NotNull, @NotBlank, @PastOrPresent, etc.).
+     * Throws an IllegalStateException if validation fails.
+     *
+     * @param pet The Pet entity to validate.
+     * @throws IllegalStateException containing the validation violations if any are found.
+     */
+    private void validatePetEntityForActivation(Pet pet) {
+        Set<ConstraintViolation<Pet>> violations = validator.validate(pet, Default.class);
+        if (!violations.isEmpty()) {
+            String violationMessages = violations.stream()
+                    .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                    .collect(Collectors.joining("; "));
+            log.warn("Cannot activate pet {}: Validation failed on existing data. Violations: {}", pet.getId(), violationMessages);
+
+            throw new IllegalStateException("Cannot activate pet " + pet.getId() + ". Required data is missing or invalid: " + violationMessages);
+        }
+        if (pet.getBreed() == null || pet.getOwner() == null) {
+            throw new IllegalStateException("Cannot activate pet " + pet.getId() + ": Critical data (Breed/Owner) missing.");
+        }
     }
 }

@@ -394,6 +394,11 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         staff.setAccountNonLocked(true);
         staff.setCredentialsNonExpired(true);
         // Avatar is set in the buildNewStaffEntity method based on role
+        staff.setActive(true);
+        staff.setEnabled(true);
+        staff.setAccountNonExpired(true);
+        staff.setAccountNonLocked(true);
+        staff.setCredentialsNonExpired(true);
     }
 
     /**

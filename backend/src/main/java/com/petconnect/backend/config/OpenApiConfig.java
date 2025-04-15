@@ -37,12 +37,12 @@ import org.springframework.context.annotation.Configuration;
         }
 )
 @SecurityScheme(
-        name = "bearerAuth", // The name referenced in @SecurityRequirement
+        name = "bearerAuth",
         description = "JWT Authentication token",
-        scheme = "bearer", // Standard scheme name for Bearer tokens
-        type = SecuritySchemeType.HTTP, // Type of security scheme
-        bearerFormat = "JWT", // Hint about the format of the token
-        in = SecuritySchemeIn.HEADER // Location of the token (Authorization header)
+        scheme = "bearer",
+        type = SecuritySchemeType.HTTP,
+        bearerFormat = "JWT",
+        in = SecuritySchemeIn.HEADER
 )
 public class OpenApiConfig {
         private static final String USER_PACKAGE = "com.petconnect.backend.user.port.in.web";
@@ -58,7 +58,7 @@ public class OpenApiConfig {
         public GroupedOpenApi userApi() {
                 return GroupedOpenApi.builder()
                         .group("user")
-                        .displayName("👤 User Module")
+                        .displayName("1.- 👤 User Module")
                         .packagesToScan(USER_PACKAGE)
                         .build();
         }

@@ -1,6 +1,5 @@
 package com.petconnect.backend.user.application.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -15,8 +14,8 @@ import jakarta.validation.constraints.Size;
  * @author ibosquet
  */
 public record ClinicStaffUpdateDto(
-        @NotBlank @Size(max = 100) String name,
-        @NotBlank @Size(max = 100) String surname,
+        @Size(max = 100) String name,
+        @Size(max = 100) String surname,
         // Include Vet fields if they are updatable by Admin
         String licenseNumber,
         String vetPublicKey
