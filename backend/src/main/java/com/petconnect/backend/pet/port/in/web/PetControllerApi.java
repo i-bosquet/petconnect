@@ -182,27 +182,30 @@ public interface PetControllerApi {
     // --- Staff Operations ---
 
     /**
-     * Activates a pet currently in PENDING status. Requires clinic staff authorization.
-     * The service will internally verify that all required pet details (name, birthdate, gender, microchip, breed, image)
-     * are present and valid in the existing pet data before changing the status.
-     * Use PUT /api/pets/{petId}/clinic-update first if data needs correction.
+     * Activates a pet currently in PENDING status. Requires Vet authorization.
+     * The request body must contain all required pet details, verified by the clinic staff.
      *
      * @param petId ID of the pet to activate.
+     * @param activationDto DTO containing verified/updated details required for activation.
      * @return ResponseEntity with the activated PetProfileDto and status 200.
      */
     @Operation(summary = "Activate Pending Pet (Vet)",
-            description = "Allows authorized Vet to activate a PENDING pet associated with their clinic. Validates existing pet data internally.")
+            description = "Allows authorized Vet to activate a PENDING pet associated with their clinic, providing complete verified data in the request body.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Pet activated successfully", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PetProfileDto.class))),
-            @ApiResponse(responseCode = "400", description = "Bad Request (e.g., Pet not PENDING, or missing required data like microchip/birthdate/gender)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid Activation Data in Request Body or Pet not PENDING", content = @Content(schema = @Schema(implementation = Map.class))), // Error 400 ahora es por el DTO o estado
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "403", description = "Forbidden (Vet not authorized for this pet/clinic)", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "404", description = "Pet or Vet not found", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "409", description = "Conflict (Existing Microchip is already in use by another pet)", content = @Content(schema = @Schema(implementation = Map.class)))
+            @ApiResponse(responseCode = "403", description = "Forbidden (User is not Vet or not authorized for this pet/clinic)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Pet, Vet, or Breed specified in DTO not found", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "409", description = "Conflict (Microchip in DTO already exists for another pet)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
     @PutMapping("/{petId}/activate")
     ResponseEntity<PetProfileDto> activatePet(
-            @Parameter(description = "ID of the PENDING pet to activate", required = true) @PathVariable Long petId
+            @Parameter(description = "ID of the PENDING pet to activate", required = true) @PathVariable Long petId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Verified and complete pet details for activation.", required = true,
+                    content = @Content(schema = @Schema(implementation = PetActivationDto.class)))
+            @Valid @RequestBody PetActivationDto activationDto
     );
 
 

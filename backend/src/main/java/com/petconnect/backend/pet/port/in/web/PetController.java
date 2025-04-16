@@ -129,9 +129,11 @@ public class PetController implements PetControllerApi{
      */
     @Override
     @PutMapping("/{petId}/activate")
-    public ResponseEntity<PetProfileDto> activatePet(@PathVariable Long petId) {
+    public ResponseEntity<PetProfileDto> activatePet(
+            @PathVariable Long petId,
+            @Valid @RequestBody PetActivationDto activationDto) {
         Long staffId = userServiceHelper.getAuthenticatedUserId();
-        PetProfileDto activatedPet = petService.activatePet(petId, staffId);
+        PetProfileDto activatedPet = petService.activatePet(petId, activationDto, staffId);
         return ResponseEntity.ok(activatedPet);
     }
 
@@ -154,7 +156,7 @@ public class PetController implements PetControllerApi{
     @Override
     @GetMapping("/clinic")
     public ResponseEntity<Page<PetProfileDto>> findMyClinicPets(@PageableDefault(sort = "name") Pageable pageable) {
-        Long requesterUserId = userServiceHelper.getAuthenticatedUserId(); // Solo ID
+        Long requesterUserId = userServiceHelper.getAuthenticatedUserId();
         Page<PetProfileDto> petPage = petService.findPetsByClinic(requesterUserId, pageable);
         return ResponseEntity.ok(petPage);
     }

@@ -14,11 +14,6 @@ import com.petconnect.backend.user.domain.repository.ClinicRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
 import com.petconnect.backend.user.domain.repository.VetRepository;
 
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Path;
-import jakarta.validation.Validator;
-
-import jakarta.validation.groups.Default;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,7 +45,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 /**
@@ -70,7 +64,6 @@ class PetServiceImplTest {
     @Mock private VetRepository vetRepository;
     @Mock private PetMapper petMapper;
     @Mock private BreedMapper breedMapper;
-    @Mock private Validator validator;
 
     // --- Class Under Test ---
     @InjectMocks
@@ -521,69 +514,78 @@ class PetServiceImplTest {
         private Clinic pendingClinic;
         private Vet activatingVet;
         private PetProfileDto activatedPetDto;
+        private PetActivationDto activationDto;
+        private Breed petBreed;
         private final Long petToActivateId = 120L;
         private final Long activatingVetId = 20L;
 
-        /**
-         * Setup data: A PENDING pet associated with a clinic, and a Vet from that clinic.
-         */
+
         @BeforeEach
         void activateSetup() {
             Long clinicId = 1L;
+            Long breedId = 30L;
             pendingClinic = Clinic.builder().name("Activation Clinic").build();
             pendingClinic.setId(clinicId);
 
             activatingVet = new Vet();
             activatingVet.setId(activatingVetId);
             activatingVet.setUsername("activator_vet");
-            activatingVet.setClinic(pendingClinic); // Vet belongs to the pending clinic
-            activatingVet.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build())); // Ensure VET role
+            activatingVet.setClinic(pendingClinic);
+            activatingVet.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
 
-            Breed petBreed = Breed.builder().id(30L).name("Beagle").specie(Specie.DOG).build();
+            petBreed = Breed.builder().id(breedId).name("Beagle").specie(Specie.DOG).build();
 
             petToActivate = new Pet();
             petToActivate.setId(petToActivateId);
-            petToActivate.setName("Activo");
-            petToActivate.setStatus(PetStatus.PENDING); // Correct initial status
-            petToActivate.setOwner(owner); // Owner from main setup
+            petToActivate.setName("ActivoOriginal");
+            petToActivate.setStatus(PetStatus.PENDING);
+            petToActivate.setOwner(owner);
             petToActivate.setBreed(petBreed);
-            petToActivate.setPendingActivationClinic(pendingClinic); // Associated with the clinic
-            // --- IMPORTANT: Simulate that required fields ARE present BEFORE activation ---
-            petToActivate.setBirthDate(LocalDate.of(2023, 6, 1));
-            petToActivate.setGender(Gender.MALE);
-            petToActivate.setMicrochip("MICROCHIP123");
-            petToActivate.setImage("path/to/image.jpg");
-            petToActivate.setColor("Tricolor");
-            // ---
+            petToActivate.setPendingActivationClinic(pendingClinic);
+            petToActivate.setBirthDate(null);
+            petToActivate.setGender(null);
+            petToActivate.setMicrochip(null);
+            petToActivate.setImage("original.jpg");
+            petToActivate.setColor("OriginalColor");
 
-            // Simulate DTO after successful activation
+            activationDto = new PetActivationDto(
+                    "ActivoFinal",
+                    "TricolorFinal",
+                    Gender.MALE,
+                    LocalDate.of(2023, 6, 1),
+                    "MICROCHIP123FINAL",
+                    breedId,
+                    "final_image.jpg"
+            );
+
+
             activatedPetDto = new PetProfileDto(
-                    petToActivateId, "Activo", Specie.DOG, "Tricolor", Gender.MALE,
-                    LocalDate.of(2023, 6, 1), "MICROCHIP123", "path/to/image.jpg",
-                    PetStatus.ACTIVE, // Status changed
-                    owner.getId(), owner.getUsername(), petBreed.getId(), petBreed.getName(),
-                    null, // Pending clinic cleared
-                    Set.of(new VetSummaryDto(activatingVet.getId(), activatingVet.getName(), activatingVet.getSurname())), // Vet is associated
-                    LocalDateTime.now(), LocalDateTime.now() // Timestamps
+                    petToActivateId, activationDto.name(), Specie.DOG, activationDto.color(), activationDto.gender(),
+                    activationDto.birthDate(), activationDto.microchip(), activationDto.image(),
+                    PetStatus.ACTIVE,
+                    owner.getId(), owner.getUsername(), breedId, petBreed.getName(),
+                    null,
+                    Set.of(new VetSummaryDto(activatingVet.getId(), activatingVet.getName(), activatingVet.getSurname())),
+                    LocalDateTime.now(), LocalDateTime.now()
             );
         }
 
         /**
-         * Test successful activation by an authorized Vet when all conditions are met.
+         * Test successful activation by an authorized Vet when DTO is valid.
          */
         @Test
-        @DisplayName("should activate pet successfully when called by authorized Vet and pet data is valid")
+        @DisplayName("should activate pet successfully when called by authorized Vet with valid DTO")
         void activate_Success() {
             // Arrange
             given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingVet));
             given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
-            given(validator.validate(petToActivate, Default.class)).willReturn(Collections.emptySet());
-            given(petRepository.existsByMicrochipAndIdNot("MICROCHIP123", petToActivateId)).willReturn(false);
+            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(false);
+            given(breedRepository.findById(activationDto.breedId())).willReturn(Optional.of(petBreed));
             given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
             given(petMapper.toProfileDto(any(Pet.class))).willReturn(activatedPetDto);
 
             // Act
-            PetProfileDto result = petService.activatePet(petToActivateId, activatingVetId);
+            PetProfileDto result = petService.activatePet(petToActivateId, activationDto, activatingVetId);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(activatedPetDto);
@@ -591,32 +593,38 @@ class PetServiceImplTest {
             // Verify interactions
             then(userRepository).should().findById(activatingVetId);
             then(petRepository).should().findById(petToActivateId);
-            then(validator).should().validate(petToActivate, Default.class);
-            then(petRepository).should().existsByMicrochipAndIdNot("MICROCHIP123", petToActivateId);
-            then(vetRepository).should(never()).findFirstByClinicId(anyLong()); // Not needed when Vet activates
+            then(petRepository).should().existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId);
+            then(breedRepository).should().findById(activationDto.breedId());
             then(petRepository).should().save(petCaptor.capture());
             then(petMapper).should().toProfileDto(any(Pet.class));
 
-            // Verify captured entity state
             Pet saved = petCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo(PetStatus.ACTIVE);
             assertThat(saved.getPendingActivationClinic()).isNull();
-            assertThat(saved.getAssociatedVets()).contains(activatingVet); // Check association
+            assertThat(saved.getAssociatedVets()).contains(activatingVet);
+            assertThat(saved.getName()).isEqualTo(activationDto.name());
+            assertThat(saved.getColor()).isEqualTo(activationDto.color());
+            assertThat(saved.getGender()).isEqualTo(activationDto.gender());
+            assertThat(saved.getBirthDate()).isEqualTo(activationDto.birthDate());
+            assertThat(saved.getMicrochip()).isEqualTo(activationDto.microchip());
+            assertThat(saved.getBreed().getId()).isEqualTo(activationDto.breedId());
+            assertThat(saved.getImage()).isEqualTo(activationDto.image());
         }
 
         /**
          * Test failure when the pet is not in PENDING status.
+         * (Este test no necesita el DTO en el arrange, pero la llamada sí lo requiere)
          */
         @Test
         @DisplayName("should throw IllegalStateException if pet is not PENDING")
         void activate_Failure_NotPending() {
             // Arrange
-            petToActivate.setStatus(PetStatus.ACTIVE); // Change status to invalid one
+            petToActivate.setStatus(PetStatus.ACTIVE);
             given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingVet));
             given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activatingVetId))
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("must be in PENDING status to activate");
 
@@ -625,19 +633,19 @@ class PetServiceImplTest {
 
         /**
          * Test failure when the staff member is not authorized (not from the pending clinic).
+         * (Este test no necesita el DTO en el arrange, pero la llamada sí lo requiere)
          */
         @Test
         @DisplayName("should throw AccessDeniedException if staff not from pending clinic")
         void activate_Failure_StaffWrongClinic() {
             // Arrange
             Clinic differentClinic = Clinic.builder().build(); differentClinic.setId(99L);
-            activatingVet.setClinic(differentClinic); // Vet belongs to a different clinic
-
+            activatingVet.setClinic(differentClinic);
             given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingVet));
-            given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate)); // Pet is pending at clinic 1
+            given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activatingVetId))
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not authorized to activate pet");
 
@@ -645,97 +653,93 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when the pet entity fails validation checks (e.g., missing microchip).
+         * Test failure when the provided microchip in DTO conflicts.
          */
         @Test
-        @DisplayName("should throw IllegalStateException if pet data validation fails")
-        void activate_Failure_ValidationFailed() {
-            // Arrange
-            petToActivate.setMicrochip(null); // Simulate missing data AFTER loading pet
-            given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingVet));
-            given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
-            // Mock validator to return violations
-            ConstraintViolation<Pet> violation = mock(ConstraintViolation.class);
-            Path propertyPathMock = mock(Path.class);
-            given(violation.getPropertyPath()).willReturn(propertyPathMock);
-            given(propertyPathMock.toString()).willReturn("microchip");
-
-            given(violation.getMessage()).willReturn("must not be blank");
-            Set<ConstraintViolation<Pet>> violations = Set.of(violation);
-            given(validator.validate(petToActivate, Default.class)).willReturn(violations); // Return the violation set
-
-            // Act & Assert
-            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activatingVetId))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Required data is missing or invalid: microchip: must not be blank");
-
-            then(petRepository).should(never()).save(any());
-            then(petRepository).should(never()).existsByMicrochipAndIdNot(any(), any()); // Uniqueness check skipped
-        }
-
-        /**
-         * Test failure when the pet's microchip already exists for another pet.
-         */
-        @Test
-        @DisplayName("should throw MicrochipAlreadyExistsException if microchip conflicts")
+        @DisplayName("should throw MicrochipAlreadyExistsException if microchip in DTO conflicts")
         void activate_Failure_MicrochipConflict() {
             // Arrange
             given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingVet));
             given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
-            given(validator.validate(petToActivate, Default.class)).willReturn(Collections.emptySet()); // Validation passes
-            // Mock microchip uniqueness check to fail
-            given(petRepository.existsByMicrochipAndIdNot(petToActivate.getMicrochip(), petToActivateId)).willReturn(true);
+            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(true);
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activatingVetId))
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
                     .isInstanceOf(MicrochipAlreadyExistsException.class)
-                    .hasMessageContaining(petToActivate.getMicrochip());
+                    .hasMessageContaining(activationDto.microchip());
 
+            then(breedRepository).should(never()).findById(anyLong());
             then(petRepository).should(never()).save(any());
         }
 
         /**
-         * Test failure when the activating user is not found.
+         * Test failure when the breedId provided in DTO is invalid.
          */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if breedId in DTO not found")
+        void activate_Failure_BreedNotFoundInDto() {
+            // Arrange
+            PetActivationDto dtoWithBadBreed = new PetActivationDto(
+                    "Name", "Color", Gender.FEMALE, LocalDate.now(), "MicrochipOK",
+                    999L, // ID de Raza Inexistente
+                    "image.jpg"
+            );
+            given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingVet));
+            given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
+            given(petRepository.existsByMicrochipAndIdNot(dtoWithBadBreed.microchip(), petToActivateId)).willReturn(false);
+            given(breedRepository.findById(999L)).willReturn(Optional.empty());
+
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, dtoWithBadBreed, activatingVetId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Breed not found with id: 999");
+
+            then(petRepository).should(never()).save(any());
+        }
+
+
         @Test
         @DisplayName("should throw EntityNotFoundException if activating staff not found")
         void activate_Failure_StaffNotFound() {
             // Arrange
-            given(userRepository.findById(999L)).willReturn(Optional.empty()); // Staff not found
+            given(userRepository.findById(999L)).willReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.activatePet(petToActivateId, 999L))
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, 999L)) // Pasar DTO
                     .isInstanceOf(EntityNotFoundException.class)
-                    .hasMessageContaining("UserEntity not found with id: 999"); // Or the specific message from findClinicStaffOrFail
+                    .hasMessageContaining("UserEntity not found with id: 999");
 
             then(petRepository).should(never()).findById(anyLong());
             then(petRepository).should(never()).save(any());
         }
 
-        /**
-         * Test failure when the activating user is not a Vet (now handled by SecurityConfig, but good defensive check).
-         */
         @Test
         @DisplayName("should throw AccessDeniedException if activator is Admin (defensive check)")
         void activate_Failure_ActivatorIsAdmin() {
             // Arrange
-            // Create an Admin user belonging to the correct clinic
             ClinicStaff activatingAdmin = new ClinicStaff();
-            activatingAdmin.setId(activatingVetId); // Use same ID for simplicity in mock
+            activatingAdmin.setId(activatingVetId);
             activatingAdmin.setClinic(pendingClinic);
             activatingAdmin.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
 
-            given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingAdmin)); // Return the Admin
+            given(userRepository.findById(activatingVetId)).willReturn(Optional.of(activatingAdmin));
             given(petRepository.findById(petToActivateId)).willReturn(Optional.of(petToActivate));
-            // No need to mock validation etc. as it should fail earlier
+            given(breedRepository.findById(activationDto.breedId())).willReturn(Optional.of(petBreed));
+            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(false);
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activatingVetId))
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("user performing the activation is not a veterinarian");
 
             then(petRepository).should(never()).save(any());
+            then(userRepository).should().findById(activatingVetId);
+            then(petRepository).should().findById(petToActivateId);
+            then(breedRepository).should().findById(activationDto.breedId());
+            then(petRepository).should().existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId);
         }
+
     }
 
     // --- Tests for deactivatePet ---

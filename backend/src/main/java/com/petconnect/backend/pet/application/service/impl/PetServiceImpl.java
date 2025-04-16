@@ -16,10 +16,7 @@ import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
 import com.petconnect.backend.user.domain.repository.VetRepository;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.groups.Default;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +30,6 @@ import org.springframework.util.StringUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Implementation of the {@link PetService} interface.
@@ -59,7 +54,6 @@ public class PetServiceImpl implements PetService {
     // --- Mappers & Helpers ---
     private final PetMapper petMapper;
     private final BreedMapper breedMapper;
-    private final Validator validator;
 
     // --- Configuration ---
     // Default path base for pet avatars if not provided. Configurable via application properties.
@@ -120,37 +114,30 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional
-    public PetProfileDto activatePet(Long petId, Long staffId) {
+    public PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long staffId) {
         ClinicStaff activatingStaff = findClinicStaffOrFail(staffId, "activate pet");
         Clinic staffClinic = activatingStaff.getClinic();
-
         Pet petToActivate = findPetByIdOrFail(petId);
         ensurePetIsInStatus(petToActivate, PetStatus.PENDING, "activate");
-
-        // Verify staff is from the clinic where activation is pending
         if (petToActivate.getPendingActivationClinic() == null || !petToActivate.getPendingActivationClinic().getId().equals(staffClinic.getId())) {
             throw new AccessDeniedException("Staff " + staffId + " from clinic " + staffClinic.getId() +
                     " is not authorized to activate pet " + petId + " (not pending at this clinic)");
         }
 
-        // *** VALIDACIÓN USANDO ANOTACIONES DE LA ENTIDAD ***
-        validatePetEntityForActivation(petToActivate); // Llama al nuevo helper
+        validateMicrochipUniqueness(activationDto.microchip(), petId);
 
-        // Validate Microchip uniqueness (using existing value in entity)
-        // Solo necesitamos validar si ya existe *otro* con ese microchip.
-        validateMicrochipUniqueness(petToActivate.getMicrochip(), petId); // Esto ya lo hacía bien
+        Specie originalSpecie = petToActivate.getBreed().getSpecie(); // Especie no debe cambiar
+        Breed resolvedBreed = resolveBreed(activationDto.breedId(), originalSpecie);
+        updatePetEntityFromActivationDto(petToActivate, activationDto, resolvedBreed);
 
-        // Update status and clear pending clinic
         petToActivate.setStatus(PetStatus.ACTIVE);
         petToActivate.setPendingActivationClinic(null);
-
-        // Assign a Vet automatically
-        Vet assignedVet = assignVetOnActivation(activatingStaff);
+        Vet assignedVet = assignVetOnActivation(activatingStaff); // Ya simplificado para Vet
         petToActivate.addVet(assignedVet);
 
-        // Save and Map response
+        // Assign a Vet automatically
         Pet activatedPet = petRepository.save(petToActivate);
-        log.info("Staff {} activated Pet {}. Assigned Vet: {}", staffId, petId, assignedVet.getId());
+        log.info("Vet {} activated Pet {}. Assigned Vet: {}", staffId, petId, assignedVet.getId());
         return petMapper.toProfileDto(activatedPet);
     }
 
@@ -645,25 +632,17 @@ public class PetServiceImpl implements PetService {
     }
 
     /**
-     * Validates the Pet entity against its validation constraints defined
-     * via Jakarta Validation annotations (@NotNull, @NotBlank, @PastOrPresent, etc.).
-     * Throws an IllegalStateException if validation fails.
-     *
-     * @param pet The Pet entity to validate.
-     * @throws IllegalStateException containing the validation violations if any are found.
+     * Updates the Pet entity with data from the validated PetActivationDto.
+     * This ensures the pet record reflects the data confirmed during activation.
      */
-    private void validatePetEntityForActivation(Pet pet) {
-        Set<ConstraintViolation<Pet>> violations = validator.validate(pet, Default.class);
-        if (!violations.isEmpty()) {
-            String violationMessages = violations.stream()
-                    .map(v -> v.getPropertyPath() + ": " + v.getMessage())
-                    .collect(Collectors.joining("; "));
-            log.warn("Cannot activate pet {}: Validation failed on existing data. Violations: {}", pet.getId(), violationMessages);
-
-            throw new IllegalStateException("Cannot activate pet " + pet.getId() + ". Required data is missing or invalid: " + violationMessages);
-        }
-        if (pet.getBreed() == null || pet.getOwner() == null) {
-            throw new IllegalStateException("Cannot activate pet " + pet.getId() + ": Critical data (Breed/Owner) missing.");
-        }
+    private void updatePetEntityFromActivationDto(Pet pet, PetActivationDto dto, Breed resolvedBreed) {
+        pet.setName(dto.name());
+        pet.setColor(dto.color());
+        pet.setGender(dto.gender());
+        pet.setBirthDate(dto.birthDate());
+        pet.setMicrochip(dto.microchip());
+        pet.setBreed(resolvedBreed);
+        pet.setImage(dto.image());
     }
+
 }

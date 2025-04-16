@@ -29,17 +29,17 @@ public interface PetService {
 
     /**
      * Activates a PENDING pet and updates its details.
-     * Typically performed by authorized clinic staff after verification.
      * Sets the pet's status to ACTIVE and clears the pending clinic association.
      * Associates the activating Vet with the pet.
      *
      * @param petId The ID of the pet to activate.
      * @param vetId The ID of the Vet performing the activation.
+     * @param activationDto DTO containing required/verified clinical details. Validation rules are applied.
      * @return The profile DTO of the activated pet.
      * @throws IllegalStateException if required fields (name, birthDate, gender, microchip, breed, image) are missing on the Pet entity or if status is not PENDING.
      * @throws com.petconnect.backend.exception.MicrochipAlreadyExistsException if the pet's existing microchip conflicts with another pet.
      */
-    PetProfileDto activatePet(Long petId, Long vetId);
+    PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long vetId);
 
     /**
      * Updates basic pet information editable by the owner (e.g., name, image).
