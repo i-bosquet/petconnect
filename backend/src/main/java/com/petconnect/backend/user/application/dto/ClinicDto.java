@@ -1,5 +1,7 @@
 package com.petconnect.backend.user.application.dto;
 
+import com.petconnect.backend.user.domain.model.Country;
+
 /**
  * DTO for transferring detailed Clinic information (typically in responses).
  * Using Java Record for immutability and conciseness.
@@ -20,7 +22,7 @@ public record ClinicDto(
         String name,
         String address,
         String city,
-        String country,
+        Country country,
         String phone,
         String publicKey // Consider if publicKey should always be returned
 ) {}

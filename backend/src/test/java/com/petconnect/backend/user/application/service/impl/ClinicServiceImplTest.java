@@ -4,10 +4,7 @@ import com.petconnect.backend.exception.EntityNotFoundException; // Your custom 
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.application.mapper.ClinicMapper;
-import com.petconnect.backend.user.domain.model.Clinic;
-import com.petconnect.backend.user.domain.model.ClinicStaff;
-import com.petconnect.backend.user.domain.model.RoleEntity;
-import com.petconnect.backend.user.domain.model.RoleEnum;
+import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,19 +72,19 @@ class ClinicServiceImplTest {
     @BeforeEach
     void setUp() {
 // Simulate Clinic entities
-        clinic1 = Clinic.builder().name("London Vet").city("London").country("UK").publicKey("PUB1").build();
+        clinic1 = Clinic.builder().name("London Vet").city("London").country(Country.UNITED_KINGDOM).publicKey("PUB1").build();
         clinic1.setId(1L); // Set ID manually because builder doesn't handle inherited fields
-        clinic2 = Clinic.builder().name("Paris Pets").city("Paris").country("France").publicKey("PUB2").build();
+        clinic2 = Clinic.builder().name("Paris Pets").city("Paris").country(Country.FRANCE).publicKey("PUB2").build();
         clinic2.setId(2L);
 // Simulate corresponding Clinic DTOs
-        clinicDto1 = new ClinicDto(1L, "London Vet", "Addr1", "London", "UK", "111", "PUB1");
-        clinicDto2 = new ClinicDto(2L, "Paris Pets", "Addr2", "Paris", "France", "222", "PUB2");
+        clinicDto1 = new ClinicDto(1L, "London Vet", "Addr1", "London", Country.UNITED_KINGDOM, "111", "PUB1");
+        clinicDto2 = new ClinicDto(2L, "Paris Pets", "Addr2", "Paris", Country.FRANCE, "222", "PUB2");
 // Standard pagination request
         pageable = PageRequest.of(0, 10);
 // Simulate a DTO used for update requests
-        updateDto = new ClinicUpdateDto("Updated Name", "Updated Addr", "Updated City", "Updated Country", "999");
+        updateDto = new ClinicUpdateDto("Updated Name", "Updated Addr", "Updated City", null, "999");
 // Simulate the existing clinic entity that will be updated in some tests
-        existingClinic = Clinic.builder().name("London Vet").city("London").country("UK").publicKey("PUB1").build();
+        existingClinic = Clinic.builder().name("London Vet").city("London").country(Country.UNITED_KINGDOM).publicKey("PUB1").build();
         existingClinic.setId(1L);
 // Simulate an Admin user who belongs to the existingClinic (Clinic ID 1)
         adminUser = new ClinicStaff();
@@ -199,7 +196,7 @@ class ClinicServiceImplTest {
 // Arrange
         Long clinicId = 1L;
         Long adminId = 10L;
-        ClinicDto dtoResultadoEsperado = new ClinicDto(clinicId, "Updated Name", "Updated Addr", "Updated City", "Updated Country", "999", "PUB1");
+        ClinicDto dtoResultadoEsperado = new ClinicDto(clinicId, "Updated Name", "Updated Addr", "Updated City", null, "999", "PUB1");
         given(userRepository.findById(adminId)).willReturn(Optional.of(adminUser)); // Admin found
         given(clinicRepository.findById(clinicId)).willReturn(Optional.of(existingClinic)); // Clinic found
         given(clinicRepository.save(any(Clinic.class))).willAnswer(invocation -> invocation.getArgument(0)); // Save returns input
@@ -212,7 +209,7 @@ class ClinicServiceImplTest {
             if (StringUtils.hasText(dtoArg.name())) clinicArg.setName(dtoArg.name());
             if (StringUtils.hasText(dtoArg.address())) clinicArg.setAddress(dtoArg.address());
             if (StringUtils.hasText(dtoArg.city())) clinicArg.setCity(dtoArg.city());
-            if (StringUtils.hasText(dtoArg.country())) clinicArg.setCountry(dtoArg.country());
+            if (dtoArg.country() != null) clinicArg.setCountry(dtoArg.country());
             if (StringUtils.hasText(dtoArg.phone())) clinicArg.setPhone(dtoArg.phone());
 // Assert state immediately after simulated update
             assertThat(clinicArg.getName()).isEqualTo("Updated Name");

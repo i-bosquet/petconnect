@@ -1,5 +1,6 @@
 package com.petconnect.backend.user.application.dto;
 
+import com.petconnect.backend.user.domain.model.Country;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -22,8 +23,7 @@ public record ClinicUpdateDto(
         @Size(max = 100, message = "City name cannot exceed 100 characters")
         String city,
 
-        @Size(max = 100, message = "Country name cannot exceed 100 characters")
-        String country,
+        Country country,
 
         @Size(max = 20, message = "Phone number cannot exceed 20 characters")
         String phone

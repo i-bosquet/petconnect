@@ -126,7 +126,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Clinic 1 (ID=1) & Admin 1 (ID=2)
 INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (1, 'The London Vet Clinic', '123 Regent Street', 'London', 'United Kingdom', '+44 20 1234 5678', 'LON_PUB_KEY_123', NOW(), 'system')
+    (1, 'The London Vet Clinic', '123 Regent Street', 'London', 'UNITED_KINGDOM', '+44 20 1234 5678', 'LON_PUB_KEY_123', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (2, 'admin_london', 'admin.london@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -137,7 +137,7 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 2 (ID=3) & Admin 2 (ID=4)
 INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (3, 'Manchester Pet Hospital', '45 Market Street', 'Manchester', 'United Kingdom', '+44 161 987 6543', 'MAN_PUB_KEY_456', NOW(), 'system')
+    (3, 'Manchester Pet Hospital', '45 Market Street', 'Manchester', 'UNITED_KINGDOM', '+44 161 987 6543', 'MAN_PUB_KEY_456', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (4, 'admin_manchester', 'admin.manchester@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -148,7 +148,7 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 3 (ID=5) & Admin 3 (ID=6) - Barcelona
 INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (5, 'Clinica Veterinaria Barcelona Gracia', 'Carrer Gran de Gràcia 70', 'Barcelona', 'Spain', '+34 93 111 4455', 'BCN_PUB_KEY_789', NOW(), 'system')
+    (5, 'Clinica Veterinaria Barcelona Gracia', 'Carrer Gran de Gràcia 70', 'Barcelona', 'SPAIN', '+34 93 111 4455', 'BCN_PUB_KEY_789', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (6, 'admin_barcelona', 'admin.barcelona@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -159,7 +159,7 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 4 (ID=7) & Admin 4 (ID=8) - Paris
 INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (7, 'Clinique Vétérinaire Paris Étoile', '10 Avenue des Champs-Élysées', 'Paris', 'France', '+33 1 8888 9900', 'PAR_PUB_KEY_012', NOW(), 'system')
+    (7, 'Clinique Vétérinaire Paris Étoile', '10 Avenue des Champs-Élysées', 'Paris', 'FRANCE', '+33 1 8888 9900', 'PAR_PUB_KEY_012', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (8, 'admin_paris', 'admin.paris@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -170,7 +170,7 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 5 (ID=9) & Admin 5 (ID=10) - Berlin
 INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (9, 'Tierklinik Berlin Mitte', 'Friedrichstraße 100', 'Berlin', 'Germany', '+49 30 555 6677', 'BER_PUB_KEY_345', NOW(), 'system')
+    (9, 'Tierklinik Berlin Mitte', 'Friedrichstraße 100', 'Berlin', 'GERMANY', '+49 30 555 6677', 'BER_PUB_KEY_345', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (10, 'admin_berlin', 'admin_berlin@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')

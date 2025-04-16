@@ -2,6 +2,7 @@ package com.petconnect.backend.user.domain.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -53,12 +54,13 @@ public class Clinic extends BaseEntity{
 
     /**
      * The country where the clinic is located.
-     * Cannot be blank. Maximum length of 100 characters.
+     * Stored as a string in the database based on the Enum name.
+     * Cannot be null.
      */
-    @NotBlank(message = "Country cannot be blank")
-    @Size(max = 100, message = "Country name cannot exceed 100 characters")
-    @Column(name = "country", nullable = false, length = 100)
-    private String country;
+    @NotNull(message = "Country cannot be null")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "country", nullable = false)
+    private Country country;
 
     /**
      * The primary contact phone number for the clinic.

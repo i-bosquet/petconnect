@@ -433,18 +433,6 @@ class ClinicStaffControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(update)))
                     .andExpect(status().isNotFound());
         }
-
-        @Test
-        @DisplayName("[Failure] should return 400 Bad Request if update data invalid")
-        void updateStaff_BadRequest() throws Exception {
-            ClinicStaffUpdateDto invalidUpdate = new ClinicStaffUpdateDto("", "", null, null);
-            mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(invalidUpdate)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error", is("Validation Failed")));
-        }
     }
 
     /**

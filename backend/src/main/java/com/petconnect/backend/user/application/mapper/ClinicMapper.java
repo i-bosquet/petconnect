@@ -6,6 +6,8 @@ import com.petconnect.backend.user.domain.model.Clinic;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.Objects;
+
 /**
  * Utility class for manually mapping between Clinic entity and its DTOs.
  * Registered as a Spring component to be injectable in services.
@@ -58,7 +60,7 @@ public class ClinicMapper {
         if (StringUtils.hasText(dto.city()) && !dto.city().equals(clinic.getCity())) {
             clinic.setCity(dto.city());
         }
-        if (StringUtils.hasText(dto.country()) && !dto.country().equals(clinic.getCountry())) {
+        if (dto.country() != null && !Objects.equals(dto.country(), clinic.getCountry())) {
             clinic.setCountry(dto.country());
         }
         if (StringUtils.hasText(dto.phone()) && !dto.phone().equals(clinic.getPhone())) {
