@@ -5,7 +5,7 @@ import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.application.service.ClinicService;
 import com.petconnect.backend.user.application.service.ClinicStaffService;
-import com.petconnect.backend.user.application.service.helper.UserServiceHelper;
+import com.petconnect.backend.common.helper.UserHelper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,7 +29,7 @@ public class ClinicController implements ClinicControllerApi {
 
     private final ClinicService clinicService;
     private final ClinicStaffService clinicStaffService;
-    private final UserServiceHelper userServiceHelper;
+    private final UserHelper userServiceHelper;
 
     /**
      * {@inheritDoc}

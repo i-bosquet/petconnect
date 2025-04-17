@@ -1,9 +1,9 @@
 package com.petconnect.backend.pet.port.in.web;
 
+import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.pet.application.dto.*;
 import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.pet.application.service.PetService;
-import com.petconnect.backend.user.application.service.helper.UserServiceHelper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ import java.util.List;
 public class PetController implements PetControllerApi{
 
     private final PetService petService;
-    private final UserServiceHelper userServiceHelper; // Needed to get current user ID
+    private final UserHelper userServiceHelper; // Needed to get current user ID
 
     /**
      * {@inheritDoc}

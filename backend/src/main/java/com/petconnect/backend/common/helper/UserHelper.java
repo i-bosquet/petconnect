@@ -1,4 +1,4 @@
-package com.petconnect.backend.user.application.service.helper;
+package com.petconnect.backend.common.helper;
 
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.user.domain.model.UserEntity;
@@ -18,7 +18,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
  */
 @Component
 @RequiredArgsConstructor
-public class UserServiceHelper {
+public class UserHelper {
 
     private final UserRepository userRepository;
 

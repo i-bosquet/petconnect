@@ -1,11 +1,12 @@
 package com.petconnect.backend.user.application.service.impl;
 
 
-import com.petconnect.backend.exception.UsernameAlreadyExistsException;
+import com.petconnect.backend.common.helper.AuthorizationHelper;
+import com.petconnect.backend.common.helper.EntityFinderHelper;
+import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.user.application.dto.*;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.application.service.UserService;
-import com.petconnect.backend.user.application.service.helper.UserServiceHelper;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +15,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
 import java.util.Objects;
 import java.util.Optional;
 
@@ -35,7 +34,9 @@ public class UserServiceImpl implements UserService {
     private final OwnerRepository ownerRepository;
     private final ClinicStaffRepository clinicStaffRepository;
     private final UserMapper userMapper;
-    private final UserServiceHelper userServiceHelper;
+    private final UserHelper userServiceHelper;
+    private final EntityFinderHelper entityFinderHelper;
+    private final AuthorizationHelper authorizationHelper;
 
 
     /**
@@ -59,12 +60,6 @@ public class UserServiceImpl implements UserService {
 
     /**
      * {@inheritDoc}
-     * Finds a user by ID and maps to the generic UserProfileDto.
-     * Authorization Rules:
-     * Allows any user to retrieve their own profile.
-     * Allows an ADMIN user to retrieve the profile of another ClinicStaff (Vet or Admin)
-     *    belonging to the SAME clinic.
-     * Access is denied in all other cases (e.g., Owner viewing other Owner, Staff viewing Owner, Staff viewing Staff from other clinic).
      */
     @Override
     @Transactional(readOnly = true)
@@ -73,18 +68,16 @@ public class UserServiceImpl implements UserService {
         UserEntity requester = userServiceHelper.getAuthenticatedUserEntity();
 
         // Find target user
-        Optional<UserEntity> targetUserOpt = userRepository.findById(id);
-        if (targetUserOpt.isEmpty()) {
+        UserEntity targetUserOpt = entityFinderHelper.findUserOrFail(id);
+        if (targetUserOpt==null) {
             log.debug("User with ID {} not found.", id);
             return Optional.empty(); // Return empty if target doesn't exist
         }
-        UserEntity targetUser = targetUserOpt.get();
 
         // Authorization Checks
-        // Allow self-lookup
-        if (Objects.equals(requester.getId(), targetUser.getId())) {
+        if (Objects.equals(requester.getId(), targetUserOpt.getId())) {
             log.debug("User {} accessing own profile via ID {}", requester.getUsername(), id);
-            return Optional.of(userMapper.mapToBaseProfileDTO(targetUser));
+            return Optional.of(userMapper.mapToBaseProfileDTO(targetUserOpt));
         }
 
         // Allow Admin to view staff from the same clinic
@@ -92,12 +85,12 @@ public class UserServiceImpl implements UserService {
             // Check if requester is ADMIN
             boolean isAdmin = requesterStaff.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN);
             // Check if target is ClinicStaff and from the same clinic
-            if (isAdmin && targetUser instanceof ClinicStaff targetStaff) {
+            if (isAdmin && targetUserOpt instanceof ClinicStaff targetStaff) {
                 Clinic requesterClinic = requesterStaff.getClinic();
                 Clinic targetClinic = targetStaff.getClinic();
                 if (requesterClinic != null && targetClinic != null && requesterClinic.getId().equals(targetClinic.getId())) {
-                    log.debug("Admin {} accessing profile of staff {} from same clinic {}", requester.getUsername(), targetUser.getUsername(), requesterClinic.getId());
-                    return Optional.of(userMapper.mapToBaseProfileDTO(targetUser));
+                    log.debug("Admin {} accessing profile of staff {} from same clinic {}", requester.getUsername(), targetUserOpt.getUsername(), requesterClinic.getId());
+                    return Optional.of(userMapper.mapToBaseProfileDTO(targetUserOpt));
                 }
             }
         }
@@ -109,12 +102,6 @@ public class UserServiceImpl implements UserService {
 
     /**
      * {@inheritDoc}
-     * Finds user by email and maps to the generic UserProfileDto.
-     * Authorization Rules: Similar to findUserById, but using email.
-     * Allows any user to retrieve their own profile via email.
-     * Allows an ADMIN user to retrieve the profile of another ClinicStaff
-     *    belonging to the SAME clinic via email.
-     * Access is denied in all other cases.
      */
     @Override
     @Transactional(readOnly = true)
@@ -154,11 +141,6 @@ public class UserServiceImpl implements UserService {
 
     /**
      * {@inheritDoc}
-     * Finds user by username and maps to the generic UserProfileDto.
-     * Authorization Rules: Similar to findUserById/findByEmail.
-     * Allows self-lookup.
-     * Allows Admin to lookup staff in the same clinic.
-     * Denied otherwise.
      */
     @Override
     @Transactional(readOnly = true)
@@ -190,43 +172,35 @@ public class UserServiceImpl implements UserService {
         throw new AccessDeniedException("User " + requester.getId() + " is not authorized to access profile for username " + username);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     @PreAuthorize("hasRole('OWNER')")
     public OwnerProfileDto updateCurrentOwnerProfile(OwnerProfileUpdateDto updateDTO) {
         UserEntity currentUser = userServiceHelper.getAuthenticatedUserEntity();
         Owner owner = (Owner) currentUser;
-        validateUsernameUpdate(updateDTO.username(), owner);
+        authorizationHelper.validateUsernameUpdate(updateDTO.username(), owner);
         userMapper.updateOwnerFromDto(updateDTO, owner);
         Owner updatedOwner = ownerRepository.save(owner);
         return userMapper.toOwnerProfileDto(updatedOwner);
     }
 
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'VET')")
     public ClinicStaffProfileDto updateCurrentClinicStaffProfile(UserProfileUpdateDto updateDTO) {
         UserEntity currentUser = userServiceHelper.getAuthenticatedUserEntity();
         ClinicStaff staff = (ClinicStaff) currentUser;
-        validateUsernameUpdate(updateDTO.username(), staff);
+        authorizationHelper.validateUsernameUpdate(updateDTO.username(), staff);
         userMapper.updateClinicStaffCommonFromDto(updateDTO, staff);
         ClinicStaff updatedStaff = clinicStaffRepository.save(staff);
         return userMapper.toClinicStaffProfileDto(updatedStaff);
     }
 
-    // --- PRIVATE HELPER METHODS ---
-    /**
-     * Validates if a potential new username can be used for updating an existing user.
-     * Checks if the new username is provided, different from the current one,
-     * and if it already exists in the database for another user.
-     *
-     * @param newUsername The potential new username from the update DTO (can be null or blank).
-     * @param existingUser The UserEntity being updated.
-     * @throws UsernameAlreadyExistsException if the new username is provided, different, and already taken.
-     */
-    private void validateUsernameUpdate(String newUsername, UserEntity existingUser) {
-        if (StringUtils.hasText(newUsername) && !existingUser.getUsername().equals(newUsername) && userRepository.existsByUsername(newUsername))
-            throw new UsernameAlreadyExistsException(newUsername);
-    }
 }

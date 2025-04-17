@@ -1,6 +1,7 @@
 package com.petconnect.backend.pet.application.service.impl;
 
-import com.petconnect.backend.exception.EntityNotFoundException;
+import com.petconnect.backend.common.helper.EntityFinderHelper;
+import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.exception.MicrochipAlreadyExistsException;
 import com.petconnect.backend.pet.application.dto.*;
 import com.petconnect.backend.pet.application.mapper.BreedMapper;
@@ -13,9 +14,6 @@ import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.pet.domain.repository.BreedRepository;
 import com.petconnect.backend.pet.domain.repository.PetRepository;
 import com.petconnect.backend.user.domain.model.*;
-import com.petconnect.backend.user.domain.repository.ClinicRepository;
-import com.petconnect.backend.user.domain.repository.UserRepository;
-import com.petconnect.backend.user.domain.repository.VetRepository;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,13 +45,12 @@ public class PetServiceImpl implements PetService {
     // --- Repositories ---
     private final PetRepository petRepository;
     private final BreedRepository breedRepository;
-    private final UserRepository userRepository;
-    private final ClinicRepository clinicRepository;
-    private final VetRepository vetRepository;
 
     // --- Mappers & Helpers ---
     private final PetMapper petMapper;
     private final BreedMapper breedMapper;
+    private final EntityFinderHelper entityFinderHelper;
+    private final AuthorizationHelper authorizationHelper;
 
     // --- Configuration ---
     // Default path base for pet avatars if not provided. Configurable via application properties.
@@ -66,7 +63,7 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId) {
-        Owner owner = findOwnerOrFail(ownerId); // Find and validate owner
+        Owner owner = entityFinderHelper.findOwnerOrFail(ownerId); // Find and validate owner
         Breed assignedBreed = resolveBreed(registrationDto.breedId(), registrationDto.specie()); // Ensures non-null breed
         String imagePath = determineInitialImagePath(registrationDto.image(), assignedBreed); // Determine image
 
@@ -101,8 +98,7 @@ public class PetServiceImpl implements PetService {
             throw new IllegalStateException("Pet ID " + petId + " is already pending activation at clinic " + pet.getPendingActivationClinic().getId());
         }
 
-        Clinic targetClinic = clinicRepository.findById(clinicId)
-                .orElseThrow(() -> new EntityNotFoundException("Target clinic not found with id: " + clinicId));
+        Clinic targetClinic = entityFinderHelper.findClinicOrFail(clinicId);
 
         pet.setPendingActivationClinic(targetClinic);
         petRepository.save(pet);
@@ -115,9 +111,9 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long staffId) {
-        ClinicStaff activatingStaff = findClinicStaffOrFail(staffId, "activate pet");
+        ClinicStaff activatingStaff = entityFinderHelper.findClinicStaffOrFail(staffId, "activate pet");
         Clinic staffClinic = activatingStaff.getClinic();
-        Pet petToActivate = findPetByIdOrFail(petId);
+        Pet petToActivate = entityFinderHelper.findPetByIdOrFail(petId);
         ensurePetIsInStatus(petToActivate, PetStatus.PENDING, "activate");
         if (petToActivate.getPendingActivationClinic() == null || !petToActivate.getPendingActivationClinic().getId().equals(staffClinic.getId())) {
             throw new AccessDeniedException("Staff " + staffId + " from clinic " + staffClinic.getId() +
@@ -195,8 +191,8 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetProfileDto updatePetByClinicStaff(Long petId, PetClinicUpdateDto updateDto, Long staffId) {
-        Pet petToUpdate = findPetByIdOrFail(petId);
-        verifyUserAuthorizationForPet(staffId, petToUpdate, "update clinical info for");
+        Pet petToUpdate = entityFinderHelper.findPetByIdOrFail(petId);
+        authorizationHelper.verifyUserAuthorizationForPet(staffId, petToUpdate, "update clinical info for");
 
         boolean changed = applyPetUpdates(petToUpdate, null, updateDto);
 
@@ -228,7 +224,7 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional(readOnly = true)
     public Page<PetProfileDto> findPetsByClinic(Long requesterUserId, Pageable pageable) {
-        ClinicStaff staff = findClinicStaffOrFail(requesterUserId, "find pets for clinic");
+        ClinicStaff staff = entityFinderHelper.findClinicStaffOrFail(requesterUserId, "find pets for clinic");
         Long clinicId = staff.getClinic().getId();
         Page<Pet> petPage = petRepository.findPetsAssociatedWithClinic(clinicId, pageable);
         return petPage.map(petMapper::toProfileDto);
@@ -240,7 +236,7 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional(readOnly = true)
     public List<PetProfileDto> findPendingActivationPetsByClinic(Long requesterUserId) {
-        ClinicStaff staff = findClinicStaffOrFail(requesterUserId, "find pending pets for clinic");
+        ClinicStaff staff = entityFinderHelper.findClinicStaffOrFail(requesterUserId, "find pending pets for clinic");
         Long clinicId = staff.getClinic().getId();
         List<Pet> pendingPets = petRepository.findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING);
         return petMapper.toProfileDtoList(pendingPets);
@@ -252,8 +248,8 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional(readOnly = true)
     public PetProfileDto findPetById(Long petId, Long requesterUserId) {
-        Pet pet = findPetByIdOrFail(petId);
-        verifyUserAuthorizationForPet(requesterUserId, pet, "view"); // Verify owner or associated staff
+        Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
+        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "view"); // Verify owner or associated staff
         return petMapper.toProfileDto(pet);
     }
 
@@ -278,7 +274,7 @@ public class PetServiceImpl implements PetService {
     @Transactional
     public void associateVetWithPet(Long petId, Long vetId, Long ownerId) {
         Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
-        Vet vet = findVetOrFail(vetId);
+        Vet vet = entityFinderHelper.findVetOrFail(vetId);
 
         log.debug("Checking existing associations for Pet ID {}. Current associatedVets size: {}", petId, pet.getAssociatedVets().size());
 
@@ -303,7 +299,7 @@ public class PetServiceImpl implements PetService {
     @Transactional
     public void disassociateVetFromPet(Long petId, Long vetId, Long ownerId) {
         Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
-        Vet vet = findVetOrFail(vetId);
+        Vet vet = entityFinderHelper.findVetOrFail(vetId);
 
         if (!pet.getAssociatedVets().contains(vet)) {
             log.warn("Vet {} is not associated with Pet {}. Cannot disassociate.", vetId, petId);
@@ -324,59 +320,10 @@ public class PetServiceImpl implements PetService {
     // --- PRIVATE HELPER METHODS ---
 
     /**
-     * Finds an Owner by ID or throws.
-     */
-    private Owner findOwnerOrFail(Long ownerId) {
-        return userRepository.findById(ownerId)
-                .filter(Owner.class::isInstance)
-                .map(Owner.class::cast)
-                .orElseThrow(() -> new EntityNotFoundException(Owner.class.getSimpleName(), ownerId));
-    }
-
-    /**
-     * Finds a ClinicStaff by ID, checks they belong to a clinic, or throws.
-     */
-    private ClinicStaff findClinicStaffOrFail(Long staffId, String actionContext) {
-        UserEntity user = findUserOrFail(staffId);
-        if (!(user instanceof ClinicStaff staff)) {
-            throw new AccessDeniedException("User " + staffId + " is not Clinic Staff and cannot " + actionContext);
-        }
-        if (staff.getClinic() == null) {
-            log.error("Data inconsistency: Staff {} has no associated clinic.", staffId);
-            throw new IllegalStateException("Staff user " + staffId + " is not associated with any clinic.");
-        }
-        return staff;
-    }
-
-    /**
-     * Finds a Vet by ID or throws.
-     */
-    private Vet findVetOrFail(Long vetId) {
-        return vetRepository.findById(vetId)
-                .orElseThrow(() -> new EntityNotFoundException(Vet.class.getSimpleName(), vetId));
-    }
-
-    /**
-     * Finds a Pet by ID or throws.
-     */
-    private Pet findPetByIdOrFail(Long petId) {
-        return petRepository.findById(petId)
-                .orElseThrow(() -> new EntityNotFoundException(Pet.class.getSimpleName(), petId));
-    }
-
-    /**
-     * Finds a User by ID or throws.
-     */
-    private UserEntity findUserOrFail(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException(UserEntity.class.getSimpleName(), userId));
-    }
-
-    /**
      * Finds a Pet by ID and verifies ownership or throws.
      */
     private Pet findPetByIdAndOwnerOrFail(Long petId, Long ownerId) {
-        Pet pet = findPetByIdOrFail(petId);
+        Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
         if (pet.getOwner() == null || !Objects.equals(pet.getOwner().getId(), ownerId)) {
             throw new AccessDeniedException("User " + ownerId + " is not the owner of pet " + petId);
         }
@@ -384,19 +331,11 @@ public class PetServiceImpl implements PetService {
     }
 
     /**
-     * Finds a Breed by ID or throws.
-     */
-    private Breed findBreedOrFail(Long breedId) {
-        return breedRepository.findById(breedId)
-                .orElseThrow(() -> new EntityNotFoundException(Breed.class.getSimpleName(), breedId));
-    }
-
-    /**
      * Resolves Breed, falling back to Mixed/Other for the given species.
      */
     private Breed resolveBreed(Long breedId, @NotNull Specie specie) {
         if (breedId != null) {
-            Breed specificBreed = findBreedOrFail(breedId);
+            Breed specificBreed = entityFinderHelper.findBreedOrFail(breedId);
             if (specificBreed.getSpecie() != specie) {
                 log.error("Breed ID {} ({}) does not match the expected species {}", breedId, specificBreed.getSpecie(), specie);
                 throw new IllegalArgumentException("Provided Breed ID " + breedId + " does not belong to species " + specie);
@@ -437,61 +376,6 @@ public class PetServiceImpl implements PetService {
         return defaultImage;
     }
 
-    /**
-     * Verifies user (Owner or associated Staff) is authorized for a Pet action.
-     */
-    private void verifyUserAuthorizationForPet(Long requesterUserId, Pet pet, String actionDescription) {
-        UserEntity requesterUser = findUserOrFail(requesterUserId);
-
-        // Is the requester the owner?
-        if (requesterUser instanceof Owner owner && Objects.equals(owner.getId(), pet.getOwner().getId())) {
-            return; // Owner is authorized
-        }
-
-        // Is the requester Clinic Staff associated with the pet's clinic context?
-        if (requesterUser instanceof ClinicStaff staff) {
-            Clinic staffClinic = staff.getClinic();
-            if (staffClinic == null) {
-                // This check might be redundant if findClinicStaffOrFail was used, but good for safety
-                throw new AccessDeniedException("Staff user " + requesterUserId + " has no clinic, cannot " + actionDescription + " pet " + pet.getId());
-            }
-
-            // Pet pending at this clinic?
-            if (pet.getStatus() == PetStatus.PENDING && staffClinic.equals(pet.getPendingActivationClinic())) {
-                return; // Staff from pending clinic is authorized for PENDING pet
-            }
-
-            // Pet ACTIVE and associated with ANY vet from the staff's clinic?
-            if (pet.getStatus() == PetStatus.ACTIVE && isPetAssociatedWithClinic(pet, staffClinic.getId())) {
-                return; // Staff from an associated clinic is authorized for ACTIVE pet
-            }
-        }
-
-        // If none of the above:
-        throw new AccessDeniedException(String.format("User (ID: %d) is not authorized to %s pet (ID: %d).",
-                requesterUserId, actionDescription, pet.getId()));
-    }
-
-    /**
-     * Checks if a pet is associated with any vet from a specific clinic.
-     */
-    private boolean isPetAssociatedWithClinic(Pet pet, Long clinicId) {
-        if (clinicId == null) return false;
-        // Accessing associatedVets might trigger lazy loading. Ensure transaction context.
-        try {
-            return pet.getAssociatedVets().stream()
-                    .anyMatch(vet -> vet.getClinic() != null && clinicId.equals(vet.getClinic().getId()));
-        } catch (org.hibernate.LazyInitializationException e) {
-            log.error("LazyInitializationException accessing associatedVets for pet {}. Fetching explicitly.", pet.getId(), e);
-            // Attempt to reload the pet with the association fetched (less ideal)
-            Pet reloadedPet = petRepository.findById(pet.getId()).orElse(null);
-            if (reloadedPet != null) {
-                return reloadedPet.getAssociatedVets().stream()
-                        .anyMatch(vet -> vet.getClinic() != null && clinicId.equals(vet.getClinic().getId()));
-            }
-            return false;
-        }
-    }
 
     /**
      * Validates microchip uniqueness, excluding the pet being updated.

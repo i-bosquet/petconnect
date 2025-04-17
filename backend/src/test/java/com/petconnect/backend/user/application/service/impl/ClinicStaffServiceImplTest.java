@@ -1,5 +1,9 @@
 package com.petconnect.backend.user.application.service.impl;
 
+import com.petconnect.backend.common.helper.AuthorizationHelper;
+import com.petconnect.backend.common.helper.ClinicStaffHelper;
+import com.petconnect.backend.common.helper.EntityFinderHelper;
+import com.petconnect.backend.common.helper.ValidateHelper;
 import com.petconnect.backend.exception.*; // Import all your custom exceptions
 import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
@@ -13,17 +17,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static com.petconnect.backend.user.application.service.impl.ClinicStaffServiceImpl.DEFAULT_ADMIN_AVATAR;
@@ -31,7 +32,6 @@ import static com.petconnect.backend.user.application.service.impl.ClinicStaffSe
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -44,16 +44,15 @@ import static org.mockito.Mockito.*;
  *
  * @author ibosquet
  */
-@ExtendWith(MockitoExtension.class) // Initialize Mockito environment
+@ExtendWith(MockitoExtension.class)
 class ClinicStaffServiceImplTest {
     // --- Mocks ---
-    @Mock private UserRepository userRepository;
-    @Mock private RoleRepository roleRepository;
-    @Mock private ClinicRepository clinicRepository;
     @Mock private ClinicStaffRepository clinicStaffRepository;
-    @Mock private VetRepository vetRepository;
     @Mock private UserMapper userMapper;
-    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private EntityFinderHelper entityFinderHelper;
+    @Mock private ValidateHelper validateHelper;
+    @Mock private ClinicStaffHelper clinicStaffHelper;
+    @Mock private AuthorizationHelper authorizationHelper;
 
     // --- Class Under Test ---
     @InjectMocks
@@ -64,10 +63,10 @@ class ClinicStaffServiceImplTest {
 
     // --- Test Data ---
     private Clinic clinic1;
-    private ClinicStaff adminUser; // The admin performing actions
+    private ClinicStaff adminUser;
     private RoleEntity adminRole, vetRole;
-    private ClinicStaff existingStaffMember; // Staff being acted upon
-    private Vet existingVetMember; // Vet being acted upon
+    private ClinicStaff existingStaffMember;
+    private Vet existingVetMember;
 
 
     @BeforeEach
@@ -89,7 +88,7 @@ class ClinicStaffServiceImplTest {
         adminUser.setRoles(Set.of(adminRole));
         adminUser.setActive(true);
 
-        existingStaffMember = new ClinicStaff(); // This is an Admin staff member
+        existingStaffMember = new ClinicStaff();
         existingStaffMember.setId(11L);
         existingStaffMember.setUsername("existing_admin");
         existingStaffMember.setName("Existing");
@@ -100,7 +99,7 @@ class ClinicStaffServiceImplTest {
         existingStaffMember.setActive(true);
         existingStaffMember.setAvatar("images/avatars/users/admin.png");
 
-        existingVetMember = new Vet(); // This is a Vet staff member
+        existingVetMember = new Vet();
         existingVetMember.setId(12L);
         existingVetMember.setUsername("existing_vet");
         existingVetMember.setName("Existing");
@@ -114,7 +113,9 @@ class ClinicStaffServiceImplTest {
         existingVetMember.setAvatar("images/avatars/users/vet.png");
     }
 
-    // --- Tests for createClinicStaff ---
+    /**
+     * --- Tests for createClinicStaff ---
+     */
     @Nested
     @DisplayName("createClinicStaff Tests")
     class CreateClinicStaffTests {
@@ -123,9 +124,9 @@ class ClinicStaffServiceImplTest {
         private ClinicStaffCreationDto adminCreationDto;
         private Vet savedVet;
         private ClinicStaff savedAdmin;
-
         private ClinicStaffProfileDto vetProfileDto;
         private ClinicStaffProfileDto adminProfileDto;
+        private final String actionContext = "create clinic staff";
 
 
         @BeforeEach
@@ -169,14 +170,14 @@ class ClinicStaffServiceImplTest {
             savedAdmin.setAvatar(DEFAULT_ADMIN_AVATAR);
 
             vetProfileDto = new ClinicStaffProfileDto(
-                    savedVet.getId(), savedVet.getUsername(), savedVet.getEmail(),
+                    100L, savedVet.getUsername(), savedVet.getEmail(),
                     Set.of(RoleEnum.VET.name()), savedVet.getAvatar(),
                     savedVet.getName(), savedVet.getSurname(), savedVet.isActive(),
                     savedVet.getClinic().getId(), savedVet.getClinic().getName(),
                     savedVet.getLicenseNumber(), savedVet.getVetPublicKey()
             );
             adminProfileDto = new ClinicStaffProfileDto(
-                    savedAdmin.getId(), savedAdmin.getUsername(), savedAdmin.getEmail(),
+                    101L, savedAdmin.getUsername(), savedAdmin.getEmail(),
                     Set.of(RoleEnum.ADMIN.name()), savedAdmin.getAvatar(),
                     savedAdmin.getName(), savedAdmin.getSurname(), savedAdmin.isActive(),
                     savedAdmin.getClinic().getId(), savedAdmin.getClinic().getName(),
@@ -188,63 +189,79 @@ class ClinicStaffServiceImplTest {
         @DisplayName("should create VET successfully when data is valid and admin authorized")
         void createClinicStaff_Success_Vet() {
             // Arrange
-            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-            when(userRepository.existsByEmail(vetCreationDto.email())).thenReturn(false);
-            when(userRepository.existsByUsername(vetCreationDto.username())).thenReturn(false);
-            when(vetRepository.existsByLicenseNumber(vetCreationDto.licenseNumber())).thenReturn(false);
-            when(vetRepository.existsByVetPublicKey(vetCreationDto.vetPublicKey())).thenReturn(false);
-            when(passwordEncoder.encode(vetCreationDto.password())).thenReturn("hashedPassword");
-            when(roleRepository.findByRoleEnum(RoleEnum.VET)).thenReturn(Optional.of(vetRole));
-            when(clinicStaffRepository.save(any(Vet.class))).thenReturn(savedVet);
-            when(userMapper.toClinicStaffProfileDto(any(Vet.class))).thenReturn(vetProfileDto);
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1)).willReturn(savedVet);
+            given(clinicStaffRepository.save(savedVet)).willAnswer(invocation -> {
+                Vet vetToSave = invocation.getArgument(0);
+                vetToSave.setId(100L);
+                return vetToSave;
+            });
+            given(userMapper.toClinicStaffProfileDto(any(Vet.class))).willReturn(vetProfileDto);
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
 
             // Assert
-            assertEquals("newvet", result.username());
-            assertEquals("New", result.name());
-            assertEquals("VET999", result.licenseNumber());
+            assertThat(result).isNotNull().isEqualTo(vetProfileDto);
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+            then(validateHelper).should().validateStaffRole(RoleEnum.VET);
+            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+            then(clinicStaffHelper).should().buildNewStaffEntity(vetCreationDto, clinic1);
+            then(clinicStaffRepository).should().save(savedVet);
+            then(userMapper).should().toClinicStaffProfileDto(any(Vet.class));
         }
 
         @Test
         @DisplayName("should create ADMIN successfully when data is valid and admin authorized")
         void createClinicStaff_Success_Admin() {
             // Arrange
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(adminCreationDto.email())).willReturn(false);
-            given(userRepository.existsByUsername(adminCreationDto.username())).willReturn(false);
-            // No Vet checks needed for Admin role
-            given(roleRepository.findByRoleEnum(RoleEnum.ADMIN)).willReturn(Optional.of(adminRole));
-            given(passwordEncoder.encode(adminCreationDto.password())).willReturn("hashedPassword");
-            given(clinicStaffRepository.save(any(ClinicStaff.class))).willReturn(savedAdmin); // Save returns the saved admin
-            given(userMapper.toClinicStaffProfileDto(savedAdmin)).willReturn(adminProfileDto);
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(RoleEnum.ADMIN);
+            doNothing().when(validateHelper).validateNewStaffUniqueness(adminCreationDto.email(), adminCreationDto.username());
+            given(clinicStaffHelper.buildNewStaffEntity(adminCreationDto, clinic1)).willReturn(savedAdmin);
+            given(clinicStaffRepository.save(savedAdmin)).willAnswer(invocation -> {
+                ClinicStaff adminToSave = invocation.getArgument(0);
+                adminToSave.setId(101L);
+                return adminToSave;
+            });
+            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(adminProfileDto);
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(adminCreationDto, adminUser.getId());
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(adminProfileDto);
-            then(clinicStaffRepository).should().save(clinicStaffCaptor.capture()); // Capture ClinicStaff entity
-            ClinicStaff captured = clinicStaffCaptor.getValue();
-            assertThat(captured.getUsername()).isEqualTo(adminCreationDto.username());
-            assertThat(captured.getClinic().getId()).isEqualTo(clinic1.getId());
-            assertThat(captured.getRoles()).contains(adminRole);
-            assertThat(captured.getPassword()).isEqualTo("hashedPassword");
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+            then(validateHelper).should().validateStaffRole(RoleEnum.ADMIN);
+            then(validateHelper).should().validateNewStaffUniqueness(adminCreationDto.email(), adminCreationDto.username());
+            then(clinicStaffHelper).should().buildNewStaffEntity(adminCreationDto, clinic1);
+            then(clinicStaffRepository).should().save(savedAdmin);
+            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
         }
 
         @Test
         @DisplayName("should throw IllegalArgumentException for invalid role")
         void createClinicStaff_Error_InvalidRole() {
             ClinicStaffCreationDto dto = new ClinicStaffCreationDto("u", "e@e.c", "p", "N", "S", RoleEnum.OWNER, null, null);
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Admin lookup still happens
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doThrow(new IllegalArgumentException("Invalid role specified"))
+                    .when(validateHelper).validateStaffRole(RoleEnum.OWNER);
 
-            //Act
+            // Act
             Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(dto, adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Invalid role specified");
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+            then(validateHelper).should().validateStaffRole(RoleEnum.OWNER);
+            then(validateHelper).should(never()).validateNewStaffUniqueness(anyString(), anyString());
+            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
             then(clinicStaffRepository).should(never()).save(any());
 
         }
@@ -252,65 +269,77 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("should throw EmailAlreadyExistsException")
         void createClinicStaff_Error_EmailExists() {
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(vetCreationDto.email())).willReturn(true); // Email exists
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(vetCreationDto.role());
+            doThrow(new EmailAlreadyExistsException(vetCreationDto.email()))
+                    .when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
             // Act
             Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(EmailAlreadyExistsException.class);
 
+            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+            then(validateHelper).should().validateStaffRole(vetCreationDto.role());
+            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw UsernameAlreadyExistsException")
         void createClinicStaff_Error_UsernameExists() {
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(vetCreationDto.email())).willReturn(false); // Email ok
-            given(userRepository.existsByUsername(vetCreationDto.username())).willReturn(true); // Username exists
+            // Arrange
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(vetCreationDto.role());
+            doThrow(new UsernameAlreadyExistsException(vetCreationDto.username()))
+                    .when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
 
-            //Act
+            // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(UsernameAlreadyExistsException.class);
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+            then(validateHelper).should().validateStaffRole(vetCreationDto.role());
+            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw EntityNotFoundException if creating admin not found")
         void createClinicStaff_Error_AdminNotFound() {
-            given(userRepository.findById(999L)).willReturn(Optional.empty()); // Admin not found
+            // Arrange
+            given(entityFinderHelper.findAdminStaffOrFail(999L, actionContext))
+                    .willThrow(new EntityNotFoundException("User performing action..."));
 
             assertThatThrownBy(() -> clinicStaffService.createClinicStaff(vetCreationDto, 999L))
-                    .isInstanceOf(EntityNotFoundException.class)
-                    .hasMessageContaining("performing action [create clinic staff] not found");
+                    .isInstanceOf(EntityNotFoundException.class);
+            then(validateHelper).should(never()).validateStaffRole(any());
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if creator is not Admin")
         void createClinicStaff_Error_CreatorNotAdmin() {
-            // Simulate creator being a Vet
-            ClinicStaff creatorVet = new ClinicStaff();
-            creatorVet.setId(15L);
-            creatorVet.setClinic(clinic1);
-            creatorVet.setRoles(Set.of(vetRole)); // Is a VET
-            given(userRepository.findById(15L)).willReturn(Optional.of(creatorVet));
+            // Arrange
+            given(entityFinderHelper.findAdminStaffOrFail(15L, actionContext))
+                    .willThrow(new AccessDeniedException("User 15 is not an authorized Admin..."));
 
+            // Act & Assert
             assertThatThrownBy(() -> clinicStaffService.createClinicStaff(vetCreationDto, 15L))
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not an authorized Admin");
+                    .isInstanceOf(AccessDeniedException.class);
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw IllegalStateException if creator has no clinic")
         void createClinicStaff_Error_CreatorNoClinic() {
-            // Simulate creator admin having clinic set to null
-            adminUser.setClinic(null);
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
+            // Arrange
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext))
+                    .willThrow(new IllegalStateException("Admin user " + adminUser.getId() + " is not associated with any clinic."));
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
@@ -319,16 +348,22 @@ class ClinicStaffServiceImplTest {
             assertThat(thrown)
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("is not associated with any clinic");
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+            then(validateHelper).should(never()).validateStaffRole(any());
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw IllegalArgumentException if Vet license is missing")
         void createClinicStaff_Error_VetLicenseMissing() {
+            // Arrange
             ClinicStaffCreationDto missingLicenseDto = new ClinicStaffCreationDto("v","e@v.c","p","N","S",RoleEnum.VET,null, "KEY");
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(missingLicenseDto.email())).willReturn(false);
-            given(userRepository.existsByUsername(missingLicenseDto.username())).willReturn(false);
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+            doNothing().when(validateHelper).validateNewStaffUniqueness(missingLicenseDto.email(), missingLicenseDto.username());
+            given(clinicStaffHelper.buildNewStaffEntity(missingLicenseDto, clinic1))
+                    .willThrow(new IllegalArgumentException("License number is required"));
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(missingLicenseDto, adminUser.getId()));
@@ -342,10 +377,13 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("should throw IllegalArgumentException if Vet public key is missing")
         void createClinicStaff_Error_VetKeyMissing() {
+            // Arrange
             ClinicStaffCreationDto missingKeyDto = new ClinicStaffCreationDto("v","e@v.c","p","N","S",RoleEnum.VET,"LICENSE123", null);
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.existsByEmail(missingKeyDto.email())).willReturn(false);
-            given(userRepository.existsByUsername(missingKeyDto.username())).willReturn(false);
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+            doNothing().when(validateHelper).validateNewStaffUniqueness(missingKeyDto.email(), missingKeyDto.username());
+            given(clinicStaffHelper.buildNewStaffEntity(missingKeyDto, clinic1))
+                    .willThrow(new IllegalArgumentException("public key is required"));
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(missingKeyDto, adminUser.getId()));
@@ -353,6 +391,7 @@ class ClinicStaffServiceImplTest {
             assertThat(thrown)
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("public key is required");
+            then(clinicStaffHelper).should().buildNewStaffEntity(missingKeyDto, clinic1);
             then(clinicStaffRepository).should(never()).save(any());
         }
 
@@ -360,39 +399,46 @@ class ClinicStaffServiceImplTest {
         @DisplayName("should throw LicenseNumberAlreadyExistsException")
         void createClinicStaff_Error_VetLicenseExists() {
             // Arrange
-            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-            when(userRepository.existsByEmail("new.vet@test.com")).thenReturn(false);
-            when(userRepository.existsByUsername("newvet")).thenReturn(false);
-            doThrow(new LicenseNumberAlreadyExistsException("VET999"))
-                    .when(vetRepository).existsByLicenseNumber("VET999");
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1))
+                    .willThrow(new LicenseNumberAlreadyExistsException(vetCreationDto.licenseNumber()));
 
             // Act
-            Executable executable = () -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
+            Throwable thrown = Assertions.catchThrowable(()->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+            // Assert
+            assertThat(thrown)
+                    .isInstanceOf(LicenseNumberAlreadyExistsException.class);
 
             // Assert
-            assertThrows(LicenseNumberAlreadyExistsException.class, executable);
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw VetPublicKeyAlreadyExistsException")
         void createClinicStaff_Error_VetPublicKeyExists() {
             // Arrange
-            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-            when(userRepository.existsByEmail("new.vet@test.com")).thenReturn(false);
-            when(userRepository.existsByUsername("newvet")).thenReturn(false);
-            when(vetRepository.existsByLicenseNumber("VET999")).thenReturn(false);
-            doThrow(new VetPublicKeyAlreadyExistsException())
-                    .when(vetRepository).existsByVetPublicKey("VETKEY999");
+            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1))
+                    .willThrow(new VetPublicKeyAlreadyExistsException());
 
             // Act
-            Executable executable = () -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
-
+            Throwable thrown = Assertions.catchThrowable(()->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
             // Assert
-            assertThrows(VetPublicKeyAlreadyExistsException.class, executable);
+            assertThat(thrown)
+                    .isInstanceOf(VetPublicKeyAlreadyExistsException.class);
+            // Verify...
+            then(clinicStaffHelper).should().buildNewStaffEntity(vetCreationDto, clinic1);
+            then(clinicStaffRepository).should(never()).save(any());
         }
     }
 
-    // --- Tests for updateClinicStaff ---
+    /**
+     * --- Tests for updateClinicStaff ---
+     */
     @Nested
     @DisplayName("updateClinicStaff Tests")
     class UpdateClinicStaffTests {
@@ -400,6 +446,7 @@ class ClinicStaffServiceImplTest {
         private ClinicStaffUpdateDto vetUpdateDto;
         private ClinicStaffProfileDto updatedAdminProfileDto;
         private ClinicStaffProfileDto updatedVetProfileDto;
+        private final String actionContext = "update";
 
         @BeforeEach
         void updateDtoSetup() {
@@ -426,69 +473,111 @@ class ClinicStaffServiceImplTest {
         }
 
         @Test
+        @DisplayName("should not save if applyStaffUpdates returns false")
+        void updateClinicStaff_NoChanges_ShouldNotSave() {
+            // Arrange
+            ClinicStaffUpdateDto noChangeAdminDto = new ClinicStaffUpdateDto(
+                    existingStaffMember.getName(), existingStaffMember.getSurname(), null, null
+            );
+            given(entityFinderHelper.findClinicStaffOrFail(existingStaffMember.getId(), actionContext)).willReturn(existingStaffMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), existingStaffMember, actionContext);
+            given(clinicStaffHelper.applyStaffUpdates(existingStaffMember, noChangeAdminDto)).willReturn(false);
+            ClinicStaffProfileDto originalDto = new ClinicStaffProfileDto(
+                    existingStaffMember.getId(), existingStaffMember.getUsername(), existingStaffMember.getEmail(),
+                    Set.of(RoleEnum.ADMIN.name()),
+                    existingStaffMember.getAvatar(),
+                    existingStaffMember.getName(),
+                    existingStaffMember.getSurname(),
+                    existingStaffMember.isActive(),
+                    existingStaffMember.getClinic().getId(),
+                    existingStaffMember.getClinic().getName(),
+                    null, null
+            );
+            given(userMapper.toClinicStaffProfileDto(existingStaffMember)).willReturn(originalDto);
+
+            // Act
+            ClinicStaffProfileDto result = clinicStaffService.updateClinicStaff(existingStaffMember.getId(), noChangeAdminDto, adminUser.getId());
+
+            // Assert
+            assertThat(result).isEqualTo(originalDto);
+            // Verify helpers called
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingStaffMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), existingStaffMember, actionContext);
+            then(clinicStaffHelper).should().applyStaffUpdates(existingStaffMember, noChangeAdminDto);
+            // Verify save NOT called
+            then(clinicStaffRepository).should(never()).save(any());
+            then(userMapper).should().toClinicStaffProfileDto(existingStaffMember);
+        }
+
+        @Test
         @DisplayName("should update ADMIN successfully when authorized")
         void updateClinicStaff_Success_Admin() {
             // Arrange
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Find updater
-            given(clinicStaffRepository.findById(existingStaffMember.getId())).willReturn(Optional.of(existingStaffMember)); // Find staff to update
-            given(clinicStaffRepository.save(any(ClinicStaff.class))).willAnswer(i -> i.getArgument(0)); // Save returns updated
-            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(updatedAdminProfileDto); // Mapper returns DTO
+            given(entityFinderHelper.findClinicStaffOrFail(existingStaffMember.getId(), actionContext)).willReturn(existingStaffMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), existingStaffMember, actionContext);
+            given(clinicStaffHelper.applyStaffUpdates(existingStaffMember, adminUpdateDto)).willReturn(true);
+            given(clinicStaffRepository.save(existingStaffMember)).willReturn(existingStaffMember);
+            given(userMapper.toClinicStaffProfileDto(existingStaffMember)).willReturn(updatedAdminProfileDto);
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.updateClinicStaff(existingStaffMember.getId(), adminUpdateDto, adminUser.getId());
 
             // Assert
             assertThat(result).isEqualTo(updatedAdminProfileDto);
-            then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
-            assertThat(clinicStaffCaptor.getValue().getName()).isEqualTo(adminUpdateDto.name());
-            assertThat(clinicStaffCaptor.getValue().getSurname()).isEqualTo(adminUpdateDto.surname());
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingStaffMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), existingStaffMember, actionContext);
+            then(clinicStaffHelper).should().applyStaffUpdates(existingStaffMember, adminUpdateDto);
+            then(clinicStaffRepository).should().save(existingStaffMember);
+            then(userMapper).should().toClinicStaffProfileDto(existingStaffMember);
         }
 
         @Test
         @DisplayName("should update VET successfully when authorized")
         void updateClinicStaff_Success_Vet() {
             // Arrange
-            when(clinicStaffRepository.findById(existingVetMember.getId())).thenReturn(Optional.of(existingVetMember));
-            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-            when(vetRepository.existsByLicenseNumber("VET999UPD")).thenReturn(false);
-            when(vetRepository.existsByVetPublicKey("VETKEY999UPD")).thenReturn(false);
-            when(clinicStaffRepository.save(any(Vet.class))).thenReturn(existingVetMember);
-            when(userMapper.toClinicStaffProfileDto(existingVetMember)).thenReturn(updatedVetProfileDto);
+            given(entityFinderHelper.findClinicStaffOrFail(existingVetMember.getId(), actionContext)).willReturn(existingVetMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), existingVetMember, actionContext);
+            given(clinicStaffHelper.applyStaffUpdates(existingVetMember, vetUpdateDto)).willReturn(true);
+            given(clinicStaffRepository.save(existingVetMember)).willReturn(existingVetMember);
+            given(userMapper.toClinicStaffProfileDto(existingVetMember)).willReturn(updatedVetProfileDto);
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId());
 
             // Assert
             assertEquals(updatedVetProfileDto, result);
-            verify(clinicStaffRepository).save(any(Vet.class));
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingVetMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), existingVetMember, actionContext);
+            then(clinicStaffHelper).should().applyStaffUpdates(existingVetMember, vetUpdateDto);
+            then(clinicStaffRepository).should().save(existingVetMember);
+            then(userMapper).should().toClinicStaffProfileDto(existingVetMember);
         }
 
         @Test
         @DisplayName("should throw EntityNotFoundException if staff to update not found")
         void updateClinicStaff_Error_StaffNotFound() {
-            given(clinicStaffRepository.findById(999L)).willReturn(Optional.empty());
-            // No need to mock admin find as it fails finding the staff
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(999L, actionContext))
+                    .willThrow(new EntityNotFoundException(ClinicStaff.class.getSimpleName(), 999L));
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.updateClinicStaff(999L, adminUpdateDto, adminUser.getId()));
-            // Assert
+            //Assert
             assertThat(thrown)
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("ClinicStaff not found with id: 999");
+            // Verify helpers/repos not called after failure
+            then(authorizationHelper).should(never()).verifyAdminActionOnStaff(anyLong(), any(), anyString());
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if updater not authorized Admin")
         void updateClinicStaff_Error_UpdaterNotAuthAdmin() {
-            // Simulate updater is a Vet
-            ClinicStaff updaterVet = new ClinicStaff(); // ... setup Vet user ...
-            updaterVet.setId(15L);
-            updaterVet.setRoles(Set.of(vetRole));
-            updaterVet.setClinic(clinic1);
-
-            given(userRepository.findById(15L)).willReturn(Optional.of(updaterVet));
-            given(clinicStaffRepository.findById(existingStaffMember.getId())).willReturn(Optional.of(existingStaffMember)); // Target staff found
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(existingStaffMember.getId(), actionContext)).willReturn(existingStaffMember);
+            doThrow(new AccessDeniedException("User 15 is not an authorized Admin..."))
+                    .when(authorizationHelper).verifyAdminActionOnStaff(15L, existingStaffMember, actionContext);
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.updateClinicStaff(existingStaffMember.getId(), adminUpdateDto, 15L));
@@ -496,28 +585,28 @@ class ClinicStaffServiceImplTest {
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not an authorized Admin");
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingStaffMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(15L, existingStaffMember, actionContext);
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if Admin from different clinic")
         void updateClinicStaff_Error_DifferentClinic() {
-            // Simulate admin from another clinic
-            Clinic clinic2 = Clinic.builder().build(); clinic2.setId(2L);
-            ClinicStaff adminOtherClinic = new ClinicStaff(); // ... setup admin ...
-            adminOtherClinic.setId(20L);
-            adminOtherClinic.setRoles(Set.of(adminRole));
-            adminOtherClinic.setClinic(clinic2); // Different clinic
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(existingStaffMember.getId(), actionContext)).willReturn(existingStaffMember);
+            doThrow(new AccessDeniedException("Admin (ID: 20, Clinic: 2) cannot update staff..."))
+                    .when(authorizationHelper).verifyAdminActionOnStaff(20L, existingStaffMember, actionContext);
 
-            given(userRepository.findById(20L)).willReturn(Optional.of(adminOtherClinic));
-            given(clinicStaffRepository.findById(existingStaffMember.getId())).willReturn(Optional.of(existingStaffMember)); // Target staff (clinic 1) found
-
-            // Act: Use simplified lambda
+            // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.updateClinicStaff(existingStaffMember.getId(), adminUpdateDto, 20L));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("cannot update staff");
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingStaffMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(20L, existingStaffMember, actionContext);
             then(clinicStaffRepository).should(never()).save(any());
         }
 
@@ -525,30 +614,43 @@ class ClinicStaffServiceImplTest {
         @DisplayName("should throw LicenseNumberAlreadyExistsException on update")
         void updateClinicStaff_Error_DuplicateLicense() {
             // Arrange
-            when(clinicStaffRepository.findById(existingVetMember.getId())).thenReturn(Optional.of(existingVetMember));
-            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-            doThrow(new LicenseNumberAlreadyExistsException("VET999UPD")).when(vetRepository).existsByLicenseNumber("VET999UPD");
+            given(entityFinderHelper.findClinicStaffOrFail(existingVetMember.getId(), actionContext)).willReturn(existingVetMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), existingVetMember, actionContext);
+            given(clinicStaffHelper.applyStaffUpdates(existingVetMember, vetUpdateDto))
+                    .willThrow(new LicenseNumberAlreadyExistsException(vetUpdateDto.licenseNumber()));
+
 
             // Act
-            Executable executable = () -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId());
-
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId()));
             // Assert
-            assertThrows(LicenseNumberAlreadyExistsException.class, executable);
+            assertThat(thrown)
+                    .isInstanceOf(LicenseNumberAlreadyExistsException.class);
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingVetMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), existingVetMember, actionContext);
+            then(clinicStaffHelper).should().applyStaffUpdates(existingVetMember, vetUpdateDto);
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw VetPublicKeyAlreadyExistsException on update")
         void updateClinicStaff_Error_DuplicatePublicKey() {
             // Arrange
-            when(clinicStaffRepository.findById(existingVetMember.getId())).thenReturn(Optional.of(existingVetMember));
-            when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-            doThrow(new VetPublicKeyAlreadyExistsException()).when(vetRepository).existsByVetPublicKey("VETKEY999UPD");
+            given(entityFinderHelper.findClinicStaffOrFail(existingVetMember.getId(), actionContext)).willReturn(existingVetMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), existingVetMember, actionContext);
+            given(clinicStaffHelper.applyStaffUpdates(existingVetMember, vetUpdateDto))
+                    .willThrow(new VetPublicKeyAlreadyExistsException());
 
             // Act
-            Executable executable = () -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId());
-
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.updateClinicStaff(existingVetMember.getId(), vetUpdateDto, adminUser.getId()));
             // Assert
-            assertThrows(VetPublicKeyAlreadyExistsException.class, executable);
+            assertThat(thrown)
+                    .isInstanceOf(VetPublicKeyAlreadyExistsException.class);
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingVetMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), existingVetMember, actionContext);
+            then(clinicStaffHelper).should().applyStaffUpdates(existingVetMember, vetUpdateDto);
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
@@ -556,158 +658,200 @@ class ClinicStaffServiceImplTest {
         void updateClinicStaff_Warns_UpdatingVetFieldsOnAdmin() {
             // Arrange
             ClinicStaffUpdateDto vetFieldsOnAdminDto = new ClinicStaffUpdateDto(
-                    "AdminNewName", "AdminNewSurname", "TRYING_LIC", "TRYING_KEY");
-
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(clinicStaffRepository.findById(existingStaffMember.getId())).willReturn(Optional.of(existingStaffMember));
-            // Mock save and mapper
-            given(clinicStaffRepository.save(any(ClinicStaff.class))).willAnswer(i -> i.getArgument(0));
-            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willAnswer(invocation -> {
-                ClinicStaff staff = invocation.getArgument(0);
-                return new ClinicStaffProfileDto(staff.getId(), staff.getUsername(), staff.getEmail(),
-                        Set.of("ADMIN"), staff.getAvatar(), staff.getName(), staff.getSurname(),
-                        staff.isActive(), staff.getClinic().getId(), staff.getClinic().getName(),
-                        null, null);
-            });
+                    "AdminNewName",
+                    "AdminNewSurname",
+                    "IGNORED_LICENSE",
+                    "IGNORED_PUB_KEY"
+            );
+            given(entityFinderHelper.findClinicStaffOrFail(existingStaffMember.getId(), actionContext)).willReturn(existingStaffMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), existingStaffMember, actionContext);
+            given(clinicStaffHelper.applyStaffUpdates(existingStaffMember, vetFieldsOnAdminDto)).willReturn(true);
+            given(clinicStaffRepository.save(existingStaffMember)).willReturn(existingStaffMember);
+            given(userMapper.toClinicStaffProfileDto(existingStaffMember)).willReturn(updatedAdminProfileDto); // Use updated DTO for this
 
             // Act
             ClinicStaffProfileDto result = clinicStaffService.updateClinicStaff(existingStaffMember.getId(), vetFieldsOnAdminDto, adminUser.getId());
 
             // Assert
-            assertThat(result.name()).isEqualTo("AdminNewName");
-            assertThat(result.surname()).isEqualTo("AdminNewSurname");
-            assertThat(result.licenseNumber()).isNull();
-            assertThat(result.vetPublicKey()).isNull();
-            then(clinicStaffRepository).should().save(any(ClinicStaff.class));
-            then(vetRepository).should(never()).existsByLicenseNumberAndIdNot(anyString(), anyLong());
-            then(vetRepository).should(never()).existsByVetPublicKeyAndIdNot(anyString(), anyLong());
+            assertThat(result).isEqualTo(updatedAdminProfileDto);
+            // Verify helpers and save were called
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingStaffMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), existingStaffMember, actionContext);
+            then(clinicStaffHelper).should().applyStaffUpdates(existingStaffMember, vetFieldsOnAdminDto);
+            then(clinicStaffRepository).should().save(existingStaffMember);
         }
 
     }
 
-    // --- Tests for activateStaff ---
+    /**
+     * --- Tests for activateStaff ---
+     */
     @Nested
     @DisplayName("activateStaff Tests")
     class ActivateStaffTests {
         private ClinicStaff inactiveStaff;
         private ClinicStaffProfileDto activeProfileDto;
+        private final Long inactiveStaffId = 11L;
+        private final Long activatingAdminId = 10L;
+        private final String actionContext = "activate";
 
         @BeforeEach
         void activateSetup() {
-            inactiveStaff = new ClinicStaff(); // Same as existingStaffMember but inactive
-            inactiveStaff.setId(existingStaffMember.getId());
+            inactiveStaff = new ClinicStaff();
+            inactiveStaff.setId(inactiveStaffId);
             inactiveStaff.setUsername(existingStaffMember.getUsername());
+            inactiveStaff.setName(existingStaffMember.getName());
+            inactiveStaff.setSurname(existingStaffMember.getSurname());
+            inactiveStaff.setEmail(existingStaffMember.getEmail());
+            inactiveStaff.setAvatar(existingStaffMember.getAvatar());
             inactiveStaff.setClinic(clinic1);
             inactiveStaff.setRoles(Set.of(adminRole));
-            inactiveStaff.setActive(false); // Important: Start inactive
+            inactiveStaff.setActive(false);
 
             activeProfileDto = new ClinicStaffProfileDto(
-                    inactiveStaff.getId(), inactiveStaff.getUsername(), inactiveStaff.getEmail(),
-                    Set.of(RoleEnum.ADMIN.name()), inactiveStaff.getAvatar(),
-                    inactiveStaff.getName(), inactiveStaff.getSurname(),
-                    true, // isActive is now TRUE
-                    inactiveStaff.getClinic().getId(), inactiveStaff.getClinic().getName(),
-                    null, null
+                    inactiveStaffId,
+                    inactiveStaff.getUsername(),
+                    inactiveStaff.getEmail(),
+                    Set.of(RoleEnum.ADMIN.name()),
+                    inactiveStaff.getAvatar(),
+                    inactiveStaff.getName(),
+                    inactiveStaff.getSurname(),
+                    true,
+                    clinic1.getId(),
+                    clinic1.getName(),
+                    null,
+                    null
             );
         }
 
         @Test
         @DisplayName("should activate staff successfully")
         void activateStaff_Success() {
-            given(clinicStaffRepository.findById(inactiveStaff.getId())).willReturn(Optional.of(inactiveStaff));
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Check authorization
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(inactiveStaffId, actionContext)).willReturn(inactiveStaff);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(activatingAdminId, inactiveStaff, actionContext);
             given(clinicStaffRepository.save(any(ClinicStaff.class))).willAnswer(i -> i.getArgument(0));
             given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(activeProfileDto);
 
-            ClinicStaffProfileDto result = clinicStaffService.activateStaff(inactiveStaff.getId(), adminUser.getId());
+            // Act
+            ClinicStaffProfileDto result = clinicStaffService.activateStaff(inactiveStaffId, activatingAdminId);
 
+            // Assert
             assertThat(result).isEqualTo(activeProfileDto);
+            then(entityFinderHelper).should().findClinicStaffOrFail(inactiveStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(activatingAdminId, inactiveStaff, actionContext);
             then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
+            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
+
             assertThat(clinicStaffCaptor.getValue().isActive()).isTrue();
         }
 
         @Test
         @DisplayName("should throw IllegalStateException if staff already active")
         void activateStaff_Error_AlreadyActive() {
-            existingStaffMember.setActive(true); // Ensure it's active
-            given(clinicStaffRepository.findById(existingStaffMember.getId())).willReturn(Optional.of(existingStaffMember));
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Auth check still happens
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(existingStaffMember.getId(), actionContext)).willReturn(existingStaffMember);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(activatingAdminId, existingStaffMember, actionContext);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.activateStaff(existingStaffMember.getId(), adminUser.getId()));
-            // Assert
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.activateStaff(existingStaffMember.getId(), activatingAdminId));
+            //Assert
             assertThat(thrown)
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("is already active");
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(existingStaffMember.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(activatingAdminId, existingStaffMember, actionContext);
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw EntityNotFoundException if staff to activate not found")
         void activateStaff_Error_StaffNotFound() {
-            given(clinicStaffRepository.findById(999L)).willReturn(Optional.empty());
-
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(999L, actionContext))
+                    .willThrow(new EntityNotFoundException(ClinicStaff.class.getSimpleName(), 999L));
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.activateStaff(999L, adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("ClinicStaff not found with id: 999");
+            then(authorizationHelper).should(never()).verifyAdminActionOnStaff(anyLong(), any(), anyString());
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if activator not Admin")
         void activateStaff_Error_ActivatorNotAdmin() {
-            ClinicStaff inactive = new ClinicStaff();
-            inactive.setId(11L);
-            inactive.setActive(false);
-            inactive.setClinic(clinic1);
-            ClinicStaff activatorVet = new ClinicStaff(); // Simulate activator is a Vet
-            activatorVet.setId(15L); activatorVet.setRoles(Set.of(vetRole)); activatorVet.setClinic(clinic1);
+            // Arrange
+            Long activatorVetId = 15L;
+            given(entityFinderHelper.findClinicStaffOrFail(inactiveStaffId, actionContext)).willReturn(inactiveStaff);
+            doThrow(new AccessDeniedException("User " + activatorVetId + " is not an authorized Admin..."))
+                    .when(authorizationHelper).verifyAdminActionOnStaff(activatorVetId, inactiveStaff, actionContext);
 
-            given(clinicStaffRepository.findById(11L)).willReturn(Optional.of(inactive));
-            given(userRepository.findById(15L)).willReturn(Optional.of(activatorVet)); // Found user, but is Vet
 
-            assertThatThrownBy(() -> clinicStaffService.activateStaff(11L, 15L))
+            // Act & Assert
+            assertThatThrownBy(() -> clinicStaffService.activateStaff(inactiveStaffId, activatorVetId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not an authorized Admin");
+            then(entityFinderHelper).should().findClinicStaffOrFail(inactiveStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(activatorVetId, inactiveStaff, actionContext);
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if Admin from different clinic")
         void activateStaff_Error_DifferentClinic() {
-            ClinicStaff inactive = new ClinicStaff(); inactive.setId(11L); inactive.setActive(false); inactive.setClinic(clinic1); // Staff from clinic 1
-            Clinic clinic2 = Clinic.builder().build(); clinic2.setId(2L);
-            ClinicStaff adminOtherClinic = new ClinicStaff(); // Admin from clinic 2
-            adminOtherClinic.setId(20L); adminOtherClinic.setRoles(Set.of(adminRole)); adminOtherClinic.setClinic(clinic2);
+            // Arrange
+            Long adminOtherClinicId = 20L;
+            given(entityFinderHelper.findClinicStaffOrFail(inactiveStaffId, actionContext)).willReturn(inactiveStaff);
+            doThrow(new AccessDeniedException("Admin (ID: "+adminOtherClinicId+"...) cannot activate staff..."))
+                    .when(authorizationHelper).verifyAdminActionOnStaff(adminOtherClinicId, inactiveStaff, actionContext);
 
-            given(clinicStaffRepository.findById(11L)).willReturn(Optional.of(inactive));
-            given(userRepository.findById(20L)).willReturn(Optional.of(adminOtherClinic));
-
-            assertThatThrownBy(() -> clinicStaffService.activateStaff(11L, 20L))
+            // Act & Assert
+            assertThatThrownBy(() -> clinicStaffService.activateStaff(inactiveStaffId, adminOtherClinicId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("cannot activate staff");
+            then(entityFinderHelper).should().findClinicStaffOrFail(inactiveStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminOtherClinicId, inactiveStaff, actionContext);
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
     }
 
-    // --- Tests for deactivateStaff ---
+    /**
+     * --- Tests for deactivateStaff ---
+     */
     @Nested
     @DisplayName("deactivateStaff Tests")
     class DeactivateStaffTests {
         private ClinicStaff activeStaff;
         private ClinicStaffProfileDto inactiveProfileDto;
+        private final Long activeStaffId = 11L;
+        private final Long deactivatingAdminId = 10L;
+        private final String actionContext = "deactivate";
 
         @BeforeEach
         void deactivateSetup() {
-            activeStaff = existingStaffMember; // Use the active one from main setup
+            // Create an active version based on existingStaffMember
+            activeStaff = new ClinicStaff();
+            activeStaff.setId(activeStaffId);
+            activeStaff.setUsername(existingStaffMember.getUsername()); // Use data from existingStaffMember
+            activeStaff.setName(existingStaffMember.getName());
+            activeStaff.setSurname(existingStaffMember.getSurname());
+            activeStaff.setEmail(existingStaffMember.getEmail());
+            activeStaff.setAvatar(existingStaffMember.getAvatar());
+            activeStaff.setClinic(clinic1);
+            activeStaff.setRoles(Set.of(adminRole));
             activeStaff.setActive(true);
+
             inactiveProfileDto = new ClinicStaffProfileDto(
-                    activeStaff.getId(), activeStaff.getUsername(), activeStaff.getEmail(),
+                    activeStaffId, activeStaff.getUsername(), activeStaff.getEmail(),
                     Set.of(RoleEnum.ADMIN.name()), activeStaff.getAvatar(),
                     activeStaff.getName(), activeStaff.getSurname(),
-                    false, // isActive is now FALSE
-                    activeStaff.getClinic().getId(), activeStaff.getClinic().getName(),
+                    false,
+                    clinic1.getId(), clinic1.getName(),
                     null, null
             );
         }
@@ -715,103 +859,125 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("should deactivate staff successfully")
         void deactivateStaff_Success() {
-            given(clinicStaffRepository.findById(activeStaff.getId())).willReturn(Optional.of(activeStaff));
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Check auth
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(activeStaffId, actionContext)).willReturn(activeStaff);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(deactivatingAdminId, activeStaff, actionContext);
             given(clinicStaffRepository.save(any(ClinicStaff.class))).willAnswer(i -> i.getArgument(0));
             given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(inactiveProfileDto);
 
-            ClinicStaffProfileDto result = clinicStaffService.deactivateStaff(activeStaff.getId(), adminUser.getId());
+            // Act
+            ClinicStaffProfileDto result = clinicStaffService.deactivateStaff(activeStaffId, deactivatingAdminId);
 
+            // Assert
             assertThat(result).isEqualTo(inactiveProfileDto);
+            then(entityFinderHelper).should().findClinicStaffOrFail(activeStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(deactivatingAdminId, activeStaff, actionContext);
             then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
+            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
+
             assertThat(clinicStaffCaptor.getValue().isActive()).isFalse();
         }
 
         @Test
         @DisplayName("should throw IllegalStateException if staff already inactive")
         void deactivateStaff_Error_AlreadyInactive() {
-            activeStaff.setActive(false); // Make it inactive
-            given(clinicStaffRepository.findById(activeStaff.getId())).willReturn(Optional.of(activeStaff));
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
+            // Arrange
+            activeStaff.setActive(false);
+            given(entityFinderHelper.findClinicStaffOrFail(activeStaffId, actionContext)).willReturn(activeStaff);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(deactivatingAdminId, activeStaff, actionContext);
 
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.deactivateStaff(activeStaff.getId(), adminUser.getId()));
-            // Assert
-            assertThat(thrown)
+
+            // Act & Assert
+            assertThatThrownBy(() -> clinicStaffService.deactivateStaff(activeStaffId, deactivatingAdminId))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("is already inactive");
+            then(entityFinderHelper).should().findClinicStaffOrFail(activeStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(deactivatingAdminId, activeStaff, actionContext); // Auth still checked first
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw IllegalArgumentException if admin tries to deactivate self")
         void deactivateStaff_Error_SelfDeactivation() {
-            // Use adminUser's ID as the target staffId
-            given(clinicStaffRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser));
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Auth check
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+            doNothing().when(authorizationHelper).verifyAdminActionOnStaff(adminUser.getId(), adminUser, actionContext);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.deactivateStaff(adminUser.getId(), adminUser.getId()));
+            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.deactivateStaff(adminUser.getId(), adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("cannot deactivate their own account");
+            then(entityFinderHelper).should().findClinicStaffOrFail(adminUser.getId(), actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminUser.getId(), adminUser, actionContext);
             then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw EntityNotFoundException if staff to deactivate not found")
         void deactivateStaff_Error_StaffNotFound() {
-            given(clinicStaffRepository.findById(999L)).willReturn(Optional.empty());
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(999L, actionContext))
+                    .willThrow(new EntityNotFoundException(ClinicStaff.class.getSimpleName(), 999L));
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.deactivateStaff(999L, adminUser.getId()));
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.deactivateStaff(999L, deactivatingAdminId));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("ClinicStaff not found with id: 999");
+            then(authorizationHelper).should(never()).verifyAdminActionOnStaff(anyLong(), any(), anyString());
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if deactivator not Admin")
         void deactivateStaff_Error_DeactivatorNotAdmin() {
-            ClinicStaff active = existingStaffMember; active.setActive(true);
-            ClinicStaff deactivatorVet = new ClinicStaff(); // Simulate deactivator is Vet
-            deactivatorVet.setId(15L); deactivatorVet.setRoles(Set.of(vetRole)); deactivatorVet.setClinic(clinic1);
-
-            given(clinicStaffRepository.findById(active.getId())).willReturn(Optional.of(active));
-            given(userRepository.findById(15L)).willReturn(Optional.of(deactivatorVet));
+            // Arrange
+            Long deactivatorVetId = 15L;
+            given(entityFinderHelper.findClinicStaffOrFail(activeStaffId, actionContext)).willReturn(activeStaff);
+            doThrow(new AccessDeniedException("User " + deactivatorVetId + " is not an authorized Admin..."))
+                    .when(authorizationHelper).verifyAdminActionOnStaff(deactivatorVetId, activeStaff, actionContext);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() ->  clinicStaffService.deactivateStaff(active.getId(), 15L));
+            Throwable thrown = Assertions.catchThrowable(() ->  clinicStaffService.deactivateStaff(activeStaffId, deactivatorVetId));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not an authorized Admin");
+            then(entityFinderHelper).should().findClinicStaffOrFail(activeStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(deactivatorVetId, activeStaff, actionContext);
+            then(clinicStaffRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException if Admin from different clinic")
         void deactivateStaff_Error_DifferentClinic() {
-            ClinicStaff active = existingStaffMember; active.setActive(true); // Staff from clinic 1
-            Clinic clinic2 = Clinic.builder().build(); clinic2.setId(2L);
-            ClinicStaff adminOtherClinic = new ClinicStaff(); // Admin from clinic 2
-            adminOtherClinic.setId(20L); adminOtherClinic.setRoles(Set.of(adminRole)); adminOtherClinic.setClinic(clinic2);
-
-            given(clinicStaffRepository.findById(active.getId())).willReturn(Optional.of(active));
-            given(userRepository.findById(20L)).willReturn(Optional.of(adminOtherClinic));
+            // Arrange
+            Long adminOtherClinicId = 20L;
+            // Mock helper find Staff OK
+            given(entityFinderHelper.findClinicStaffOrFail(activeStaffId, actionContext)).willReturn(activeStaff);
+            // Mock helper authorization check to fail
+            doThrow(new AccessDeniedException("Admin (ID: " + adminOtherClinicId + "...) cannot deactivate staff..."))
+                    .when(authorizationHelper).verifyAdminActionOnStaff(adminOtherClinicId, activeStaff, actionContext);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.deactivateStaff(active.getId(), 20L));
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.deactivateStaff(activeStaffId, adminOtherClinicId));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("cannot deactivate staff");
+            then(entityFinderHelper).should().findClinicStaffOrFail(activeStaffId, actionContext);
+            then(authorizationHelper).should().verifyAdminActionOnStaff(adminOtherClinicId, activeStaff, actionContext);
+            then(clinicStaffRepository).should(never()).save(any());
         }
     }
 
 
-    // --- Tests for findActiveStaffByClinic / findAllStaffByClinic ---
+    /**
+     * --- Tests for findActiveStaffByClinic / findAllStaffByClinic ---
+     */
     @Nested
     @DisplayName("find Staff By Clinic Tests")
     class FindStaffByClinicTests {
@@ -819,15 +985,15 @@ class ClinicStaffServiceImplTest {
         private ClinicStaff inactiveStaffInClinic1; // Could be Vet or Admin
         private ClinicStaffProfileDto activeDto;
         private ClinicStaffProfileDto inactiveDto;
+        private final String actionContextAll = "view all staff for";
 
 
         @BeforeEach
         void findSetup() {
-            // Assumes adminUser (ID 10) is the requester from clinic 1
-            activeStaffInClinic1 = existingVetMember; // This IS a Vet object
+            activeStaffInClinic1 = existingVetMember;
             activeStaffInClinic1.setActive(true);
 
-            inactiveStaffInClinic1 = existingStaffMember; // This IS a ClinicStaff (Admin) object
+            inactiveStaffInClinic1 = existingStaffMember;
             inactiveStaffInClinic1.setActive(false);
 
             activeDto = new ClinicStaffProfileDto(
@@ -853,17 +1019,17 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("findAllStaffByClinic should return all staff when authorized")
         void findAllStaffByClinic_Success() {
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Requester (Admin C1)
-            given(clinicRepository.existsById(clinic1.getId())).willReturn(true); // Target clinic exists
+            // Arrange
+            doNothing().when(authorizationHelper).verifyClinicStaffAccess(adminUser.getId(), clinic1.getId(), actionContextAll);
             given(clinicStaffRepository.findByClinicId(clinic1.getId())).willReturn(List.of(activeStaffInClinic1, inactiveStaffInClinic1));
-            given(userMapper.toClinicStaffProfileDtoList(List.of(activeStaffInClinic1, inactiveStaffInClinic1)))
-                    .willReturn(List.of(activeDto, inactiveDto)); // Mock the list mapping
+            given(userMapper.toClinicStaffProfileDtoList(anyList())).willReturn(List.of(activeDto, inactiveDto));
 
+            // Act
             List<ClinicStaffProfileDto> result = clinicStaffService.findAllStaffByClinic(clinic1.getId(), adminUser.getId());
 
+            // Assert
             assertThat(result).hasSize(2).containsExactlyInAnyOrder(activeDto, inactiveDto);
-            then(userRepository).should().findById(adminUser.getId());
-            then(clinicRepository).should().existsById(clinic1.getId());
+            then(authorizationHelper).should().verifyClinicStaffAccess(adminUser.getId(), clinic1.getId(), actionContextAll);
             then(clinicStaffRepository).should().findByClinicId(clinic1.getId());
             then(userMapper).should().toClinicStaffProfileDtoList(anyList());
         }
@@ -871,17 +1037,18 @@ class ClinicStaffServiceImplTest {
         @Test
         @DisplayName("findActiveStaffByClinic should return only active staff when authorized")
         void findActiveStaffByClinic_Success() {
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Requester (Admin C1)
-            given(clinicRepository.existsById(clinic1.getId())).willReturn(true); // Target clinic exists
+            // Arrange
+            String actionContextActive = "view active staff for";
+            doNothing().when(authorizationHelper).verifyClinicStaffAccess(adminUser.getId(), clinic1.getId(), actionContextActive);
             given(clinicStaffRepository.findByClinicIdAndIsActive(clinic1.getId(), true)).willReturn(List.of(activeStaffInClinic1));
-            given(userMapper.toClinicStaffProfileDtoList(List.of(activeStaffInClinic1)))
-                    .willReturn(List.of(activeDto)); // Mock list mapping
+            given(userMapper.toClinicStaffProfileDtoList(List.of(activeStaffInClinic1))).willReturn(List.of(activeDto));
 
+            // Act
             List<ClinicStaffProfileDto> result = clinicStaffService.findActiveStaffByClinic(clinic1.getId(), adminUser.getId());
 
+            // Assert
             assertThat(result).hasSize(1).containsExactly(activeDto);
-            then(userRepository).should().findById(adminUser.getId());
-            then(clinicRepository).should().existsById(clinic1.getId());
+            then(authorizationHelper).should().verifyClinicStaffAccess(adminUser.getId(), clinic1.getId(), actionContextActive);
             then(clinicStaffRepository).should().findByClinicIdAndIsActive(clinic1.getId(), true);
             then(userMapper).should().toClinicStaffProfileDtoList(anyList());
         }
@@ -890,20 +1057,18 @@ class ClinicStaffServiceImplTest {
         @DisplayName("find staff should throw AccessDeniedException if requester not Vet or Admin")
         void findStaffByClinic_Error_RequesterInvalidRole() {
             // Arrange
-            Owner requesterOwner = new Owner(); requesterOwner.setId(50L);
-            given(userRepository.findById(50L)).willReturn(Optional.of(requesterOwner)); // Found user, but is Owner
-            given(clinicRepository.existsById(clinic1.getId())).willReturn(true);
+            doThrow(new AccessDeniedException("User " + 200L + " is not Clinic Staff..."))
+                    .when(authorizationHelper).verifyClinicStaffAccess(200L, clinic1.getId(), actionContextAll);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.findAllStaffByClinic(clinic1.getId(), 50L));
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.findAllStaffByClinic(clinic1.getId(), 200L));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not Clinic Staff");
 
             // Verify interactions
-            then(userRepository).should().findById(50L);
-            then(clinicRepository).should().existsById(clinic1.getId());
+            then(authorizationHelper).should().verifyClinicStaffAccess(200L, clinic1.getId(), actionContextAll);
             then(clinicStaffRepository).should(never()).findByClinicId(anyLong());
         }
 
@@ -911,56 +1076,55 @@ class ClinicStaffServiceImplTest {
         @DisplayName("find staff should throw AccessDeniedException if requester from different clinic")
         void findStaffByClinic_Error_DifferentClinic() {
             // Arrange
-            Clinic clinic2 = Clinic.builder().build(); clinic2.setId(2L);
-            ClinicStaff requesterOtherClinic = new ClinicStaff();
-            requesterOtherClinic.setId(20L);
-            requesterOtherClinic.setRoles(Set.of(adminRole)); // Es Admin
-            requesterOtherClinic.setClinic(clinic2); // Pero de la clínica 2
-            given(userRepository.findById(20L)).willReturn(Optional.of(requesterOtherClinic));
-            given(clinicRepository.existsById(clinic1.getId())).willReturn(true);
+            Long requesterOtherClinicId = 20L;
+            Long targetClinicId = clinic1.getId();
+            doThrow(new AccessDeniedException(String.format("User (ID: %d...) cannot %s clinic %d.", requesterOtherClinicId, actionContextAll, targetClinicId))) // Mensaje más preciso
+                    .when(authorizationHelper).verifyClinicStaffAccess(requesterOtherClinicId, targetClinicId, actionContextAll);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.findAllStaffByClinic(clinic1.getId(), 20L));
+            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.findAllStaffByClinic(targetClinicId, requesterOtherClinicId));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("cannot view all staff for clinic 1");
-
-            // Verify interactions
-            then(userRepository).should().findById(20L);
-            then(clinicRepository).should().existsById(clinic1.getId());
+                    .hasMessageContaining(String.format("cannot %s clinic %d", actionContextAll, targetClinicId));
+            then(authorizationHelper).should().verifyClinicStaffAccess(requesterOtherClinicId, targetClinicId, actionContextAll);
             then(clinicStaffRepository).should(never()).findByClinicId(anyLong());
         }
 
         @Test
         @DisplayName("find staff should throw EntityNotFoundException if requester not found")
         void findStaffByClinic_Error_RequesterNotFound() {
-            given(userRepository.findById(999L)).willReturn(Optional.empty()); // Requester not found
+            // Arrange
+            Long nonExistentUserId = 999L;
+            doThrow(new EntityNotFoundException("Requesting user not found..."))
+                    .when(authorizationHelper).verifyClinicStaffAccess(nonExistentUserId, clinic1.getId(), actionContextAll);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.findAllStaffByClinic(clinic1.getId(), 999L));
+            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.findAllStaffByClinic(clinic1.getId(), nonExistentUserId));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Requesting user not found");
+            then(authorizationHelper).should().verifyClinicStaffAccess(nonExistentUserId, clinic1.getId(), actionContextAll);
+            then(clinicStaffRepository).should(never()).findByClinicId(anyLong());
         }
 
         @Test
         @DisplayName("find staff should throw EntityNotFoundException if target clinic not found")
         void findStaffByClinic_Error_TargetClinicNotFound() {
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Requester OK
-            given(clinicRepository.existsById(99L)).willReturn(false); // Target clinic does NOT exist
+            // Arrange
+            Long nonExistentClinicId = 99L;
+            doThrow(new EntityNotFoundException("Target clinic not found..."))
+                    .when(authorizationHelper).verifyClinicStaffAccess(adminUser.getId(), nonExistentClinicId, actionContextAll);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.findAllStaffByClinic(99L, adminUser.getId()));
+            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.findAllStaffByClinic(nonExistentClinicId, adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Target clinic not found");
-            // Verify existsById was checked AFTER user/role/clinic checks passed
-            then(userRepository).should().findById(adminUser.getId());
-            then(clinicRepository).should().existsById(99L);
-            then(clinicStaffRepository).should(never()).findByClinicId(anyLong()); // Should not reach staff lookup
+            then(authorizationHelper).should().verifyClinicStaffAccess(adminUser.getId(), nonExistentClinicId, actionContextAll);
+            then(clinicStaffRepository).should(never()).findByClinicId(anyLong());
         }
     }
 }

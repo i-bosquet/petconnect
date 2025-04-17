@@ -1,5 +1,6 @@
 package com.petconnect.backend.user.application.service.impl;
 
+import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
@@ -10,7 +11,6 @@ import com.petconnect.backend.user.domain.model.ClinicStaff;
 import com.petconnect.backend.user.domain.model.RoleEnum;
 import com.petconnect.backend.user.domain.model.UserEntity;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
-import com.petconnect.backend.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,11 +38,10 @@ public class ClinicServiceImpl implements ClinicService {
     // Dependencies injected via constructor (final fields + @RequiredArgsConstructor)
     private final ClinicRepository clinicRepository;
     private final ClinicMapper clinicMapper;
-    private final UserRepository userRepository;
+    private final EntityFinderHelper entityFinderHelper;
 
     /**
      * {@inheritDoc}
-     * Uses ClinicSpecification to build dynamic query based on filters.
      */
     @Override
     @Transactional(readOnly = true)
@@ -59,9 +58,6 @@ public class ClinicServiceImpl implements ClinicService {
 
     /**
      * {@inheritDoc}
-     * Finds a clinic by ID or throws an exception if not found.
-     * Maps the found entity to a DTO.
-     * This operation is read-only.
      */
     @Override
     @Transactional(readOnly = true)
@@ -73,19 +69,13 @@ public class ClinicServiceImpl implements ClinicService {
 
     /**
      * {@inheritDoc}
-     * Finds the clinic by ID, updates its properties using the mapper based on the DTO,
-     * saves the changes, and returns the updated DTO.
-     * This operation requires a transaction to ensure atomicity.
-     * Authorization checks (e.g., if the current user is an ADMIN of this clinic)
-     * would typically be added here or via Spring Security annotations.
      */
     @Override
     @Transactional // Default transaction (read-write)
     public ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, Long updatingAdminId) {
 
         // Find the admin performing the action
-        UserEntity adminUser = userRepository.findById(updatingAdminId)
-                .orElseThrow(() -> new EntityNotFoundException("Admin user not found with id: " + updatingAdminId));
+        UserEntity adminUser = entityFinderHelper.findUserOrFail(updatingAdminId);
 
         // Verify user is ClinicStaff and has ADMIN role
         if (!(adminUser instanceof ClinicStaff adminStaff) ||
@@ -94,11 +84,8 @@ public class ClinicServiceImpl implements ClinicService {
         }
 
         // Find the existing clinic to update
-        Clinic existingClinic = clinicRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Clinic not found with id: " + id));
+        Clinic existingClinic = entityFinderHelper.findClinicOrFail(id);
 
-        // Authorization Check: Ensure admin belongs to the clinic being updated
-        // Make sure clinic is loaded if lazy
         Clinic adminClinic = adminStaff.getClinic();
         if (adminClinic == null || !adminClinic.getId().equals(existingClinic.getId())) {
             throw new AccessDeniedException("Admin user " + updatingAdminId + " is not authorized to update clinic " + id + ".");
@@ -110,7 +97,6 @@ public class ClinicServiceImpl implements ClinicService {
         // Map the updated entity back to DTO
         return clinicMapper.toDto(clinicRepository.save(existingClinic));
     }
-
 
     /**
      * Creates a Specification<Clinic> based on optional filter criteria.

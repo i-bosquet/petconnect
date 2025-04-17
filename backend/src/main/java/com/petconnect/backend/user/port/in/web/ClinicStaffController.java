@@ -4,7 +4,7 @@ import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffUpdateDto;
 import com.petconnect.backend.user.application.service.ClinicStaffService;
-import com.petconnect.backend.user.application.service.helper.UserServiceHelper;
+import com.petconnect.backend.common.helper.UserHelper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class ClinicStaffController implements ClinicStaffControllerApi {
 
     private final ClinicStaffService clinicStaffService;
-    private final UserServiceHelper userAuthenticationHelper;
+    private final UserHelper userAuthenticationHelper;
 
     /**
      * {@inheritDoc}

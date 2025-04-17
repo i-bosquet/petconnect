@@ -623,7 +623,9 @@ class PetControllerIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        // Tests for PUT /api/pets/{petId}/clinic-update
+        /**
+         * Tests for PUT /api/pets/{petId}/clinic-update
+         */
         @Test
         @DisplayName("[clinic-update] should update pet successfully when called by authorized Staff")
         void updatePetByStaff_Success() throws Exception {

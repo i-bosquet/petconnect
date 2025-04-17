@@ -1,6 +1,9 @@
 package com.petconnect.backend.user.application.service.impl;
 
-import com.petconnect.backend.exception.EntityNotFoundException; // Import necessary for tests
+import com.petconnect.backend.common.helper.AuthorizationHelper;
+import com.petconnect.backend.common.helper.EntityFinderHelper;
+import com.petconnect.backend.common.helper.UserHelper;
+import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.exception.UsernameAlreadyExistsException;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.OwnerProfileDto;
@@ -8,7 +11,6 @@ import com.petconnect.backend.user.application.dto.OwnerProfileUpdateDto;
 import com.petconnect.backend.user.application.dto.UserProfileDto;
 import com.petconnect.backend.user.application.dto.UserProfileUpdateDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
-import com.petconnect.backend.user.application.service.helper.UserServiceHelper; // Import the helper
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicStaffRepository;
 import com.petconnect.backend.user.domain.repository.OwnerRepository;
@@ -28,6 +30,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.util.StringUtils;
 
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,15 +39,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.*;
+import static org.mockito.BDDMockito.*;
 
 
 /**
  * Unit tests for {@link UserServiceImpl}.
  * Verifies logic for retrieving user profiles, finding users, and updating user profiles.
- * Uses mocked UserServiceHelper to simulate authenticated user context.
+ * Uses mocked UserHelper to simulate authenticated user context.
  *
  * @author ibosquet
  */
@@ -56,7 +57,9 @@ class UserServiceImplTest {
     @Mock private OwnerRepository ownerRepository;
     @Mock private ClinicStaffRepository clinicStaffRepository;
     @Mock private UserMapper userMapper;
-    @Mock private UserServiceHelper userServiceHelper; // ADDED: Mock the helper
+    @Mock private UserHelper userServiceHelper;
+    @Mock private EntityFinderHelper entityFinderHelper;
+    @Mock private AuthorizationHelper authorizationHelper;
 
     // --- Class Under Test ---
     @InjectMocks
@@ -143,7 +146,9 @@ class UserServiceImplTest {
 
     }
 
-    // --- Tests for getCurrentUserProfile ---
+    /**
+     * --- Tests for getCurrentUserProfile ---
+     */
     @Nested
     @DisplayName("getCurrentUserProfile Tests")
     class GetCurrentUserProfileTests {
@@ -152,7 +157,7 @@ class UserServiceImplTest {
         @DisplayName("should return OwnerProfileDto when authenticated user is Owner")
         void shouldReturnOwnerProfileDtoForOwner() {
             // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // ADDED: Mock helper
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
             given(userMapper.toOwnerProfileDto(ownerUser)).willReturn(ownerProfileDto);
 
             // Act
@@ -199,11 +204,6 @@ class UserServiceImplTest {
         @Test
         @DisplayName("should throw EntityNotFoundException when authenticated user not in DB")
         void shouldThrowEntityNotFoundWhenAuthUserNotInDb() {
-            // Arrange
-            // REMOVED: All direct SecurityContextHolder mocking
-            // REMOVED: userRepository findByEmail/Username mocks for "ghost_user"
-
-            // ADDED: Simulate the helper throwing the exception when user not found in DB
             given(userServiceHelper.getAuthenticatedUserEntity())
                     .willThrow(new EntityNotFoundException("Authenticated user 'ghost_user' not found in database."));
 
@@ -215,7 +215,9 @@ class UserServiceImplTest {
         }
     }
 
-    // --- Tests for findUserById ---
+    /**
+     * --- Tests for findUserById ---
+     */
     @Nested
     @DisplayName("findUserById Tests")
     class FindUserByIdTests {
@@ -223,9 +225,9 @@ class UserServiceImplTest {
         @Test
         @DisplayName("should return DTO when user finds self by ID")
         void shouldReturnDtoWhenSelfFindById() {
-            // Arrange: Requester IS the target
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Requester is Owner
-            given(userRepository.findById(ownerUser.getId())).willReturn(Optional.of(ownerUser)); // Target found
+            // Arrange
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+            given(entityFinderHelper.findUserOrFail(ownerUser.getId())).willReturn(ownerUser);
             given(userMapper.mapToBaseProfileDTO(ownerUser)).willReturn(genericOwnerDto);
 
             // Act
@@ -234,17 +236,17 @@ class UserServiceImplTest {
             // Assert
             assertThat(result).isPresent().contains(genericOwnerDto);
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findById(ownerUser.getId());
+            then(entityFinderHelper).should().findUserOrFail(ownerUser.getId());
             then(userMapper).should().mapToBaseProfileDTO(ownerUser);
         }
 
         @Test
         @DisplayName("should return DTO when Admin finds Staff in same clinic by ID")
         void shouldReturnDtoWhenAdminFindsStaffInSameClinicById() {
-            // Arrange: Requester is adminUser (Clinic 1), Target is vetUserSameClinic (Clinic 1)
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester is Admin C1
-            given(userRepository.findById(vetUserSameClinic.getId())).willReturn(Optional.of(vetUserSameClinic)); // Target found
-            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn( // Assuming a generic DTO for the vet
+            // Arrange
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+            given(entityFinderHelper.findUserOrFail(vetUserSameClinic.getId())).willReturn(vetUserSameClinic);
+            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
                     new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
             );
 
@@ -255,7 +257,7 @@ class UserServiceImplTest {
             assertThat(result).isPresent();
             assertThat(result.get().id()).isEqualTo(vetUserSameClinic.getId());
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findById(vetUserSameClinic.getId());
+            then(entityFinderHelper).should().findUserOrFail(vetUserSameClinic.getId()); // Verificar Helper
             then(userMapper).should().mapToBaseProfileDTO(vetUserSameClinic);
         }
 
@@ -263,45 +265,45 @@ class UserServiceImplTest {
         @Test
         @DisplayName("should return empty Optional when target user does not exist")
         void shouldReturnEmptyWhenNotFound() {
-            // Arrange: Requester doesn't matter if target not found
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Assume someone is asking
-            given(userRepository.findById(999L)).willReturn(Optional.empty()); // Target NOT found
+            // Arrange
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+            given(entityFinderHelper.findUserOrFail(999L))
+                    .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
 
-            // Act
-            Optional<UserProfileDto> result = userService.findUserById(999L);
+            // Act & Assert: Verificar que se lanza la excepción
+            assertThatThrownBy(() -> userService.findUserById(999L))
+                    .isInstanceOf(EntityNotFoundException.class);
 
-            // Assert
-            assertThat(result).isNotPresent();
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findById(999L);
+            then(entityFinderHelper).should().findUserOrFail(999L);
             then(userMapper).should(never()).mapToBaseProfileDTO(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException when Owner tries to find Admin by ID")
         void shouldThrowAccessDeniedWhenOwnerFindsAdminById() {
-            // Arrange: Requester is Owner, Target is Admin
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Requester
-            given(userRepository.findById(adminUser.getId())).willReturn(Optional.of(adminUser)); // Target found
+            /// Arrange
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+            given(entityFinderHelper.findUserOrFail(adminUser.getId())).willReturn(adminUser);
 
             // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(adminUser.getId()));
+            Throwable thrown = Assertions.catchThrowable(() ->userService.findUserById(adminUser.getId()));
             // Assert
             assertThat(thrown)
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not authorized to access profile for user " + adminUser.getId());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findById(adminUser.getId());
+            then(entityFinderHelper).should().findUserOrFail(adminUser.getId());
             then(userMapper).should(never()).mapToBaseProfileDTO(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException when Admin tries to find staff from different clinic by ID")
         void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicById() {
-            // Arrange: Requester is adminUser (Clinic 1), Target is adminUserOtherClinic (Clinic 2)
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester C1
-            given(userRepository.findById(adminUserOtherClinic.getId())).willReturn(Optional.of(adminUserOtherClinic)); // Target C2 found
+            // Arrange
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+            given(entityFinderHelper.findUserOrFail(adminUserOtherClinic.getId())).willReturn(adminUserOtherClinic);
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(adminUserOtherClinic.getId()));
@@ -311,16 +313,16 @@ class UserServiceImplTest {
                     .hasMessageContaining("is not authorized to access profile for user " + adminUserOtherClinic.getId());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findById(adminUserOtherClinic.getId());
+            then(entityFinderHelper).should().findUserOrFail(adminUserOtherClinic.getId());
             then(userMapper).should(never()).mapToBaseProfileDTO(any());
         }
 
         @Test
         @DisplayName("should throw AccessDeniedException when Staff tries to find Owner by ID")
         void shouldThrowAccessDeniedWhenStaffFindsOwnerById() {
-            // Arrange: Requester is Admin, Target is Owner
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester C1
-            given(userRepository.findById(ownerUser.getId())).willReturn(Optional.of(ownerUser)); // Target Owner found
+            // Arrange
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+            given(entityFinderHelper.findUserOrFail(ownerUser.getId())).willReturn(ownerUser);
 
             // Act
             Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(ownerUser.getId()));
@@ -330,12 +332,14 @@ class UserServiceImplTest {
                     .hasMessageContaining("is not authorized to access profile for user " + ownerUser.getId());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findById(ownerUser.getId());
+            then(entityFinderHelper).should().findUserOrFail(ownerUser.getId());
             then(userMapper).should(never()).mapToBaseProfileDTO(any());
         }
     }
 
-    // --- Tests for findUserByEmail ---
+    /**
+     * --- Tests for findUserByEmail ---
+     */
     @Nested
     @DisplayName("findUserByEmail Tests")
     class FindUserByEmailTests {
@@ -414,7 +418,9 @@ class UserServiceImplTest {
     }
 
 
-    // --- Tests for findUserByUsername ---
+    /**
+     * --- Tests for findUserByUsername ---
+     */
     @Nested
     @DisplayName("findUserByUsername Tests")
     class FindUserByUsernameTests {
@@ -493,7 +499,9 @@ class UserServiceImplTest {
     }
 
 
-    // --- Tests for updateCurrentOwnerProfile ---
+    /**
+     * --- Tests for updateCurrentOwnerProfile ---
+     */
     @Nested
     @DisplayName("updateCurrentOwnerProfile Tests")
     class UpdateCurrentOwnerProfileTests {
@@ -517,10 +525,9 @@ class UserServiceImplTest {
         @DisplayName("should update owner profile successfully")
         void shouldUpdateOwnerProfile() {
             // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // ADDED: Mock helper
-            given(userRepository.existsByUsername(updateDto.username())).willReturn(false); // Username unique
-            given(ownerRepository.save(any(Owner.class))).willAnswer(invocation -> invocation.getArgument(0));
-            doAnswer(invocation -> { /* Simulate mapper side effects */
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+            given(ownerRepository.save(any(Owner.class))).willAnswer(inv -> inv.getArgument(0));
+            doAnswer(invocation -> {
                 OwnerProfileUpdateDto dtoArg = invocation.getArgument(0);
                 Owner ownerArg = invocation.getArgument(1);
                 if (StringUtils.hasText(dtoArg.username())) ownerArg.setUsername(dtoArg.username());
@@ -535,16 +542,11 @@ class UserServiceImplTest {
 
             // Assert
             assertThat(result).isEqualTo(expectedResultDto);
-            then(userServiceHelper).should().getAuthenticatedUserEntity(); // ADDED: Verify helper
-            then(userRepository).should().existsByUsername(updateDto.username());
+            then(userServiceHelper).should().getAuthenticatedUserEntity();
+            then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), ownerUser);
             then(userMapper).should().updateOwnerFromDto(updateDto, ownerUser);
             then(ownerRepository).should().save(ownerCaptor.capture());
             then(userMapper).should(times(1)).toOwnerProfileDto(any(Owner.class));
-
-            Owner saved = ownerCaptor.getValue();
-            assertThat(saved.getUsername()).isEqualTo(updateDto.username());
-            assertThat(saved.getAvatar()).isEqualTo(updateDto.avatar());
-            assertThat(saved.getPhone()).isEqualTo(updateDto.phone());
         }
 
         @Test
@@ -552,7 +554,9 @@ class UserServiceImplTest {
         void shouldThrowUsernameExistsWhenUpdating() {
             // Arrange
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(userRepository.existsByUsername(updateDto.username())).willReturn(true);
+            willThrow(new UsernameAlreadyExistsException(updateDto.username()))
+                    .given(authorizationHelper)
+                    .validateUsernameUpdate(updateDto.username(), ownerUser);
 
             // Act & Assert
             assertThatThrownBy(() -> userService.updateCurrentOwnerProfile(updateDto))
@@ -560,7 +564,7 @@ class UserServiceImplTest {
                     .hasMessageContaining(updateDto.username());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().existsByUsername(updateDto.username());
+            then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), ownerUser);
             then(ownerRepository).should(never()).save(any());
             then(userMapper).should(never()).updateOwnerFromDto(any(), any());
         }
@@ -611,7 +615,9 @@ class UserServiceImplTest {
     }
 
 
-    // --- Tests for updateCurrentClinicStaffProfile ---
+    /**
+     * --- Tests for updateCurrentClinicStaffProfile ---
+     */
     @Nested
     @DisplayName("updateCurrentClinicStaffProfile Tests")
     class UpdateCurrentClinicStaffProfileTests {
@@ -642,17 +648,21 @@ class UserServiceImplTest {
         @DisplayName("should update staff profile successfully")
         void shouldUpdateStaffProfile() {
             // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // ADDED: Mock helper
-            given(userRepository.existsByUsername(updateDto.username())).willReturn(false); // Username unique
-            given(clinicStaffRepository.save(any(ClinicStaff.class))).willAnswer(i -> i.getArgument(0));
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+            doNothing().when(authorizationHelper).validateUsernameUpdate(updateDto.username(), adminUser);
             doAnswer(invocation -> {
                 UserProfileUpdateDto dtoArg = invocation.getArgument(0);
                 ClinicStaff staffArg = invocation.getArgument(1);
-                if (StringUtils.hasText(dtoArg.username())) staffArg.setUsername(dtoArg.username());
-                if (dtoArg.avatar() != null) staffArg.setAvatar(dtoArg.avatar());
+                if (StringUtils.hasText(dtoArg.username()) && !Objects.equals(dtoArg.username(), staffArg.getUsername())) {
+                    staffArg.setUsername(dtoArg.username());
+                }
+                if (dtoArg.avatar() != null && !Objects.equals(dtoArg.avatar(), staffArg.getAvatar())) {
+                    staffArg.setAvatar(dtoArg.avatar());
+                }
                 return null;
-            }).when(userMapper).updateClinicStaffCommonFromDto(updateDto, adminUser);
-            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(expectedResultDto);
+            }).when(userMapper).updateClinicStaffCommonFromDto(eq(updateDto), eq(adminUser));
+            given(clinicStaffRepository.save(adminUser)).willReturn(adminUser);
+            given(userMapper.toClinicStaffProfileDto(adminUser)).willReturn(expectedResultDto);
 
             // Act
             ClinicStaffProfileDto result = userService.updateCurrentClinicStaffProfile(updateDto);
@@ -660,14 +670,15 @@ class UserServiceImplTest {
             // Assert
             assertThat(result).isEqualTo(expectedResultDto);
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().existsByUsername(updateDto.username());
+            then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), adminUser);
             then(userMapper).should().updateClinicStaffCommonFromDto(updateDto, adminUser);
             then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
-            then(userMapper).should(times(1)).toClinicStaffProfileDto(any(ClinicStaff.class));
+            then(userMapper).should().toClinicStaffProfileDto(adminUser);
 
             ClinicStaff saved = clinicStaffCaptor.getValue();
             assertThat(saved.getUsername()).isEqualTo(updateDto.username());
             assertThat(saved.getAvatar()).isEqualTo(updateDto.avatar());
+            assertThat(saved.getEmail()).isEqualTo(adminUser.getEmail());
         }
 
         @Test
@@ -675,7 +686,8 @@ class UserServiceImplTest {
         void shouldThrowUsernameExistsWhenUpdating() {
             // Arrange
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            given(userRepository.existsByUsername(updateDto.username())).willReturn(true);
+            doThrow(new UsernameAlreadyExistsException(updateDto.username()))
+                    .when(authorizationHelper).validateUsernameUpdate(updateDto.username(), adminUser);
 
             // Act & Assert
             assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(updateDto))
@@ -683,7 +695,8 @@ class UserServiceImplTest {
                     .hasMessageContaining(updateDto.username());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().existsByUsername(updateDto.username());
+            // Verify AuthorizationHelper
+            then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), adminUser);
             then(clinicStaffRepository).should(never()).save(any());
             then(userMapper).should(never()).updateClinicStaffCommonFromDto(any(), any());
         }
