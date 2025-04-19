@@ -2,7 +2,9 @@ package com.petconnect.backend.record.application.service.impl;
 
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
+import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
+import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
@@ -42,6 +44,8 @@ public class RecordServiceImpl implements RecordService {
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
     private final ValidateHelper validateHelper;
+    private final RecordHelper recordHelper;
+    private final SigningService signingService;
 
     /**
      * {@inheritDoc}
@@ -65,13 +69,11 @@ public class RecordServiceImpl implements RecordService {
                 .creator(creator)
                 .type(createDto.type())
                 .description(createDto.description())
-                // vetSignature will be set below if signing is requested
                 .build();
 
         // Handle Vaccine Details if applicable
         if (createDto.type() == RecordType.VACCINE) {
             Vaccine vaccineEntity = vaccineMapper.fromCreateDto(createDto.vaccine());
-            // Link vaccine to record (establishes bidirectional link and sets vaccine ID via @MapsId)
             newRecord.setVaccineDetails(vaccineEntity);
         }
 
@@ -81,15 +83,15 @@ public class RecordServiceImpl implements RecordService {
                 log.warn("Attempt to sign record by non-Vet user: {}", creatorUserId);
                 throw new IllegalStateException("Only Veterinarians can sign records. User " + creatorUserId + " is not a Vet.");
             }
-            newRecord.setVetSignature("SIGNED_BY_VET_" + vetCreator.getId() + "_AT_" + System.currentTimeMillis()); // Temporary Placeholder
+            String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
+            String signature = signingService.generateSignature(vetCreator, dataToSign);
+            newRecord.setVetSignature(signature);
             log.info("Record for Pet {} created and signed by Vet {}", petId, creatorUserId);
         }
 
         // Save the record (and cascaded Vaccine if present)
         Record savedRecord = recordRepository.save(newRecord);
         log.info("User {} created new record ID {} for Pet {}", creatorUserId, savedRecord.getId(), petId);
-
-        // Map and return DTO
         return recordMapper.toViewDto(savedRecord);
     }
 
@@ -128,7 +130,7 @@ public class RecordServiceImpl implements RecordService {
         Record recordEntity = entityFinderHelper.findRecordByIdOrFail(recordId);
         UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
 
-        // Check if record is signed
+        // Check if the record is signed
         if (StringUtils.hasText(recordEntity.getVetSignature())) {
             log.warn("Attempt to delete SIGNED record ID {} by user {}", recordId, requesterUserId);
             throw new IllegalStateException("Cannot delete record " + recordId + " because it has been signed by a veterinarian.");
