@@ -145,15 +145,16 @@ class RecordServiceImplTest {
         private Vaccine newVaccineEntity;
         private RecordViewDto expectedOwnerRecordViewDto;
         private RecordViewDto expectedVetVaccineViewDto;
+        private final Long petIdForCreate = petId;
 
         @BeforeEach
         void createSetup() {
             // DTO for an owner creating ANOTHER record
-            ownerRecordDto = new RecordCreateDto(RecordType.OTHER, "Felt warm yesterday", null);
+            ownerRecordDto = new RecordCreateDto( petIdForCreate,RecordType.OTHER, "Felt warm yesterday", null);
 
             // DTO for vet creating VACCINE record
             vaccineDetailsDto = new VaccineCreateDto("RabiesVac", 1, "LabX", "Batch123");
-            vetVaccineDto = new RecordCreateDto(RecordType.VACCINE, "Rabies vaccination administered", vaccineDetailsDto);
+            vetVaccineDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Rabies vaccination administered", vaccineDetailsDto);
 
             // Simulate entities BEFORE save
             Record newRecordFromVet;
@@ -188,7 +189,7 @@ class RecordServiceImplTest {
             given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedOwnerRecordViewDto);
 
             // Act
-            RecordViewDto result = recordService.createRecord(petId, ownerRecordDto, ownerId, false);
+            RecordViewDto result = recordService.createRecord(ownerRecordDto, ownerId, false);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedOwnerRecordViewDto);
@@ -238,7 +239,7 @@ class RecordServiceImplTest {
 
 
             // Act
-            RecordViewDto result = recordService.createRecord(petId, vetVaccineDto, vetId, true);
+            RecordViewDto result = recordService.createRecord( vetVaccineDto, vetId, true);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedVetVaccineViewDto);
@@ -266,7 +267,7 @@ class RecordServiceImplTest {
         @DisplayName("should throw IllegalArgumentException if type is VACCINE but vaccine DTO is null")
         void createRecord_Failure_VaccineDtoMissing() {
             // Arrange
-            RecordCreateDto invalidDto = new RecordCreateDto(RecordType.VACCINE, "Forgot details", null); // Vaccine DTO null
+            RecordCreateDto invalidDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Forgot details", null); // Vaccine DTO null
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
             given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet);
             doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
@@ -274,7 +275,7 @@ class RecordServiceImplTest {
                     .when(validateHelper).validateRecordCreationDto(invalidDto);
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.createRecord(petId, invalidDto, vetId, false))
+            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId, false))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Vaccine details are required");
 
@@ -285,7 +286,7 @@ class RecordServiceImplTest {
         @DisplayName("should throw IllegalArgumentException if type is not VACCINE but vaccine DTO is provided")
         void createRecord_Failure_VaccineDtoUnexpected() {
             // Arrange
-            RecordCreateDto invalidDto = new RecordCreateDto(RecordType.ILLNESS, "Flu", vaccineDetailsDto);
+            RecordCreateDto invalidDto = new RecordCreateDto(petIdForCreate,RecordType.ILLNESS, "Flu", vaccineDetailsDto);
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
             given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet);
             doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
@@ -294,7 +295,7 @@ class RecordServiceImplTest {
                     .when(validateHelper).validateRecordCreationDto(invalidDto);
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.createRecord(petId, invalidDto, vetId, false))
+            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId, false))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Vaccine details should only be provided");
 
@@ -311,7 +312,7 @@ class RecordServiceImplTest {
             doNothing().when(validateHelper).validateRecordCreationDto(ownerRecordDto);
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.createRecord(petId, ownerRecordDto, ownerId, true))
+            assertThatThrownBy(() -> recordService.createRecord( ownerRecordDto, ownerId, true))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Only Veterinarians can sign records");
 
@@ -339,7 +340,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test successful retrieval when requester is the owner.
+         * Test successful retrieval when the requester is the owner.
          */
         @Test
         @DisplayName("should return page of records when requested by owner")
@@ -370,7 +371,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test successful retrieval when requester is authorized staff.
+         * Test successful retrieval when the requester is authorized staff.
          */
         @Test
         @DisplayName("should return page of records when requested by authorized staff")
@@ -401,7 +402,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test retrieval when pet has no records.
+         * Test retrieval when a pet has no records.
          */
         @Test
         @DisplayName("should return empty page when pet has no records")
@@ -426,7 +427,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test failure when pet is not found.
+         * Test failure when a pet is not found.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if pet not found")
@@ -444,7 +445,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test failure when requester is not authorized for the pet.
+         * Test failure when a requester is not authorized for the pet.
          */
         @Test
         @DisplayName("should throw AccessDeniedException if requester not authorized")
@@ -627,7 +628,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test successful deletion when the requester is the creator and record is unsigned.
+         * Test successful deletion when the requester is the creator and the record is unsigned.
          */
         @Test
         @DisplayName("should delete record successfully when requester is creator and record unsigned")
@@ -648,8 +649,8 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test successful deletion when requester is Admin from the same clinic as the staff creator,
-         * and record is unsigned.
+         * Test successful deletion when the requester is Admin from the same clinic as the staff creator,
+         * and the record is unsigned.
          */
         @Test
         @DisplayName("should delete record successfully when requester is Admin from same clinic and record unsigned")
@@ -714,7 +715,7 @@ class RecordServiceImplTest {
         }
 
         /**
-         * Test failure when Admin tries to delete record created by staff from DIFFERENT clinic.
+         * Test failure when Admin tries to delete record created by staff from a DIFFERENT clinic.
          */
         @Test
         @DisplayName("should throw AccessDeniedException if Admin from different clinic")

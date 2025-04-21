@@ -34,10 +34,8 @@ public interface UserControllerApi {
 
     /**
      * Retrieves the profile of the currently authenticated user.
-     * <p>
      * Returns specific profile details ({@link OwnerProfileDto} or {@link ClinicStaffProfileDto})
      * based on the authenticated user's role. Requires a valid JWT token.
-     * </p>
      *
      * @return A {@link ResponseEntity} containing the user's specific profile DTO (as Object)
      *         and HTTP status 200 (OK).
@@ -62,15 +60,12 @@ public interface UserControllerApi {
 
     /**
      * Retrieves a generic user profile by their unique ID.
-     * <p>
-     * Requires ADMIN role or the user requesting their own ID. Authorization enforced by `@PreAuthorize`
-     * on the service layer. Returns a basic {@link UserProfileDto} containing common, non-sensitive information.
-     * </p>
+     * Requires an ADMIN role or the user requesting their own ID. Returns a basic {@link UserProfileDto} containing common, non-sensitive information.
      *
      * @param id The unique ID of the user to retrieve.
      * @return A {@link ResponseEntity} containing the {@link UserProfileDto} and HTTP status 200 (OK) if found and authorized.
      *         Returns 401 if not authenticated.
-     *         Returns 403 if authenticated user is not an Admin and not requesting their own ID.
+     *         Returns 403 if the authenticated user is not an Admin and not requesting their own ID.
      *         Returns 404 if the user ID does not exist.
      */
     @Operation(summary = "Get User Profile by ID",
@@ -91,15 +86,13 @@ public interface UserControllerApi {
 
     /**
      * Retrieves a generic user profile by their unique email address.
-     * <p>
-     * Requires ADMIN role. Authorization enforced by `@PreAuthorize` on the service layer.
+     * Requires an ADMIN role.
      * Returns a basic {@link UserProfileDto}.
-     * </p>
      *
      * @param email The email address of the user to retrieve.
      * @return A {@link ResponseEntity} containing the {@link UserProfileDto} and HTTP status 200 (OK) if found and authorized.
      *         Returns 401 if not authenticated.
-     *         Returns 403 if authenticated user is not an Admin.
+     *         Returns 403 if the authenticated user is not an Admin.
      *         Returns 404 if no user exists with the given email.
      */
     @Operation(summary = "Get User Profile by Email",
@@ -119,10 +112,8 @@ public interface UserControllerApi {
 
     /**
      * Updates the profile information for the currently authenticated Pet Owner.
-     * <p>
      * Allows an Owner to update their username, avatar, and phone number.
-     * Requires OWNER role. Username uniqueness is validated by the service.
-     * </p>
+     * Requires an OWNER role. The service validates username uniqueness.
      *
      * @param updateDTO An {@link OwnerProfileUpdateDto} containing the fields to update. Validation rules are applied.
      * @return A {@link ResponseEntity} containing the updated {@link OwnerProfileDto} and HTTP status 200 (OK).
@@ -151,9 +142,7 @@ public interface UserControllerApi {
 
     /**
      * Updates common profile information (username, avatar) for the currently authenticated Clinic Staff member (Vet or Admin).
-     * <p>
-     * Requires VET or ADMIN role. Username uniqueness is validated by the service.
-     * </p>
+     * Requires a VET or ADMIN role.
      *
      * @param updateDTO A {@link UserProfileUpdateDto} containing the common fields to update. Validation rules are applied.
      * @return A {@link ResponseEntity} containing the updated {@link ClinicStaffProfileDto} and HTTP status 200 (OK).

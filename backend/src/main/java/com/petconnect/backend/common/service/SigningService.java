@@ -124,7 +124,7 @@ public class SigningService {
      */
     private PrivateKey getOrLoadPrivateKey() throws Exception{
         if (this.simulatedVetPrivateKey == null) {
-            log.warn("LOADING SIMULATED VET PRIVATE KEY FROM {} - TFG USE ONLY!", privateKeyPath);
+            log.warn("LOADING SIMULATED VET PRIVATE KEY FROM {}", privateKeyPath);
             if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
                 Security.addProvider(new BouncyCastleProvider());
             }

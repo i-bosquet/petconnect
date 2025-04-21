@@ -68,7 +68,6 @@ public class UserController implements UserControllerApi {
     @Override
     @PutMapping("/me/staff")
     public ResponseEntity<ClinicStaffProfileDto> updateCurrentClinicStaffProfile(@Valid @RequestBody UserProfileUpdateDto updateDTO) {
-        // Note: We use the generic UserProfileUpdateDto as input here
         ClinicStaffProfileDto updatedProfile = userService.updateCurrentClinicStaffProfile(updateDTO);
         return ResponseEntity.ok(updatedProfile);
     }

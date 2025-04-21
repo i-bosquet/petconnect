@@ -30,11 +30,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Integration tests for {@link AuthController} using a real PostgreSQL database (via Docker)
+ * Integration tests it for {@link AuthController} using a real PostgreSQL database (via Docker)
  * and with Spring Security filters enabled.
  * Tests cover user registration and login functionality.
  * Uses {@link MockMvc} to simulate HTTP requests.
- * Each test runs in a transaction that is rolled back afterward.
+ * Each test runs in a transaction rolled back afterward.
  *
  * @author ibosquet
  */
@@ -110,7 +110,7 @@ class AuthControllerIntegrationTest {
             Long newUserId = responseDto.id();
 
             assertThat(newUserId).isNotNull();
-            // Fetch directly from repository to verify state BEFORE rollback
+            // Fetch directly from the repository to verify state BEFORE rollback
             Optional<UserEntity> userOpt = userRepository.findById(newUserId);
             assertThat(userOpt).isPresent();
             UserEntity user = userOpt.get();
@@ -224,7 +224,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.username", is(adminLoginDto.username())))
-                .andExpect(jsonPath("$.message", is("UserEntity loged succesfully"))) // Check your exact success message
+                .andExpect(jsonPath("$.message", is("UserEntity logged successfully"))) // Check your exact success message
                 .andExpect(jsonPath("$.status", is(true)))
                 .andExpect(jsonPath("$.jwt", is(notNullValue())))
                 .andExpect(jsonPath("$.jwt", matchesRegex("^[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*$"))); // JWT format
@@ -238,7 +238,6 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRegistrationDto)))
                 .andExpect(status().isCreated());
-        // ownerLoginDto uses credentials from validRegistrationDto
 
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
@@ -282,7 +281,7 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("POST /api/auth/login - Bad Request (400) - Invalid Input")
     void login_whenInputInvalid_shouldReturnBadRequest() throws Exception {
-        // Arrange: DTO with blank password
+        // Arrange: DTO with a blank password
         AuthLoginRequestDto invalidDto = new AuthLoginRequestDto("user", "");
 
         // Act & Assert

@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -51,14 +52,16 @@ class SigningServiceTest {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
-        if (!Files.exists(Paths.get(TEST_PRIVATE_KEY_PATH)) || !Files.exists(Paths.get(TEST_PUBLIC_KEY_PATH))) {
+        Path path = Paths.get(TEST_PUBLIC_KEY_PATH);
+
+        if (!Files.exists(Paths.get(TEST_PRIVATE_KEY_PATH)) || !Files.exists(path)) {
             System.err.println("WARNING: Test keys not found at " + TEST_PRIVATE_KEY_PATH + " / " + TEST_PUBLIC_KEY_PATH);
             System.err.println("Please generate test keys using OpenSSL:");
             System.err.println("openssl genpkey -algorithm RSA -out " + TEST_PRIVATE_KEY_PATH + " -aes256 -pass pass:" + TEST_PRIVATE_KEY_PASSWORD + " -pkeyopt rsa_keygen_bits:2048");
             System.err.println("openssl rsa -pubout -in " + TEST_PRIVATE_KEY_PATH + " -out " + TEST_PUBLIC_KEY_PATH + " -passin pass:" + TEST_PRIVATE_KEY_PASSWORD);
             testPublicKeyPemB64 = null;
         } else {
-            String publicKeyPemContent = Files.readString(Paths.get(TEST_PUBLIC_KEY_PATH));
+            String publicKeyPemContent = Files.readString(path);
             testPublicKeyPemB64 = publicKeyPemContent
                     .replace("-----BEGIN PUBLIC KEY-----", "")
                     .replace("-----END PUBLIC KEY-----", "")

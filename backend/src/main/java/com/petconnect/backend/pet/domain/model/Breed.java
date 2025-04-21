@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a specific breed within a species (e.g., Labrador Retriever within DOG).
@@ -16,13 +17,15 @@ import java.util.List;
  *
  * @author ibosquet
  */
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Entity
 @Table(name = "breed", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"name", "specie"}, name = "en_breed_name_specie")})
+@ToString(exclude = {"pets"})
 public class Breed{
 
     /**
@@ -68,6 +71,39 @@ public class Breed{
             mappedBy = "breed", // Field in Pet entity that owns the relationship
             fetch = FetchType.LAZY // Load pets only when explicitly requested
     )
-    @Builder.Default // Initialize for builder pattern
+    @Builder.Default // Initialize for a builder pattern
     private List<Pet> pets = new ArrayList<>();
+
+    /**
+     * Determines equality based solely on the entity's unique identifier (ID).
+     * Two {@code Breed} instances are considered equal if they both have a non-null ID
+     * and their IDs are equal. This implementation is robust against changes
+     * in other attributes and handles JPA proxy objects correctly by using {@code getClass()}.
+     * Entities without an ID (transient) are only equal if they are the same instance.
+     *
+     * @param o The object to compare this {@code Breed} against.
+     * @return {@code true} if the given object represents the same entity (based on ID), {@code false} otherwise.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Breed breed = (Breed) o;
+        return id != null && Objects.equals(id, breed.id);
+    }
+
+    /**
+     * Computes the hash code based solely on the entity's unique identifier (ID).
+     * This implementation is consistent with the {@link #equals(Object)} method.
+     * If the entity has a non-null ID, the hash code is derived from the ID.
+     * If the entity is transient (ID is null), it uses the default hash code
+     * provided by {@code Object.hashCode()} (based on object identity) or {@code getClass().hashCode()}
+     * to ensure consistency during the entity lifecycle within a persistence context or collections.
+     *
+     * @return The hash code based on the entity's ID, or the class's hash code if the ID is null.
+     */
+    @Override
+    public int hashCode() {
+        return id != null ? Objects.hash(id) : getClass().hashCode();
+    }
 }

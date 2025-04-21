@@ -63,18 +63,18 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId) {
-        Owner owner = entityFinderHelper.findOwnerOrFail(ownerId); // Find and validate owner
+        Owner owner = entityFinderHelper.findOwnerOrFail(ownerId); // Find and validate an owner
         Breed assignedBreed = resolveBreed(registrationDto.breedId(), registrationDto.specie()); // Ensures non-null breed
         String imagePath = determineInitialImagePath(registrationDto.image(), assignedBreed); // Determine image
 
-        // Create new Pet entity - Owner provides initial details
+        // Create a new Pet entity-Owner provides initial details
         Pet newPet = Pet.builder()
                 .name(registrationDto.name())
                 .owner(owner)
                 .breed(assignedBreed)
                 .image(imagePath)
                 .status(PetStatus.PENDING) // Start as PENDING
-                // Set optional fields provided by owner during registration
+                // Set optional fields provided by an owner during registration
                 .birthDate(registrationDto.birthDate())
                 .color(registrationDto.color())
                 .gender(registrationDto.gender())
@@ -261,7 +261,7 @@ public class PetServiceImpl implements PetService {
     public List<BreedDto> findBreedsBySpecie(Specie specie) {
         if (specie == null) {
             log.warn("findBreedsBySpecie called with null specie.");
-            return Collections.emptyList(); // Return empty list for null input
+            return Collections.emptyList(); // Return an empty list for null input
         }
         List<Breed> breeds = breedRepository.findBySpecieOrderByNameAsc(specie);
         return breedMapper.toDtoList(breeds);
@@ -352,7 +352,7 @@ public class PetServiceImpl implements PetService {
     }
 
     /**
-     * Determines initial image path using provided path or breed's default.
+     * Determines an initial image path using a provided path or breed's default.
      */
     private String determineInitialImagePath(String providedImagePath, @NotNull Breed assignedBreed) {
         // Use user-provided image if available
@@ -361,7 +361,7 @@ public class PetServiceImpl implements PetService {
             return providedImagePath;
         }
 
-        // Use specific breed image if the breed is not generic and has a URL
+        // Use a specific breed image if the breed is not generic and has a URL
         boolean isGenericBreed = "Mixed/Other".equals(assignedBreed.getName()) || "Standard/Other".equals(assignedBreed.getName());
         if (!isGenericBreed && StringUtils.hasText(assignedBreed.getImageUrl())) {
             log.debug("Using specific breed image path: {}", assignedBreed.getImageUrl());
@@ -413,7 +413,7 @@ public class PetServiceImpl implements PetService {
      *
      * @param pet               The Pet entity to check.
      * @param expectedStatus    The required PetStatus.
-     * @param actionDescription Description of the action requiring this status (for error message).
+     * @param actionDescription Description of the action requiring this status (for an error message).
      * @throws IllegalStateException if the pet's status is not the expected one.
      */
     private void ensurePetIsInStatus(Pet pet, PetStatus expectedStatus, String actionDescription) {
@@ -429,7 +429,7 @@ public class PetServiceImpl implements PetService {
      *
      * @param pet               The Pet entity to check.
      * @param forbiddenStatus   The PetStatus that the pet should NOT have.
-     * @param actionDescription Description of the action being attempted (for error message).
+     * @param actionDescription Description of the action being attempted (for an error message).
      * @throws IllegalStateException if the pet's status matches the forbidden one.
      */
     private void ensurePetIsNotInStatus(Pet pet, PetStatus forbiddenStatus, String actionDescription) {
@@ -445,7 +445,7 @@ public class PetServiceImpl implements PetService {
      *
      * @param microchip      The microchip number to validate (can be null or blank, validation handles this).
      * @param petIdToExclude The ID of the pet being updated (null if creating a new pet).
-     * @throws MicrochipAlreadyExistsException if the microchip is already used by another pet.
+     * @throws MicrochipAlreadyExistsException if another pet already uses the microchip.
      */
     private void validateMicrochipUniqueness(String microchip, Long petIdToExclude) {
         if (!StringUtils.hasText(microchip)) {
@@ -470,8 +470,8 @@ public class PetServiceImpl implements PetService {
      * and calling the appropriate mapper update method.
      *
      * @param petToUpdate     The Pet entity to modify.
-     * @param ownerUpdateDto  The DTO from owner update (null if called by staff).
-     * @param clinicUpdateDto The DTO from staff update (null if called by owner).
+     * @param ownerUpdateDto  The DTO from the owner update (null if called by staff).
+     * @param clinicUpdateDto The DTO from staff update (null if called by an owner).
      * @return true if any changes were applied, false otherwise.
      */
     private boolean applyPetUpdates(Pet petToUpdate, PetOwnerUpdateDto ownerUpdateDto, PetClinicUpdateDto clinicUpdateDto) {

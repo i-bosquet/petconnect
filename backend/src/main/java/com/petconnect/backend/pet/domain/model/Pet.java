@@ -13,6 +13,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -23,9 +24,9 @@ import java.util.Set;
  *
  * @author ibosquet
  */
-@Data
-@EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
+@Getter
+@Setter
+@ToString(callSuper = true, exclude = {"owner", "breed", "associatedVets"})
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -60,8 +61,7 @@ public class Pet extends BaseEntity {
     private Gender gender;
 
     /**
-     * The date of birth of the pet. Optional.
-     * Must be a date in the past or present.
+     * The date of birth of the pet. Must be a date in the past or present.
      */
     @PastOrPresent(message = "Birth date must be in the past or present")
     @Column(name = "birth_date")
@@ -87,12 +87,45 @@ public class Pet extends BaseEntity {
 
     /**
      * The current status of the pet within the system (Pending, Active, Inactive).
-     * Cannot be null. Defaults likely handled in service layer upon creation.
+     * Cannot be null. Defaults are likely handled in the service layer upon creation.
      */
     @NotNull(message = "Pet status cannot be null")
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private PetStatus status;
+
+    /**
+     * Determines equality based solely on the entity's unique identifier (ID).
+     * Two {@code Pet} instances are considered equal if they both have a non-null ID
+     * and their IDs are equal. This implementation is robust against changes
+     * in other attributes and handles JPA proxy objects correctly by using {@code getClass()}.
+     * Entities without an ID (transient) are only equal if they are the same instance.
+     *
+     * @param o The object to compare this {@code Pet} against.
+     * @return {@code true} if the given object represents the same entity (based on ID), {@code false} otherwise.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Pet pet = (Pet) o;
+        return getId() != null && Objects.equals(getId(), pet.getId());
+    }
+
+    /**
+     * Computes the hash code based solely on the entity's unique identifier (ID).
+     * This implementation is consistent with the {@link #equals(Object)} method.
+     * If the entity has a non-null ID, the hash code is derived from the ID.
+     * If the entity is transient (ID is null), it uses the default hash code
+     * provided by {@code Object.hashCode()} (based on object identity) or {@code getClass().hashCode()}
+     * to ensure consistency during the entity lifecycle within a persistence context or collections.
+     *
+     * @return The hash code based on the entity's ID, or the class's hash code if the ID is null.
+     */
+    @Override
+    public int hashCode() {
+        return getId() != null ? Objects.hash(getId()) : getClass().hashCode();
+    }
 
     // --- Relationships ---
 

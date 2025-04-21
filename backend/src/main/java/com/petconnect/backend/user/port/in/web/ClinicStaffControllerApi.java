@@ -21,7 +21,6 @@ import java.util.Map;
 /**
  * API interface defining endpoints for managing Clinic Staff (Vets and Admins).
  * These operations typically require ADMIN privileges for the associated clinic.
- * Documented using OpenAPI 3 annotations.
  *
  * @author ibosquet
  */
@@ -31,15 +30,13 @@ public interface ClinicStaffControllerApi {
 
     /**
      * Creates a new clinic staff member (Veterinarian or Administrator).
-     * <p>
      * This endpoint allows an authenticated Admin user to create a new user account
      * (Vet or Admin role) and associate it with their own clinic. The service layer handles
      * password hashing, role assignment, and validation (e.g., uniqueness of username, email, license number).
-     * </p>
      *
      * @param creationDTO A {@link ClinicStaffCreationDto} containing the details for the new staff member.
-     *                    Requires role (VET or ADMIN), unique username/email, password, name, surname.
-     *                    If role is VET, licenseNumber and vetPublicKey are also required and validated for uniqueness.
+     *                    Requires a role (VET or ADMIN), unique username/email, password, name, surname.
+     *                    If a role is VET, licenseNumber and vetPublicKey are also required and validated for uniqueness.
      * @return A {@link ResponseEntity} containing the {@link ClinicStaffProfileDto} of the newly created staff member
      *         with HTTP status 201 (Created).
      *         See possible error responses for details on failures.
@@ -67,11 +64,9 @@ public interface ClinicStaffControllerApi {
 
     /**
      * Updates the details of an existing clinic staff member.
-     * <p>
      * Allows an authenticated Admin to update the name, surname, and (if applicable)
      * license number and public key of a staff member within their own clinic.
-     * The service layer handles authorization checks and validates uniqueness if license/key are changed.
-     * </p>
+     * The service layer handles authorization checks and validates uniqueness if the license / key are changed.
      *
      * @param staffId The unique ID of the staff member to update.
      * @param updateDTO A {@link ClinicStaffUpdateDto} containing the fields to update. Only non-null fields are considered.
@@ -105,9 +100,7 @@ public interface ClinicStaffControllerApi {
 
     /**
      * Activates a previously deactivated clinic staff member's account.
-     * <p>
      * Allows an authenticated Admin to re-enable a staff account within their own clinic.
-     * </p>
      *
      * @param staffId The unique ID of the staff member to activate.
      * @return A {@link ResponseEntity} containing the {@link ClinicStaffProfileDto} of the activated staff member
@@ -135,10 +128,8 @@ public interface ClinicStaffControllerApi {
 
     /**
      * Deactivates an active clinic staff member's account.
-     * <p>
      * Allows an authenticated Admin to disable a staff account within their own clinic.
      * The Admin cannot deactivate their own account via this endpoint.
-     * </p>
      *
      * @param staffId The unique ID of the staff member to deactivate.
      * @return A {@link ResponseEntity} containing the {@link ClinicStaffProfileDto} of the deactivated staff member

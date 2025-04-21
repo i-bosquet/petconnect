@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
 
 /**
  * DTO for creating new Clinic Staff (Vet or Admin) by an existing Admin.
- * Includes necessary fields for UserEntity and ClinicStaff.
- * Password should be handled appropriately (e.g., temporary or set by user later).
+ * Includes the necessary fields for UserEntity and ClinicStaff.
+ * Password should be handled appropriately (e.g., temporary or set by the user later).
  *
  * @param username New staff's unique username.
  * @param email New staff's unique email.
@@ -35,7 +35,7 @@ public record ClinicStaffCreationDto(
         @Size(max = 100) String surname,
         @NotNull(message = "Role cannot be null") RoleEnum role , // Must be VET or ADMIN
         // Vet specific fields - validation might depend on role='VET'
-        String licenseNumber, // Required if role is VET
+        String licenseNumber, // Required if a role is VET
         String vetPublicKey   // Required if role is VET
         // Note: isActive defaults to true in entity
 ) {

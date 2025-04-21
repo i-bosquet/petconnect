@@ -104,7 +104,7 @@ public class AuthorizationHelper {
         }
         Long staffClinicId = staffClinic.getId();
 
-        // Pet PENDING at staff's clinic?
+        // Is Pet PENDING at staff's clinic?
         if (pet.getStatus() == PetStatus.PENDING && Objects.equals(staffClinic, pet.getPendingActivationClinic())) {
             return true;
         }
@@ -183,13 +183,13 @@ public class AuthorizationHelper {
      * @param requesterUserId The ID of the user making the request.
      * @param targetClinicId The ID of the clinic being accessed.
      * @param actionDescription Description of the action (e.g., "view staff for"). Used in logs/exceptions.
-     * @throws EntityNotFoundException if requester user or target clinic is not found.
-     * @throws AccessDeniedException if requester is not ClinicStaff, not a Vet/Admin, or not associated with the target clinic.
+     * @throws EntityNotFoundException if the requester user or target clinic is not found.
+     * @throws AccessDeniedException if the requester is not ClinicStaff, not a Vet/Admin, or not associated with the target clinic.
      */
     public void verifyClinicStaffAccess(Long requesterUserId, Long targetClinicId, String actionDescription) {
         UserEntity requesterUser = entityFinderHelper.findUserOrFail(requesterUserId);
 
-        // check if the target clinic actually exist
+        // check if the target clinic actually exists
         if (!clinicRepository.existsById(targetClinicId)) {
             throw new EntityNotFoundException("Target clinic not found with id: " + targetClinicId);
         }

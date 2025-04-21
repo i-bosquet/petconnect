@@ -12,12 +12,12 @@ import java.time.LocalDate;
 /**
  * Data Transfer Object for registering a new Pet by an Owner.
  * Contains the initial basic information provided by the owner.
- * Other details (microchip, birthdate, etc.) are typically added later by clinic staff.
+ * Clinic staff typically adds other details (microchip, birthdate, etc.) later.
  *
  * @param name The chosen name for the pet. Cannot be blank.
  * @param specie The species of the pet. Cannot be null.
  * @param image Optional: URL or identifier for a user-uploaded image for the pet. If null or blank, a default will be assigned based on species/breed.
- * @param breedId Optional: The ID of the selected Breed for the pet. If null, it implies mixed or unknown breed initially.
+ * @param breedId Optional: The ID of the selected Breed for the pet. If null, it implies a mixed or unknown breed initially.
  *
  * @author ibosquet
  */

@@ -43,7 +43,7 @@ public class PetMapper {
 
     /**
      * Converts a {@link Pet} entity to a detailed {@link PetProfileDto}.
-     * Includes information from related Owner, Breed entities and Associated Vets. // Javadoc Actualizado
+     * Includes information from related Owners, Breed entities, and Associated Vets. // Javadoc Actualizado
      * Returns null if the input entity is null.
      *
      * @param pet The Pet entity to convert.
@@ -159,7 +159,7 @@ public class PetMapper {
      * Returns true if any field was actually modified (useful for logging/auditing).
      *
      * @param dto The activation DTO containing verified/updated data.
-     * @param petToActivate The Pet entity (in PENDING state) to be updated and activated.
+     * @param petToActivate The Pet entity (in the PENDING state) to be updated and activated.
      * @param resolvedBreed The Breed entity corresponding to dto.breedId(), resolved by the service (can be null).
      * @return true if the entity was modified, false otherwise.
      */
@@ -174,7 +174,6 @@ public class PetMapper {
         return changed;
     }
 
-    // Helpers
 
     /**
      * Updates a target field using a setter if the source value is not null
@@ -206,7 +205,7 @@ public class PetMapper {
     }
 
     /**
-     * Updates a target String field using a setter if the source value is not null or blank,
+     * Updates a target String field using a setter if the source value is not null or blank
      * and different from the current value obtained via a getter.
      * Handles blank strings by setting the target field to null.
      *

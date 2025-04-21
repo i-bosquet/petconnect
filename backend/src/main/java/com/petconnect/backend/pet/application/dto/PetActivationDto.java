@@ -16,7 +16,7 @@ import java.time.LocalDate;
  * @param color Verified/updated color description (max 50 chars). Can be blank if none.
  * @param gender Verified/updated gender. Cannot be null.
  * @param birthDate Verified/updated birthdate. Cannot be null, must be past/present.
- * @param microchip Verified/updated microchip number. Cannot be blank, max 50 chars, must be unique.
+ * @param microchip Verified/updated microchip number. Cannot be blank, max 50 chars must be unique.
  * @param breedId ID of the verified/updated breed. Can be null if confirmed mixed/unknown.
  *
  * @author ibosquet

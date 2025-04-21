@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 /**
  * Custom runtime exception thrown when attempting to assign a microchip number
  * to a pet, but that microchip number is already registered to another pet.
- *
  * Suggests an HTTP 409 Conflict status.
  *
  * @author ibosquet

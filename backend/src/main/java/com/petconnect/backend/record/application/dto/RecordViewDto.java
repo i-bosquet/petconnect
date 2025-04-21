@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * @param vetSignature The digital signature of the Vet, if signed (null otherwise).
  * @param createdAt    Timestamp when the record was created.
  * @param creator      A summary DTO of the user (Owner/Vet/Admin) who created the record.
- * @param vaccine      Optional details of the vaccine, present only if type is VACCINE.
+ * @param vaccine      Optional details of the vaccine, present only if the type is VACCINE.
  *
  * @author ibosquet
  */
@@ -24,9 +24,9 @@ public record RecordViewDto(
         Long id,
         RecordType type,
         String description,
-        String vetSignature, // Or potentially a boolean like 'isSigned'
+        String vetSignature,
         LocalDateTime createdAt,
-        UserProfileDto creator, // DTO of the user who created it
+        UserProfileDto creator,
         VaccineViewDto vaccine
 ) {
 }

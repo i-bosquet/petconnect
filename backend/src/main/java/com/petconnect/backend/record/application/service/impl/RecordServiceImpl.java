@@ -52,15 +52,13 @@ public class RecordServiceImpl implements RecordService {
      */
     @Override
     @Transactional
-    public RecordViewDto createRecord(Long petId, RecordCreateDto createDto, Long creatorUserId, boolean signRecord) {
+    public RecordViewDto createRecord(RecordCreateDto createDto, Long creatorUserId, boolean signRecord) {
         // Find Pet and Creator User
+        Long petId = createDto.petId();
         Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
+
         UserEntity creator = entityFinderHelper.findUserOrFail(creatorUserId);
-
-        // Authorization Check: Owner or Authorized Staff
         authorizationHelper.verifyUserAuthorizationForPet(creatorUserId, pet, "create record for");
-
-        // Validate DTO consistency (Vaccine details vs Type)
         validateHelper.validateRecordCreationDto(createDto);
 
         // Build the Record entity
@@ -100,7 +98,7 @@ public class RecordServiceImpl implements RecordService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<RecordViewDto> findRecordsByPetId(Long petId, Long requesterUserId, Pageable pageable) {
+    public Page<RecordViewDto> findRecordsByPetId( Long petId,Long requesterUserId, Pageable pageable) {
         Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
         authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "view records for");
 
@@ -115,8 +113,12 @@ public class RecordServiceImpl implements RecordService {
     @Transactional(readOnly = true)
     public RecordViewDto findRecordById(Long recordId, Long requesterUserId) {
         Record recordEntity = entityFinderHelper.findRecordByIdOrFail(recordId);
-        // Authorize based on the PET associated with the record
-        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, recordEntity.getPet(), "view record for");
+        Pet associatedPet = recordEntity.getPet();
+        if (associatedPet == null) {
+            log.error("Record {} found but has no associated Pet.", recordId);
+            throw new IllegalStateException("Record data inconsistent: Missing associated Pet.");
+        }
+        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, associatedPet, "view record for");
 
         return recordMapper.toViewDto(recordEntity);
     }
@@ -130,26 +132,23 @@ public class RecordServiceImpl implements RecordService {
         Record recordEntity = entityFinderHelper.findRecordByIdOrFail(recordId);
         UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
 
-        // Check if the record is signed
         if (StringUtils.hasText(recordEntity.getVetSignature())) {
-            log.warn("Attempt to delete SIGNED record ID {} by user {}", recordId, requesterUserId);
             throw new IllegalStateException("Cannot delete record " + recordId + " because it has been signed by a veterinarian.");
         }
 
-        // Authorization Check: Only creator OR Admin of creator's clinic (if creator is Staff)
         boolean isCreator = Objects.equals(recordEntity.getCreator().getId(), requesterUserId);
-        boolean isAdminDeletingStaffRecord = requester instanceof ClinicStaff requesterStaff && // Requester is Staff
-                recordEntity.getCreator() instanceof ClinicStaff recordCreatorStaff && // Record creator was Staff
-                Objects.equals(requesterStaff.getClinic().getId(), recordCreatorStaff.getClinic().getId()) && // Same clinic
-                requesterStaff.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN);
+        boolean isAdminDeletingStaffRecord = false;
+        switch (requester) {
+            case ClinicStaff requesterStaff when recordEntity.getCreator() instanceof ClinicStaff recordCreatorStaff && recordCreatorStaff.getClinic() != null && Objects.equals(requesterStaff.getClinic().getId(), recordCreatorStaff.getClinic().getId()) && requesterStaff.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN) ->
+                    isAdminDeletingStaffRecord = true;
+            case null, default -> {
+            }
+        }
 
         if (!isCreator && !isAdminDeletingStaffRecord) {
-            log.warn("User {} attempted to delete record {} created by user {}, but is not authorized.",
-                    requesterUserId, recordId, recordEntity.getCreator().getId());
             throw new AccessDeniedException("User " + requesterUserId + " is not authorized to delete record " + recordId + ".");
         }
 
-        // Delete the record
         recordRepository.delete(recordEntity);
         log.info("User {} deleted unsigned record ID {}", requesterUserId, recordId);
     }

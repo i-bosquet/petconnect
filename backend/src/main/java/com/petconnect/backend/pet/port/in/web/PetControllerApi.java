@@ -130,7 +130,7 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "404", description = "Pet or Clinic not found", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PostMapping("/{petId}/associate-clinic/{clinicId}") // POST seems suitable for creating association request
+    @PostMapping("/{petId}/associate-clinic/{clinicId}") // POST seems suitable for creating an association request
     ResponseEntity<Void> associatePetToClinicForActivation(
             @Parameter(description = "ID of the PENDING pet", required = true) @PathVariable Long petId,
             @Parameter(description = "ID of the clinic for activation", required = true) @PathVariable Long clinicId);
@@ -256,7 +256,7 @@ public interface PetControllerApi {
     /**
      * Retrieves a paginated list of pets associated with the clinic of the authenticated staff member.
      * Association means the pet is pending activation at the clinic OR is associated with any vet working at the clinic.
-     * Requires ADMIN or VET role. The clinic is determined from the authenticated user's profile.
+     * Requires an ADMIN or VET role. The clinic is determined from the authenticated user's profile.
      *
      * @param pageable Pagination and sorting information.
      * @return A {@link ResponseEntity} containing a {@link Page} of {@link PetProfileDto} objects associated with the staff's clinic,
@@ -278,7 +278,7 @@ public interface PetControllerApi {
 
     /**
      * Retrieves a list of pets pending activation at the clinic of the authenticated staff member.
-     * Requires ADMIN or VET role. The clinic is determined from the authenticated user's profile.
+     * Requires an ADMIN or VET role. The clinic is determined from the authenticated user's profile.
      *
      * @return A {@link ResponseEntity} containing a {@link List} of {@link PetProfileDto} objects for pets pending activation
      *         at the staff's clinic, with HTTP status 200 (OK).

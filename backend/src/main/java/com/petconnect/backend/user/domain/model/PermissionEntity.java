@@ -5,7 +5,7 @@ import lombok.*;
 
 /**
  * Represents a permission entity used for managing user roles and access rights.
- * Each permission is identified by a unique name.
+ * A unique name identifies each permission.
  *
  * @author ibosquet
  */

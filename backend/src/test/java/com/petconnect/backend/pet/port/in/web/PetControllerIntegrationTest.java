@@ -30,8 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Integration tests for {@link PetController}.
- * Uses PostgreSQL (Docker), security filters, transactional rollback.
- * Verifies pet registration, retrieval, updates, activation, associations etc.
+ * Uses PostgresSQL (Docker), security filters, transactional rollback.
+ * Verifies pet registration, retrieval, updates, activation, associations, etc.
  *
  * @author ibosquet (Generated based on UserControllerIntegrationTest structure)
  */
@@ -60,19 +60,19 @@ class PetControllerIntegrationTest {
 
 
     /**
-     * Setup initial users, pets, and obtain tokens.
+     * Set up initial users, pets, and get tokens.
      */
     @BeforeEach
     void setUp() throws Exception {
-        // --- Obtain Tokens for existing users ---
+        // Get Tokens for existing users
         adminToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
         otherAdminToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
 
-        // --- Register a new Owner for testing ---
+        // Register a new Owner for testing
         String ownerUsername = "pet_ctrl_owner_" + System.currentTimeMillis();
         String ownerEmail = ownerUsername + "@test.com";
         OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerEmail, "password123", "777-888-999");
-        // Delete if exists from previous failed run (optional, @Transactional helps)
+        // Delete if exists from a previous failed run (optional, @Transactional helps)
         userRepository.findByUsername(ownerUsername).ifPresent(userRepository::delete);
         entityManager.flush(); // Ensure delete completes before insert
 
@@ -224,7 +224,7 @@ class PetControllerIntegrationTest {
         void listPets_Success_Owner() throws Exception {
             mockMvc.perform(get("/api/pets")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .param("page", "0").param("size", "5").param("sort", "name,asc")) // Request specific page/sort
+                            .param("page", "0").param("size", "5").param("sort", "name,asc")) // Request a specific page /sort
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content", hasSize(2))) // Expecting the 2 pets created
                     .andExpect(jsonPath("$.content[0].id", is(petId1.intValue()))) // PetA comes first alphabetically
@@ -269,7 +269,7 @@ class PetControllerIntegrationTest {
             // Use the vetId created in the main setup
             vetInClinic1Id = vetId;
 
-            // Create two pets owned by 'ownerToken' user
+            // Create two pets owned by an 'ownerToken' user
             PetRegistrationDto reg1 = new PetRegistrationDto("ModifiablePet", Specie.CAT, LocalDate.now().minusMonths(8), null, null, "Black", Gender.FEMALE, null);
             PetRegistrationDto reg2 = new PetRegistrationDto("AnotherPet", Specie.RABBIT, LocalDate.now().minusMonths(3), null, null, "White", Gender.MALE, null);
 
@@ -314,7 +314,7 @@ class PetControllerIntegrationTest {
 
             PetOwnerUpdateDto updateDto = new PetOwnerUpdateDto("AttemptUpdate", null,null,null,null,null,null);
 
-            // Act & Assert: Use otherOwnerToken to try update petIdToModify (owned by ownerToken)
+            // Act & Assert: Use otherOwnerToken to try to update petIdToModify (owned by ownerToken)
             mockMvc.perform(put("/api/pets/{petId}/owner-update", petIdToModify)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken) // Wrong owner
                             .contentType(MediaType.APPLICATION_JSON)
@@ -380,12 +380,12 @@ class PetControllerIntegrationTest {
         @Test
         @DisplayName("[associate-clinic] should return 400 Bad Request if pet not PENDING")
         void associateClinic_BadRequest_NotPending() throws Exception {
-            // Activate the pet first (using the Vet created in main setup)
+            // Activate the pet first (using the Vet created in the main setup)
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdToModify, clinicId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
                     .andExpect(status().isNoContent());
 
-            // Activate the pet first (using the Vet created in main setup)
+            // Activate the pet first (using the Vet created in the main setup)
             entityManager.flush(); entityManager.clear();
             Pet petToActivateNow = petRepository.findById(petIdToModify).orElseThrow();
             PetActivationDto activationBody = new PetActivationDto(
@@ -563,7 +563,7 @@ class PetControllerIntegrationTest {
         @Test
         @DisplayName("[activate] should return 400 Bad Request if pet not PENDING")
         void activatePet_BadRequest_NotPending() throws Exception {
-            // Use activePetId which was already activated in setup
+            // Use activePetId, which was already activated in setup
             mockMvc.perform(put("/api/pets/{petId}/activate", activePetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
                             .contentType(MediaType.APPLICATION_JSON)

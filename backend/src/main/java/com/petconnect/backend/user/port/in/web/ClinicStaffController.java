@@ -32,7 +32,6 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
     @Override
     @PostMapping("")
     public ResponseEntity<ClinicStaffProfileDto> createClinicStaff(@Valid @RequestBody ClinicStaffCreationDto creationDTO) {
-        // --- Get the ID of the currently authenticated admin
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
         ClinicStaffProfileDto createdStaff = clinicStaffService.createClinicStaff(creationDTO, currentAdminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdStaff);
@@ -46,7 +45,6 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
     public ResponseEntity<ClinicStaffProfileDto> updateClinicStaff(
             @PathVariable Long staffId,
             @Valid @RequestBody ClinicStaffUpdateDto updateDTO) {
-        // --- Get the ID of the currently authenticated admin
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
         ClinicStaffProfileDto updatedStaff = clinicStaffService.updateClinicStaff(staffId, updateDTO, currentAdminId);
         return ResponseEntity.ok(updatedStaff);
@@ -58,7 +56,6 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
     @Override
     @PutMapping("/{staffId}/activate")
     public ResponseEntity<ClinicStaffProfileDto> activateStaff(@PathVariable Long staffId) {
-        // --- Get the ID of the currently authenticated admin
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
         ClinicStaffProfileDto activatedStaff = clinicStaffService.activateStaff(staffId, currentAdminId);
         return ResponseEntity.ok(activatedStaff);
@@ -71,7 +68,6 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
     @PutMapping("/{staffId}/deactivate")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ClinicStaffProfileDto> deactivateStaff(@PathVariable Long staffId) {
-        // --- Get the ID of the currently authenticated admin
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
         ClinicStaffProfileDto deactivatedStaff = clinicStaffService.deactivateStaff(staffId, currentAdminId);
         return ResponseEntity.ok(deactivatedStaff);

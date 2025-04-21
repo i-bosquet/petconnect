@@ -9,7 +9,7 @@ import com.petconnect.backend.exception.EmailAlreadyExistsException;
 import com.petconnect.backend.exception.UsernameAlreadyExistsException;
 
 /**
- * Service interface for authentication related operations,
+ * Service interface for authentication-related operations,
  * primarily handling user registration (initially Owner) and login (later).
  *
  * @author ibosquet
@@ -29,7 +29,7 @@ public interface AuthService {
     /**
      * Authenticates a user using the provided credentials.
      *
-     * @param authLoginRequest the authentication request containing username and password.
+     * @param authLoginRequest the authentication request containing a username and password.
      * @return an AuthResponseDto containing the authentication result and JWT token if successful.
      */
     AuthResponseDto loginUser(AuthLoginRequestDto authLoginRequest);

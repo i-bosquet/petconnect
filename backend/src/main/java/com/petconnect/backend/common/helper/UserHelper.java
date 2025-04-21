@@ -52,7 +52,6 @@ public class UserHelper {
         return getAuthenticatedUserEntity().getId();
     }
 
-    // --- PRIVATE HELPER METHOD ---
 
     /**
      * Retrieves the identifier (username or email) of the currently authenticated, non-anonymous user

@@ -36,10 +36,8 @@ public interface ClinicControllerApi {
 
     /**
      * Retrieves a paginated list of clinics, optionally filtered by name, city, or country.
-     * <p>
      * This endpoint is publicly accessible and supports pagination and sorting via standard
-     * Spring Data Pageable parameters (e.g., ?page=0&size=10&sort=name,asc).
-     * </p>
+     * Spring Data Pageable parameters
      *
      * @param name Optional filter for clinics whose name contains the provided string (case-insensitive).
      * @param city Optional filter for clinics located in the specified city (case-insensitive).
@@ -68,9 +66,7 @@ public interface ClinicControllerApi {
 
     /**
      * Retrieves the details of a specific clinic by its unique ID.
-     * <p>
      * This endpoint is publicly accessible.
-     * </p>
      *
      * @param id The unique ID of the clinic to retrieve.
      * @return A {@link ResponseEntity} containing the {@link ClinicDto} and HTTP status 200 (OK) if found.
@@ -92,12 +88,10 @@ public interface ClinicControllerApi {
 
     /**
      * Updates the details of an existing clinic.
-     * <p>
      * This operation requires the user to be authenticated and have the ADMIN role
      * for the specific clinic being updated. Authorization is handled by the service layer.
      * Only the fields included in the {@link ClinicUpdateDto} (name, address, city, country, phone)
      * can be modified via this endpoint.
-     * </p>
      *
      * @param id The unique ID of the clinic to update.
      * @param clinicUpdateDTO A {@link ClinicUpdateDto} containing the updated information. Validation rules are applied.
@@ -133,10 +127,8 @@ public interface ClinicControllerApi {
 
     /**
      * Retrieves a list of all staff members (active and inactive) for a specific clinic.
-     * <p>
      * Requires the requesting user to be authenticated and have either the ADMIN or VET role
      * for the clinic specified by {@code clinicId}. Authorization is handled by the service layer.
-     * </p>
      *
      * @param clinicId The unique ID of the clinic whose staff list is to be retrieved.
      * @return A {@link ResponseEntity} containing a {@link List} of {@link ClinicStaffProfileDto} objects
@@ -163,10 +155,8 @@ public interface ClinicControllerApi {
 
     /**
      * Retrieves a list of only the active staff members for a specific clinic.
-     * <p>
      * Requires the requesting user to be authenticated and have either the ADMIN or VET role
      * for the clinic specified by {@code clinicId}. Authorization is handled by the service layer.
-     * </p>
      *
      * @param clinicId The unique ID of the clinic whose active staff list is to be retrieved.
      * @return A {@link ResponseEntity} containing a {@link List} of {@link ClinicStaffProfileDto} objects

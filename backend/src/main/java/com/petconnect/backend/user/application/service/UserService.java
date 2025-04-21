@@ -20,7 +20,7 @@ public interface UserService {
      * Determines the user type and returns the appropriate specific profile DTO.
      *
      * @return A profile DTO (OwnerProfileDto or ClinicStaffProfileDto) cast to Object,
-     *         or consider a common Profile interface if preferred. Returns null if no user found.
+     *         or consider a common Profile interface if preferred. Returns null if no user is found.
      * @throws IllegalStateException if there is no authenticated user in the security context.
      */
     Object getCurrentUserProfile(); // Return Object to allow specific DTO types

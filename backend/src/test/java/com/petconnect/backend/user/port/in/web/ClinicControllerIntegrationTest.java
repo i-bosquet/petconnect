@@ -30,7 +30,7 @@ import static org.hamcrest.Matchers.*;
 
 /**
  * Integration tests for {@link ClinicController}.
- * Uses PostgreSQL (Docker), security filters, transactional rollback.
+ * Uses PostgresSQL (Docker), security filters, transactional rollback.
  * Verifies public access, filtering, pagination, and authorized updates/reads.
  *
  * @author ibosquet
@@ -73,7 +73,7 @@ class ClinicControllerIntegrationTest {
         AuthLoginRequestDto  testOwnerLoginDto = new AuthLoginRequestDto(testOwnerRegDto.username(), testOwnerRegDto.password());
         // --- Obtain JWT Tokens ---
         adminToken = obtainJwtToken(adminLoginDto);
-        vetToken = obtainJwtToken(vetLoginDto); // Obtain token for the other user
+        vetToken = obtainJwtToken(vetLoginDto); // Get token for the other user
         ownerToken = obtainJwtToken(testOwnerLoginDto); // Get token for the newly registered owner
         assertThat(ownerToken).isNotNull();
     }
@@ -109,7 +109,7 @@ class ClinicControllerIntegrationTest {
         void getClinics_publicAccess_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/clinics")
                             .param("page", "0")
-                            .param("size", "5")) // Request specific page/size
+                            .param("size", "5")) // Request a specific page /size
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.content", hasSize(lessThanOrEqualTo(5)))) // Check content is list <= 5
@@ -229,7 +229,7 @@ class ClinicControllerIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken) // Use Owner token
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(clinicUpdateDto)))
-                    .andExpect(status().isForbidden()) // Expect 403 because Owner doesn't have ADMIN role
+                    .andExpect(status().isForbidden()) // Expect 403 because Owner doesn't have an ADMIN role
                     .andExpect(jsonPath("$.status", is(403)))
                     .andExpect(jsonPath("$.error", is("Forbidden")));
         }
@@ -299,7 +299,7 @@ class ClinicControllerIntegrationTest {
         void getStaffByClinic_whenOwner_shouldReturnForbidden() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/all", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)) // Use Owner token
-                    .andExpect(status().isForbidden()) // Expect 403 because Owner doesn't have ADMIN/VET role
+                    .andExpect(status().isForbidden()) // Expect 403 because Owner doesn't have an ADMIN/VET role
                     .andExpect(jsonPath("$.status", is(403)))
                     .andExpect(jsonPath("$.error", is("Forbidden")));
         }

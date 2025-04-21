@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService {
             case Owner owner -> userMapper.toOwnerProfileDto(owner);
             case ClinicStaff staff -> userMapper.toClinicStaffProfileDto(staff);
             default -> {
-                // Should not happen with current model if users are always Owner or ClinicStaff
+                // Should not happen with the current model if users are always Owner or ClinicStaff
                 log.error("Unhandled UserEntity subtype in getCurrentUserProfile: {}", currentUser.getClass());
                 throw new IllegalStateException("User profile type mapping not handled for: " + currentUser.getClass().getSimpleName());
             }
@@ -67,11 +67,11 @@ public class UserServiceImpl implements UserService {
         // Get requester
         UserEntity requester = userServiceHelper.getAuthenticatedUserEntity();
 
-        // Find target user
+        // Find the target user
         UserEntity targetUserOpt = entityFinderHelper.findUserOrFail(id);
         if (targetUserOpt==null) {
             log.debug("User with ID {} not found.", id);
-            return Optional.empty(); // Return empty if target doesn't exist
+            return Optional.empty(); // Return empty if the target doesn't exist
         }
 
         // Authorization Checks
@@ -82,9 +82,9 @@ public class UserServiceImpl implements UserService {
 
         // Allow Admin to view staff from the same clinic
         if (requester instanceof ClinicStaff requesterStaff) {
-            // Check if requester is ADMIN
+            // Check if the requester is ADMIN
             boolean isAdmin = requesterStaff.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN);
-            // Check if target is ClinicStaff and from the same clinic
+            // Check if the target is ClinicStaff and from the same clinic
             if (isAdmin && targetUserOpt instanceof ClinicStaff targetStaff) {
                 Clinic requesterClinic = requesterStaff.getClinic();
                 Clinic targetClinic = targetStaff.getClinic();
@@ -110,7 +110,7 @@ public class UserServiceImpl implements UserService {
         // Get requester
         UserEntity requester = userServiceHelper.getAuthenticatedUserEntity();
 
-        // Find target user by email
+        // Find the target user by email
         Optional<UserEntity> targetUserOpt = userRepository.findByEmail(email);
         if (targetUserOpt.isEmpty()) {
             return Optional.empty();

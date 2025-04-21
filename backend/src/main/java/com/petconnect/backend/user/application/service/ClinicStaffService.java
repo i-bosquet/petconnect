@@ -28,11 +28,11 @@ public interface ClinicStaffService {
      * @param creatingAdminId The ID of the ADMIN user performing the creation (for authorization checks).
      * @return A DTO representing the profile of the newly created staff member.
      * @throws EmailAlreadyExistsException if email is taken.
-     * @throws UsernameAlreadyExistsException if username is taken.
-     * @throws LicenseNumberAlreadyExistsException if license number is taken (for Vets).
+     * @throws UsernameAlreadyExistsException if a username is taken.
+     * @throws LicenseNumberAlreadyExistsException if the license number is taken (for Vets).
      * @throws EntityNotFoundException if the specified clinicId does not exist.
      * @throws IllegalArgumentException if the provided role in DTO is not VET or ADMIN,
-     *         or if required Vet fields are missing when role is VET.
+     *         or if required Vet fields are missing when a role is VET.
      * @throws AccessDeniedException if the creating user is not authorized.
      */
     ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, Long creatingAdminId);
@@ -51,7 +51,7 @@ public interface ClinicStaffService {
 
     /**
      * Deactivates a Clinic Staff member account.
-     * Deactivated staff can no longer log in but their records remain.
+     * Deactivated staff can no longer log in, but their records remain.
      *
      * @param staffId The ID of the staff member to deactivate.
      * @param deactivatingAdminId The ID of the ADMIN performing the action.
@@ -90,8 +90,8 @@ public interface ClinicStaffService {
      * @param updatingAdminId The ID of the Admin performing the update.
      * @return The updated ClinicStaffProfileDto.
      * @throws EntityNotFoundException if staff member not found.
-     * @throws AccessDeniedException if admin not authorized.
-     * @throws LicenseNumberAlreadyExistsException if updating license number to an existing one.
+     * @throws AccessDeniedException if admin isn't authorized.
+     * @throws LicenseNumberAlreadyExistsException if updating the license number to an existing one.
      */
     ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, Long updatingAdminId);
 

@@ -56,7 +56,7 @@ public interface AuthControllerApi {
                             schema = @Schema(description = "Map of validation errors", example = "{\"username\": \"Username cannot be blank\", \"password\": \"Password must be at least 8 characters long\"}", implementation = Map.class))),
             @ApiResponse(responseCode = "409", description = "Conflict - Username or Email Already Exists",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(description = "Error message indicating conflict", example = "{\"error\":\"Data Conflict\", \"message\":\"Username already taken: existinguser\"}", implementation = Map.class)))
+                            schema = @Schema(description = "Error message indicating conflict", example = "{\"error\":\"Data Conflict\", \"message\":\"Username already taken: existing user\"}", implementation = Map.class)))
     })
     @PostMapping("/register")
     ResponseEntity<OwnerProfileDto> registerOwner(
@@ -71,7 +71,7 @@ public interface AuthControllerApi {
      * Users provide their username and password. If the credentials are valid,
      * the service generates a JSON Web Token (JWT) containing user identification
      * and authorities (roles and permissions). This token must be included in the
-     * 'Authorization: Bearer <token>' header for subsequent requests to protected endpoints.
+     * 'Authorization: Bearer <token>' header for later requests to protected endpoints.
      * </p>
      *
      * @param userRequest An {@link AuthLoginRequestDto} containing the username and password. Validation rules are applied.

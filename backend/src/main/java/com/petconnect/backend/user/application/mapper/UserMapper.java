@@ -138,7 +138,7 @@ public class UserMapper {
      */
     private Set<String> extractRoleNames(UserEntity user) {
         if (user == null || user.getRoles() == null) {
-            return Set.of(); // Return empty immutable set
+            return Set.of(); // Return an empty immutable set
         }
         return user.getRoles().stream()
                 .map(RoleEntity::getRoleEnum)
@@ -154,7 +154,7 @@ public class UserMapper {
      * @param newAvatar The potential new avatar URL (can be null).
      */
     private void updateUserCommonFields(UserEntity user, String newUsername, String newAvatar) {
-        // Update username only if it's provided, not blank, AND different from current
+        // Update a username only if it's provided, not blank, AND different from the current
         if (newUsername != null && !newUsername.isBlank() && !user.getUsername().equals(newUsername)) {
             user.setUsername(newUsername);
         }
@@ -207,6 +207,6 @@ public class UserMapper {
         }
         return vets.stream()
                 .map(this::toVetSummaryDto)
-                .collect(Collectors.toUnmodifiableSet()); // Collect to unmodifiable set
+                .collect(Collectors.toUnmodifiableSet()); // Collect to an unmodifiable set
     }
 }

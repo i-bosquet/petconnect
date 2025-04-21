@@ -44,7 +44,7 @@ public class ValidateHelper {
      * @param email The email to check.
      * @param username The username to check.
      * @throws EmailAlreadyExistsException if email exists.
-     * @throws UsernameAlreadyExistsException if username exists.
+     * @throws UsernameAlreadyExistsException if a username exists.
      */
     @Transactional(readOnly = true)
     public void validateNewStaffUniqueness(String email, String username) {
@@ -61,8 +61,8 @@ public class ValidateHelper {
      * during creation. Requires a read-only transaction.
      *
      * @param licenseNumber The license number to validate.
-     * @throws IllegalArgumentException if license number is blank/null when required.
-     * @throws LicenseNumberAlreadyExistsException if license number is already in use by another Vet.
+     * @throws IllegalArgumentException if the license number is blank/null when required.
+     * @throws LicenseNumberAlreadyExistsException if the license number is already in use by another Vet.
      */
     @Transactional(readOnly = true)
     public void validateVetLicenseNumber(String licenseNumber) {
@@ -82,8 +82,8 @@ public class ValidateHelper {
      *
      * @param vetPublicKey The public key to validate.
      * @param vetIdToExclude The ID of the Vet being updated (null if creating a new Vet).
-     * @throws IllegalArgumentException if public key is blank/null when required.
-     * @throws VetPublicKeyAlreadyExistsException if public key is already in use by another Vet.
+     * @throws IllegalArgumentException if the public key is blank/null when required.
+     * @throws VetPublicKeyAlreadyExistsException if a public key is already in use by another Vet.
      */
     @Transactional(readOnly = true)
     public void validateVetPublicKey(String vetPublicKey, Long vetIdToExclude) {
@@ -128,8 +128,8 @@ public class ValidateHelper {
      *
      * @param licenseNumber The new license number to validate. Must not be blank.
      * @param vetIdToExclude The ID of the Vet whose record should be excluded from the check.
-     * @throws IllegalArgumentException if license number is blank/null.
-     * @throws LicenseNumberAlreadyExistsException if the license number is already used by ANOTHER Vet.
+     * @throws IllegalArgumentException if the license number is blank/null.
+     * @throws LicenseNumberAlreadyExistsException if ANOTHER Vet already uses the license number.
      */
     public void validateVetLicenseUpdate(String licenseNumber, Long vetIdToExclude) {
         if (!StringUtils.hasText(licenseNumber)) {
@@ -140,5 +140,4 @@ public class ValidateHelper {
             throw new LicenseNumberAlreadyExistsException(licenseNumber);
         }
     }
-
 }

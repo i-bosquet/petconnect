@@ -66,13 +66,13 @@ class ClinicStaffControllerIntegrationTest {
     private final Long clinicLondonId = 1L;
 
     /**
-     * Sets up required data and obtains JWT tokens before each test.
+     * Sets up required data and gets JWT tokens before each test.
      * Registers an Owner for testing unauthorized access.
      * Prepares DTOs for creating staff.
      */
     @BeforeEach
     void setUp() throws Exception {
-        // Obtain JWT Tokens for existing admins from data.sql
+        // Get JWT Tokens for existing admins from data.sql
         adminLondonToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
         adminBarcelonaToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
 
@@ -526,7 +526,7 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Failure] toggle status should return 403 Forbidden if called by Admin from different clinic")
         void toggleStatus_Forbidden_DifferentClinic() throws Exception {
-            // Use Barcelona admin token to toggle status of staff in London (staffToToggleId)
+            // Use Barcelona admin token to toggle the status of staff in London (staffToToggleId)
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken))
                     .andExpect(status().isForbidden());

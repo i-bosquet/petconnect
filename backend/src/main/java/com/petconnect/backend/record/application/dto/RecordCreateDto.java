@@ -12,18 +12,17 @@ import jakarta.validation.constraints.Size;
  *
  * @param type        The type of record being created. Cannot be null.
  * @param description A textual description for the record. Optional, max 2000 chars.
- * @param vaccine     Optional details of the vaccine, required if type is VACCINE. Must be valid if present.
+ * @param vaccine     Optional details of the vaccine, required if the type is VACCINE. Must be valid if present.
  *
  * @author ibosquet
  */
 public record RecordCreateDto(
+        @NotNull(message = "Pet ID cannot be null")
+        Long petId,
         @NotNull(message = "Record type cannot be null")
         RecordType type,
-
         @Size(max = 2000, message = "Description cannot exceed 2000 characters")
         String description,
-
-        // Include Vaccine details only if type is VACCINE
         @Valid
         VaccineCreateDto vaccine
 ) {

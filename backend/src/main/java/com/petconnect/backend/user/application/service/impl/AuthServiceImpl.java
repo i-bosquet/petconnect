@@ -46,7 +46,7 @@ import java.util.Set;
 public class AuthServiceImpl implements AuthService, UserDetailsService {
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
-    private final OwnerRepository ownerRepository; // Need Owner repo to save Owner specific data
+    private final OwnerRepository ownerRepository; // Need Owner repo to save Owner-specific data
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private static final String DEFAULT_OWNER_AVATAR = "images/avatars/users/owner.png";
@@ -82,7 +82,7 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
                         .stream())
                 .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
 
-        // Return Spring Security User object with credentials and authorities
+        // Return Spring Security a User object with credentials and authorities
         return new User(userEntity.getUsername(),
                 userEntity.getPassword(),
                 userEntity.isEnabled(),
@@ -104,13 +104,13 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         if (userRepository.existsByEmail(registrationDTO.email())) {
             throw new EmailAlreadyExistsException(registrationDTO.email());
         }
-        // Check if username already exists (Assuming UserRepository gets a existsByUsername method)
+        // Check if a username already exists (Assuming UserRepository gets an existsByUsername method)
         if (userRepository.existsByUsername(registrationDTO.username())) {
          throw new UsernameAlreadyExistsException(registrationDTO.username());
         }
 
 
-        // Create new Owner entity
+        // Create a new Owner entity
         Owner newOwner = new Owner(); // Using NoArgsConstructor + Setters
 
         // Set fields from DTO
@@ -132,7 +132,7 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         newOwner.setCredentialsNonExpired(true);
 
         // Save the new Owner
-        // Because Owner extends UserEntity with JOINED strategy, saving Owner will also insert into UserEntity table.
+        // Because Owner extends UserEntity with a JOINED strategy, saving Owner will also insert into the UserEntity table.
         Owner savedOwner = ownerRepository.save(newOwner);
 
         // Map to DTO and return
@@ -151,7 +151,7 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String accessToken = jwtUtils.createToken(authentication);
-        return new AuthResponseDto(username, "UserEntity loged succesfully", accessToken, true);
+        return new AuthResponseDto(username, "UserEntity logged successfully", accessToken, true);
     }
 
     /**

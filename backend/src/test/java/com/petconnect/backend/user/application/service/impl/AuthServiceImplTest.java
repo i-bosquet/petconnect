@@ -68,7 +68,7 @@ class AuthServiceImplTest {
     private Owner savedOwner;
     private OwnerProfileDto expectedDto;
 
-    @BeforeEach // Setup common data before each test
+    @BeforeEach // Set up common data before each test
     void setUp() {
         registrationDto = new OwnerRegistrationDto(
                 "testowner",
@@ -165,7 +165,7 @@ class AuthServiceImplTest {
 
     @Test
     void registerOwner_shouldThrowIllegalStateException_whenOwnerRoleNotFound() {
-        // Given: Email and username are ok, but OWNER role doesn't exist in DB (mock returns empty)
+        // Given: Email and username are ok, but an OWNER role doesn't exist in DB (mock returns empty)
         given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
         given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
         given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.empty());
@@ -183,7 +183,7 @@ class AuthServiceImplTest {
 
     @Test
     void loadUserByUsername_shouldReturnUserDetails_whenUserFound() {
-        // Given: Setup a UserEntity with roles and permissions
+        // Given: Set up a UserEntity with roles and permissions
         // Use 'savedOwner' from setUp or create a new one specific for this test
         UserEntity foundUser = new Owner(); // Example using Owner
         foundUser.setId(1L);
@@ -241,7 +241,7 @@ class AuthServiceImplTest {
     }
 
 
-    // --- Tests for loginUser (which internally uses authenticate and loadUserByUsername) ---
+    // --- Tests for loginUser (that internally use authenticating and loadUserByUsername) ---
 
     @Test
     void loginUser_shouldReturnAuthResponseDtoWithJwt_whenCredentialsAreValid() {
@@ -250,8 +250,8 @@ class AuthServiceImplTest {
         String expectedJwt = "mocked.jwt.token";
 
         // --- Mocking the steps within loginUser and authenticate ---
-        // 1. Mock loadUserByUsername (called by authenticate)
-        UserEntity foundUser = new Owner(); // Reuse setup from previous test or create new
+        // 1. Mock loadUserByUsername (called by authenticating)
+        UserEntity foundUser = new Owner(); // Reuse setup from the previous test or create new
         foundUser.setUsername("testuser");
         foundUser.setPassword("hashedPassword"); // This MUST match the encoded password check
         foundUser.setEnabled(true);
@@ -262,8 +262,8 @@ class AuthServiceImplTest {
         foundUser.setRoles(Set.of(roleOwner));
         given(userRepository.findByUsername("testuser")).willReturn(Optional.of(foundUser));
 
-        // 2. Mock passwordEncoder.matches (called by authenticate)
-        given(passwordEncoder.matches("password123", "hashedPassword")).willReturn(true); // Crucial: Simulate correct password match
+        // 2. Mock passwordEncoder.matches (called by authenticating)
+        given(passwordEncoder.matches("password123", "hashedPassword")).willReturn(true); // Crucial: Simulate the correct password match
 
         // Mock jwtUtils.createToken (called by loginUser after successful authentication)
         // We need to capture the Authentication object passed to createToken to verify it if needed,
@@ -281,7 +281,7 @@ class AuthServiceImplTest {
         assertThat(responseDto.username()).isEqualTo("testuser");
         assertThat(responseDto.jwt()).isEqualTo(expectedJwt);
         assertThat(responseDto.status()).isTrue();
-        assertThat(responseDto.message()).isEqualTo("UserEntity loged succesfully"); // Check message if important
+        assertThat(responseDto.message()).isEqualTo("UserEntity logged successfully"); // Check a message if important
 
         // Verify mocks were called as expected
         then(userRepository).should().findByUsername("testuser");
@@ -306,7 +306,7 @@ class AuthServiceImplTest {
         given(passwordEncoder.matches("wrongPassword", "hashedPassword")).willReturn(false);
         // --- End Mocking ---
 
-        // When & Then: Expect BadCredentialsException (thrown by authenticate, called by loginUser)
+        // When & Then: Expect BadCredentialsException (thrown by authenticating, called by loginUser)
         assertThatThrownBy(() -> authService.loginUser(loginRequest))
                 .isInstanceOf(BadCredentialsException.class)
                 .hasMessageContaining("Incorrect Password"); // Check the specific message from authenticate()
@@ -323,11 +323,11 @@ class AuthServiceImplTest {
         AuthLoginRequestDto loginRequest = new AuthLoginRequestDto("unknownuser", "password123");
 
         // --- Mocking for failure ---
-        // 1. Mock loadUserByUsername - User is NOT found (called by authenticate)
+        // 1. Mock loadUserByUsername - User is NOT found (called by authenticating)
         given(userRepository.findByUsername("unknownuser")).willReturn(Optional.empty());
         // --- End Mocking ---
 
-        // When & Then: Expect UsernameNotFoundException (thrown by loadUserByUsername, propagated by authenticate)
+        // When & Then: Expect UsernameNotFoundException (thrown by loadUserByUsername, propagated by authenticating)
         assertThatThrownBy(() -> authService.loginUser(loginRequest))
                 .isInstanceOf(UsernameNotFoundException.class)
                 .hasMessageContaining("El usuario unknownuser no existe.");

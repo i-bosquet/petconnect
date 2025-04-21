@@ -74,7 +74,7 @@ class UserControllerIntegrationTest {
         // Login as the new Owner to get their token
         ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
-        // Get token for another staff member (e.g., admin_barcelona acting as Vet for permission tests)
+        // Get a token for another staff member (e.g., admin_barcelona acting as Vet for permission tests)
         vetToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
 
         assertThat(adminToken).isNotNull();

@@ -109,7 +109,7 @@ public class UserEntity extends BaseEntity{
     public boolean equals(Object o) {
         if (this == o) return true;
         // Check if the other object is null or if its actual class (could be a proxy)
-        // is not the same as this object's actual class.
+        // is different from this object's actual class.
         if (o == null || getClass() != o.getClass()) return false;
         UserEntity that = (UserEntity) o;
         // If the ID is null, the entities are not equal unless they are the same instance (checked above).

@@ -19,25 +19,22 @@ public interface RecordService {
      * Can be called by the pet's owner or authorized clinic staff.
      * If the type is VACCINE, vaccine details from the DTO must be included and persisted.
      * If created by a Vet, allows for optional immediate signing.
-     *
-     * @param petId         The ID of the pet for which to create the record.
      * @param createDto     The DTO containing the record details (type, description, optional vaccine).
      * @param creatorUserId The ID of the User (Owner, Vet, Admin) creating the record.
      * @param signRecord    (Optional, only relevant for Vets) If true, the creating Vet attempts to sign the record immediately.
      * @return The DTO representation of the newly created record.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if the pet or creator user is not found,
-     *                                                                  or if vaccine details are provided but breed is invalid for vaccine type.
+     *                                                                  or if vaccine details are provided, but breed is invalid for a vaccine type.
      * @throws org.springframework.security.access.AccessDeniedException  if the creator is not authorized to create a record for this pet.
-     * @throws IllegalArgumentException if type is VACCINE but vaccine details are missing in the DTO, or vice versa.
+     * @throws IllegalArgumentException if the type is VACCINE, but vaccine details are missing in the DTO, or vice versa.
      * @throws IllegalStateException if signing is requested but the creator is not a Vet.
      */
-    RecordViewDto createRecord(Long petId, RecordCreateDto createDto, Long creatorUserId, boolean signRecord);
-
+    RecordViewDto createRecord( RecordCreateDto createDto, Long creatorUserId, boolean signRecord);
 
     /**
      * Retrieves a paginated list of all medical records for a specific pet.
      * Requires the requester to be the pet's owner or authorized clinic staff.
-     * Records are typically ordered by creation date descending.
+     * Records are typically ordered by the creation date descending.
      *
      * @param petId           The ID of the pet whose records are to be retrieved.
      * @param requesterUserId The ID of the user requesting the records (for authorization).
@@ -47,7 +44,6 @@ public interface RecordService {
      * @throws org.springframework.security.access.AccessDeniedException  if the requester is not authorized to view records for this pet.
      */
     Page<RecordViewDto> findRecordsByPetId(Long petId, Long requesterUserId, Pageable pageable);
-
 
     /**
      * Retrieves a specific medical record by its ID.
@@ -60,7 +56,6 @@ public interface RecordService {
      * @throws org.springframework.security.access.AccessDeniedException  if the requester is not authorized to view this record.
      */
     RecordViewDto findRecordById(Long recordId, Long requesterUserId);
-
 
     /**
      * Deletes an *unsigned* medical record.
@@ -75,7 +70,4 @@ public interface RecordService {
      * @throws IllegalStateException if the record is already signed.
      */
     void deleteUnsignedRecord(Long recordId, Long requesterUserId);
-
-
-
 }

@@ -125,7 +125,7 @@ class PetServiceImplTest {
         // Expected DTO also needs specific setup per test
         expectedPetProfileDto = new PetProfileDto(
                 savedPetId, "Buddy", Specie.DOG, "Brown", Gender.MALE,
-                LocalDate.of(2023, 1, 15), "12345", specificDogImagePath, // Expect specific breed image
+                LocalDate.of(2023, 1, 15), "12345", specificDogImagePath, // Expect a specific breed image
                 PetStatus.PENDING, ownerId, "testowner", specificBreedId, "Labrador",
                 null, Set.of(),
                 LocalDateTime.now(), LocalDateTime.now()
@@ -149,13 +149,13 @@ class PetServiceImplTest {
             // Arrange
             savedPet.setName(registrationDtoSpecificBreed.name());
             savedPet.setBreed(dogBreedSpecific);
-            savedPet.setImage(dogBreedSpecific.getImageUrl()); // Expecting image from specific breed
+            savedPet.setImage(dogBreedSpecific.getImageUrl()); // Expecting image from a specific breed
             savedPet.setBirthDate(registrationDtoSpecificBreed.birthDate());
             savedPet.setColor(registrationDtoSpecificBreed.color());
             savedPet.setGender(registrationDtoSpecificBreed.gender());
             savedPet.setMicrochip(registrationDtoSpecificBreed.microchip());
 
-            // Prepare expected DTO result matching the savedPet state above
+            // Prepare an expected DTO result matching the savedPet state above
             expectedPetProfileDto = new PetProfileDto(
                     savedPetId, savedPet.getName(), savedPet.getBreed().getSpecie(), savedPet.getColor(),
                     savedPet.getGender(), savedPet.getBirthDate(), savedPet.getMicrochip(),
@@ -205,7 +205,7 @@ class PetServiceImplTest {
             savedPet.setGender(registrationDtoNoBreed.gender());
             savedPet.setMicrochip(registrationDtoNoBreed.microchip());
 
-            // Prepare expected DTO result matching the savedPet state above
+            // Prepare an expected DTO result matching the savedPet state above
             expectedPetProfileDto = new PetProfileDto(
                     savedPetId, savedPet.getName(), Specie.DOG, savedPet.getColor(), savedPet.getGender(),
                     savedPet.getBirthDate(), savedPet.getMicrochip(), savedPet.getImage(), // Should be providedImagePath
@@ -259,7 +259,7 @@ class PetServiceImplTest {
             savedPet.setGender(null);
             savedPet.setMicrochip(null);
 
-            // Prepare expected DTO result
+            // Prepare an expected DTO result
             expectedPetProfileDto = new PetProfileDto(
                     savedPetId, savedPet.getName(), Specie.DOG, null, null,
                     savedPet.getBirthDate(), null, defaultDogImagePath, // Expect default image
@@ -375,7 +375,7 @@ class PetServiceImplTest {
         private final Long activePetId = 111L;
 
         /**
-         * Setup data specific to these tests.
+         * Set up data specific to these tests.
          */
         @BeforeEach
         void associateSetup() {
@@ -385,7 +385,7 @@ class PetServiceImplTest {
             pendingPet = new Pet();
             pendingPet.setId(pendingPetId);
             pendingPet.setName("Pending Pet");
-            pendingPet.setOwner(owner); // Owner from main setup
+            pendingPet.setOwner(owner); // Owner from the main setup
             pendingPet.setStatus(PetStatus.PENDING); // Correct status
             pendingPet.setBreed(dogBreedSpecific); // Need a breed
             pendingPet.setPendingActivationClinic(null); // Not currently pending
@@ -399,7 +399,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test successful association when pet is PENDING and not already associated.
+         * Test successful association when the pet is PENDING and not already associated.
          * Verifies clinic lookup, pet update, and save call.
          */
         @Test
@@ -656,7 +656,6 @@ class PetServiceImplTest {
 
         /**
          * Test failure when the staff member is not authorized (not from the pending clinic).
-         * (Este test no necesita el DTO en el arrange, pero la llamada sí lo requiere)
          */
         @Test
         @DisplayName("should throw AccessDeniedException if staff not from pending clinic")
@@ -932,7 +931,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test successful update when called by the correct owner.
+         * Test a successful update when called by the correct owner.
          * Verifies pet lookup, breed resolution (if changed), microchip validation,
          * mapper application, saving, and DTO mapping.
          */
@@ -962,7 +961,7 @@ class PetServiceImplTest {
             then(petRepository).should().save(petCaptor.capture());
             then(petMapper).should().toProfileDto(any(Pet.class));
 
-            // Verify captured entity state (
+            // Verify the captured entity state (
             Pet captured = petCaptor.getValue();
             assertThat(captured.getId()).isEqualTo(petId);
         }
@@ -1047,7 +1046,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when a new breed ID is provided but the breed does not exist.
+         * Test failure when a new breed ID is provided, but the breed does not exist.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if new breedId not found")
@@ -1172,7 +1171,7 @@ class PetServiceImplTest {
             expectedUpdatedDto = new PetProfileDto(
                     petId, petToUpdate.getName(),
                     Specie.DOG, updateDto.color(), updateDto.gender(), updateDto.birthDate(),
-                    updateDto.microchip(), petToUpdate.getImage(), // Image not changed
+                    updateDto.microchip(), petToUpdate.getImage(), // Image isn't changed
                     petToUpdate.getStatus(), ownerIdForPet, petOwner.getUsername(),
                     newBreedId, newBreed.getName(), null,
                     Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname())),
@@ -1316,7 +1315,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when a new breed ID is provided but the breed does not exist.
+         * Test failure when a new breed ID is provided, but the breed does not exist.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if new breedId not found")
@@ -1448,7 +1447,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test retrieval when clinic has no associated pets.
+         * Test retrieval when a clinic has no associated pets.
          */
         @Test
         @DisplayName("should return empty page when clinic has no associated pets")
@@ -1773,7 +1772,7 @@ class PetServiceImplTest {
             doThrow(new AccessDeniedException("User (ID: " + differentOwnerId + ")..."))
                     .when(authorizationHelper).verifyUserAuthorizationForPet(differentOwnerId, pet, actionContext);
 
-            // Act & Assert for different owner
+            // Act & Assert for a different owner
             assertThatThrownBy(() -> petService.findPetById(petId, differentOwnerId))
                     .isInstanceOf(AccessDeniedException.class);
 
@@ -1962,7 +1961,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when pet is not found.
+         * Test failure when a pet is not found.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if pet not found")
@@ -1981,7 +1980,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when vet is not found.
+         * Test failure when a vet is not found.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if vet not found")
@@ -2003,7 +2002,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when user is not the owner.
+         * Test failure when a user is not the owner.
          */
         @Test
         @DisplayName("should throw AccessDeniedException if user is not owner")
@@ -2110,7 +2109,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test the case where the vet to be disassociated is not actually associated.
+         * Test the case where the vet to be disassociated is not associated.
          * Expects no changes and no save operation.
          */
         @Test
@@ -2133,7 +2132,7 @@ class PetServiceImplTest {
 
 
         /**
-         * Test failure when pet is not found.
+         * Test failure when a pet is not found.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if pet not found")
@@ -2151,7 +2150,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when vet is not found.
+         * Test failure when a vet is not found.
          */
         @Test
         @DisplayName("should throw EntityNotFoundException if vet not found")
@@ -2172,7 +2171,7 @@ class PetServiceImplTest {
         }
 
         /**
-         * Test failure when user is not the owner.
+         * Test failure when a user is not the owner.
          */
         @Test
         @DisplayName("should throw AccessDeniedException if user is not owner")

@@ -834,7 +834,7 @@ class ClinicStaffServiceImplTest {
 
         @BeforeEach
         void deactivateSetup() {
-            // Create an active version based on existingStaffMember
+            // Create an active version based on an existingStaffMember
             activeStaff = new ClinicStaff();
             activeStaff.setId(activeStaffId);
             activeStaff.setUsername(existingStaffMember.getUsername()); // Use data from existingStaffMember
@@ -956,7 +956,7 @@ class ClinicStaffServiceImplTest {
         void deactivateStaff_Error_DifferentClinic() {
             // Arrange
             Long adminOtherClinicId = 20L;
-            // Mock helper find Staff OK
+            // Mock helper finds Staff OK
             given(entityFinderHelper.findClinicStaffOrFail(activeStaffId, actionContext)).willReturn(activeStaff);
             // Mock helper authorization check to fail
             doThrow(new AccessDeniedException("Admin (ID: " + adminOtherClinicId + "...) cannot deactivate staff..."))
