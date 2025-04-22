@@ -97,6 +97,11 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui -->
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -127,10 +132,29 @@
             <artifactId>bcpkix-jdk18on</artifactId>
             <version>1.80</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-cbor -->
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-cbor</artifactId>
+            <version>2.18.3</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.augustcellars.cose/cose-java -->
+        <dependency>
+            <groupId>com.augustcellars.cose</groupId>
+            <artifactId>cose-java</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.upokecenter/cbor -->
+        <dependency>
+            <groupId>com.upokecenter</groupId>
+            <artifactId>cbor</artifactId>
+            <version>5.0.0-alpha2</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/io.github.ehn-digital-green-development/base45 -->
+        <dependency>
+            <groupId>io.github.ehn-digital-green-development</groupId>
+            <artifactId>base45</artifactId>
+            <version>0.0.3</version>
         </dependency>
     </dependencies>
     <dependencyManagement>

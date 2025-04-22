@@ -12,6 +12,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Security;
 import java.util.Base64;
 
@@ -259,8 +261,129 @@ class SigningServiceImplTest {
         }
     }
 
+    /**
+     * --- Tests for getVetPrivateKey ---
+     */
+    @Nested
+    @DisplayName("getVetPrivateKey Tests")
+    class GetVetPrivateKeyTests {
 
-    // --- Helper Methods for Assumptions ---
+        @Test
+        @DisplayName("should return non-null PrivateKey when key file exists")
+        void getVetPrivateKey_Success() {
+            assumeVetKeysAvailable(); // Ensure test keys exist for loading
+
+            PrivateKey key = signingService.getVetPrivateKey(testVet);
+
+            assertThat(key).isNotNull();
+            assertThat(key.getAlgorithm()).isEqualTo("RSA"); // Check algorithm
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException when key file not found")
+        void getVetPrivateKey_Failure_NotFound() {
+            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "non/existent/path.pem");
+            ReflectionTestUtils.setField(signingService, "simulatedVetPrivateKey", null); // Reset cache
+
+            assertThatThrownBy(() -> signingService.getVetPrivateKey(testVet))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Could not load Vet private key");
+        }
+    }
+
+    /**
+     * --- Tests for getVetPublicKey ---
+     */
+    @Nested
+    @DisplayName("getVetPublicKey Tests")
+    class GetVetPublicKeyTests {
+
+        @Test
+        @DisplayName("should return non-null PublicKey when key file exists")
+        void getVetPublicKey_Success() {
+            assumeVetKeysAvailable();
+
+            PublicKey key = signingService.getVetPublicKey(testVet);
+
+            assertThat(key).isNotNull();
+            assertThat(key.getAlgorithm()).isEqualTo("RSA");
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException when key file not found for derivation")
+        void getVetPublicKey_Failure_NotFound() {
+            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "non/existent/path.pem");
+            ReflectionTestUtils.setField(signingService, "simulatedVetPrivateKey", null); // Reset cache
+
+            assertThatThrownBy(() -> signingService.getVetPublicKey(testVet))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Could not load/derive Vet public key");
+        }
+    }
+
+    /**
+     * --- Tests for getClinicPrivateKey
+     */
+    @Nested
+    @DisplayName("getClinicPrivateKey Tests")
+    class GetClinicPrivateKeyTests {
+
+        @Test
+        @DisplayName("should return non-null PrivateKey when key file exists")
+        void getClinicPrivateKey_Success() {
+            assumeClinicKeysAvailable();
+
+            PrivateKey key = signingService.getClinicPrivateKey(testClinic);
+
+            assertThat(key).isNotNull();
+            assertThat(key.getAlgorithm()).isEqualTo("RSA");
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException when key file not found")
+        void getClinicPrivateKey_Failure_NotFound() {
+            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "non/existent/path.pem");
+            ReflectionTestUtils.setField(signingService, "simulatedClinicPrivateKey", null); // Reset cache
+
+            assertThatThrownBy(() -> signingService.getClinicPrivateKey(testClinic))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Could not load Clinic private key");
+        }
+    }
+
+    /**
+     * --- Tests for getClinicPublicKey
+     */
+    @Nested
+    @DisplayName("getClinicPublicKey Tests")
+    class GetClinicPublicKeyTests {
+
+        @Test
+        @DisplayName("should return non-null PublicKey when key file exists")
+        void getClinicPublicKey_Success() {
+            assumeClinicKeysAvailable();
+
+            PublicKey key = signingService.getClinicPublicKey(testClinic);
+
+            assertThat(key).isNotNull();
+            assertThat(key.getAlgorithm()).isEqualTo("RSA");
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException when key file not found for derivation")
+        void getClinicPublicKey_Failure_NotFound() {
+            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "non/existent/path.pem");
+            ReflectionTestUtils.setField(signingService, "simulatedClinicPrivateKey", null); // Reset cache
+
+            assertThatThrownBy(() -> signingService.getClinicPublicKey(testClinic))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Could not load/derive Clinic public key");
+        }
+    }
+
+    /**
+     * --- Helper Methods for Assumptions ---
+     */
     private void assumeVetKeysAvailable() {
         Assumptions.assumeTrue(testVetPublicKeyPemB64 != null,
                 "Skipping test because VET test public key could not be loaded.");

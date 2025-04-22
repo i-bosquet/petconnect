@@ -17,6 +17,11 @@ import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.RSAPublicKeySpec;
 
 import java.io.FileReader;
 import java.nio.charset.StandardCharsets;
@@ -122,6 +127,61 @@ public class SigningServiceImpl implements SigningService {
         }
     }
 
+    @Override
+    public PrivateKey getVetPrivateKey(Vet vet) {
+        try {
+            return getOrLoadVetPrivateKey();
+        } catch (Exception e) {
+            log.error("Failed to get Vet private key for Vet ID {}: {}", vet.getId(), e.getMessage(), e);
+            throw new RuntimeException("Could not load Vet private key.", e);
+        }
+    }
+
+    @Override
+    public PublicKey getVetPublicKey(Vet vet) {
+        try {
+            PrivateKey privateKey = getOrLoadVetPrivateKey();
+            // Derivar clave pública desde la privada (común para RSA)
+            if (privateKey instanceof RSAPrivateCrtKey rsaPrivateKey) {
+                KeyFactory kf = KeyFactory.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
+                RSAPublicKeySpec spec = new RSAPublicKeySpec(rsaPrivateKey.getModulus(), rsaPrivateKey.getPublicExponent());
+                return kf.generatePublic(spec);
+            } else {
+                throw new RuntimeException("Cannot derive public key from Vet private key of type: " + privateKey.getClass());
+            }
+        } catch (Exception e) {
+            log.error("Failed to get Vet public key for Vet ID {}: {}", vet.getId(), e.getMessage(), e);
+            throw new RuntimeException("Could not load/derive Vet public key.", e);
+        }
+    }
+
+    @Override
+    public PrivateKey getClinicPrivateKey(Clinic clinic) {
+        try {
+            return getOrLoadClinicPrivateKey();
+        } catch (Exception e) {
+            log.error("Failed to get Clinic private key for Clinic ID {}: {}", clinic.getId(), e.getMessage(), e);
+            throw new RuntimeException("Could not load Clinic private key.", e);
+        }
+    }
+
+    @Override
+    public PublicKey getClinicPublicKey(Clinic clinic) {
+        try {
+            PrivateKey privateKey = getOrLoadClinicPrivateKey();
+            if (privateKey instanceof RSAPrivateCrtKey rsaPrivateKey) {
+                KeyFactory kf = KeyFactory.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
+                RSAPublicKeySpec spec = new RSAPublicKeySpec(rsaPrivateKey.getModulus(), rsaPrivateKey.getPublicExponent());
+                return kf.generatePublic(spec);
+            } else {
+                throw new RuntimeException("Cannot derive public key from Clinic private key of type: " + privateKey.getClass());
+            }
+        } catch (Exception e) {
+            log.error("Failed to get Clinic public key for Clinic ID {}: {}", clinic.getId(), e.getMessage(), e);
+            throw new RuntimeException("Could not load/derive Clinic public key.", e);
+        }
+    }
+
     /**
      * Loads the Vet's private key from the configured PEM file path, caching it.
      * FOR TFG/DEMO PURPOSES ONLY.
@@ -134,7 +194,6 @@ public class SigningServiceImpl implements SigningService {
             log.warn(MSG_TFG_ONLY_VET, vetPrivateKeyPath);
             this.simulatedVetPrivateKey = loadPrivateKeyFromPEM(vetPrivateKeyPath, vetPrivateKeyPassword);
             log.info(MSG_VET_KEY_LOADED);
-            // Clear password array after loading
             Arrays.fill(vetPrivateKeyPassword, ' ');
         }
         return this.simulatedVetPrivateKey;
@@ -255,7 +314,7 @@ public class SigningServiceImpl implements SigningService {
     private PrivateKey convertPemKeyPair(JcaPEMKeyConverter converter, PEMKeyPair pemKeyPair) throws PEMException {
         try {
             return converter.getKeyPair(pemKeyPair).getPrivate();
-        } catch (Exception e) { // Puedes capturar una excepción más específica si JcaPEMKeyConverter la lanza
+        } catch (Exception e) {
             log.error("Failed to convert unencrypted PEMKeyPair: {}", e.getMessage());
             throw new PEMException("Could not process unencrypted PEMKeyPair.", e);
         }

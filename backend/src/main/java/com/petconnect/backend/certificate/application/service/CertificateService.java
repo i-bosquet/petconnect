@@ -56,4 +56,18 @@ public interface CertificateService {
      */
     CertificateViewDto findCertificateById(Long certificateId, Long requesterUserId);
 
+    /**
+     * Generates and retrieves the Base45 encoded data string for a specific certificate,
+     * suitable for embedding in a QR code.
+     * Requires authorization check (Owner or associated Staff).
+     *
+     * @param certificateId   The ID of the certificate.
+     * @param requesterUserId The ID of the user making the request.
+     * @return The Base45 encoded string.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if the certificate is not found.
+     * @throws org.springframework.security.access.AccessDeniedException  if the requester is not authorized.
+     * @throws RuntimeException if the QR data generation process fails.
+     */
+    String getQrDataForCertificate(Long certificateId, Long requesterUserId);
+
 }

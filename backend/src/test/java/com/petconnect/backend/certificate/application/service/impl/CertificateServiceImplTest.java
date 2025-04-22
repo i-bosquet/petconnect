@@ -5,6 +5,7 @@ import com.petconnect.backend.certificate.application.dto.CertificateViewDto;
 import com.petconnect.backend.certificate.application.mapper.CertificateMapper;
 import com.petconnect.backend.certificate.domain.model.Certificate;
 import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
+import com.petconnect.backend.common.service.QrCodeService;
 import com.petconnect.backend.exception.HashingException;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.CertificateHelper;
@@ -53,6 +54,7 @@ class CertificateServiceImplTest {
     @Mock private HashingService hashingService;
     @Mock private SigningService signingService;
     @Mock private CertificateHelper certificateHelper;
+    @Mock private QrCodeService qrCodeService;
 
     // --- Class Under Test ---
     @InjectMocks
@@ -402,6 +404,101 @@ class CertificateServiceImplTest {
                     .isInstanceOf(AccessDeniedException.class);
 
             then(certificateMapper).should(never()).toViewDto(any());
+        }
+    }
+
+    /**
+     * --- Tests for getQrDataForCertificate ---
+     */
+    @Nested
+    @DisplayName("getQrDataForCertificate Tests")
+    class GetQrDataForCertificateTests {
+
+        private final Long certificateId = 500L;
+        private final Long requesterOwnerId = 50L;
+        private final Long unauthorizedUserId = 999L;
+
+        @Test
+        @DisplayName("should return Base45 string when requested by authorized Owner")
+        void getQrData_Success_ByOwner() {
+            // Arrange
+            String expectedQrData = "HC1:BASE45DATA...";
+            given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
+            Pet associatedPet = savedCertificate.getPet();
+            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterOwnerId, associatedPet, "get QR data for certificate");
+            given(qrCodeService.generateQrData(savedCertificate)).willReturn(expectedQrData);
+
+            // Act
+            String actualQrData = certificateService.getQrDataForCertificate(certificateId, requesterOwnerId);
+
+            // Assert
+            assertThat(actualQrData).isEqualTo(expectedQrData);
+            then(entityFinderHelper).should().findCertificateOrFail(certificateId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(requesterOwnerId, associatedPet, "get QR data for certificate");
+            then(qrCodeService).should().generateQrData(savedCertificate);
+        }
+
+        @Test
+        @DisplayName("should return Base45 string when requested by authorized Staff")
+        void getQrData_Success_ByStaff() {
+            Long requesterVetId = 1L;
+            // Arrange
+            String expectedQrData = "HC1:STAFFBASE45...";
+            given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
+            Pet associatedPet = savedCertificate.getPet();
+            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterVetId, associatedPet, "get QR data for certificate");
+            given(qrCodeService.generateQrData(savedCertificate)).willReturn(expectedQrData);
+
+            // Act
+            String actualQrData = certificateService.getQrDataForCertificate(certificateId, requesterVetId);
+
+            // Assert
+            assertThat(actualQrData).isEqualTo(expectedQrData);
+            then(entityFinderHelper).should().findCertificateOrFail(certificateId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(requesterVetId, associatedPet, "get QR data for certificate");
+            then(qrCodeService).should().generateQrData(savedCertificate);
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if certificate not found")
+        void getQrData_Failure_CertNotFound() {
+            Long nonExistentCertId = 888L;
+            given(entityFinderHelper.findCertificateOrFail(nonExistentCertId))
+                    .willThrow(new com.petconnect.backend.exception.EntityNotFoundException(Certificate.class.getSimpleName(), nonExistentCertId));
+
+            assertThatThrownBy(() -> certificateService.getQrDataForCertificate(nonExistentCertId, requesterOwnerId))
+                    .isInstanceOf(com.petconnect.backend.exception.EntityNotFoundException.class);
+
+            then(authorizationHelper).should(never()).verifyUserAuthorizationForPet(anyLong(), any(), anyString());
+            then(qrCodeService).should(never()).generateQrData(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if requester not authorized for pet")
+        void getQrData_Failure_Unauthorized() {
+            given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
+            Pet associatedPet = savedCertificate.getPet();
+            willThrow(new AccessDeniedException("User not authorized for pet"))
+                    .given(authorizationHelper).verifyUserAuthorizationForPet(unauthorizedUserId, associatedPet, "get QR data for certificate");
+
+            assertThatThrownBy(() -> certificateService.getQrDataForCertificate(certificateId, unauthorizedUserId))
+                    .isInstanceOf(AccessDeniedException.class);
+
+            then(qrCodeService).should(never()).generateQrData(any());
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException if QrCodeService fails")
+        void getQrData_Failure_QrServiceError() {
+            given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
+            Pet associatedPet = savedCertificate.getPet();
+            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterOwnerId, associatedPet, "get QR data for certificate");
+            // Simular fallo en QrCodeService
+            given(qrCodeService.generateQrData(savedCertificate)).willThrow(new RuntimeException("CBOR failed"));
+
+            assertThatThrownBy(() -> certificateService.getQrDataForCertificate(certificateId, requesterOwnerId))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("CBOR failed");
         }
     }
 }

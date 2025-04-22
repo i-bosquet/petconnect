@@ -12,6 +12,7 @@ import com.petconnect.backend.certificate.domain.repository.CertificateRepositor
 import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.exception.HashingException;
 import com.petconnect.backend.common.service.HashingService;
+import com.petconnect.backend.common.service.QrCodeService;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.user.domain.model.Clinic;
@@ -45,6 +46,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final HashingService hashingService;
     private final SigningService signingService;
     private final CertificateHelper certificateHelper;
+    private final QrCodeService qrCodeService;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     /**
@@ -144,5 +146,20 @@ public class CertificateServiceImpl implements CertificateService {
         authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "view certificate for");
 
         return certificateMapper.toViewDto(certificate);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public String getQrDataForCertificate(Long certificateId, Long requesterUserId) {
+        log.debug("Request received for QR data for certificate ID: {} by User ID: {}", certificateId, requesterUserId);
+        Certificate certificate = entityFinderHelper.findCertificateOrFail(certificateId);
+
+        Pet pet = Objects.requireNonNull(certificate.getPet(), "Certificate must have an associated Pet.");
+        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "get QR data for certificate");
+
+        return qrCodeService.generateQrData(certificate);
     }
 }

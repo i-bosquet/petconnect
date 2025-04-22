@@ -3,6 +3,9 @@ package com.petconnect.backend.common.service;
 import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.Vet;
 
+import java.security.PrivateKey;
+import java.security.PublicKey;
+
 /**
  * Service interface defining cryptographic signing and verification operations.
  * Provides methods for generating signatures using veterinarian or clinic keys
@@ -42,4 +45,39 @@ public interface SigningService {
      * @return true if the signature is valid, false otherwise.
      */
     boolean verifySignature(String publicKeyPemB64, String originalData, String signatureB64);
+
+    /**
+     * Retrieves the PrivateKey object for the specified Vet.
+     * FOR TFG/DEMO USE ONLY - Loads from configured file.
+     * @param vet The veterinarian.
+     * @return The PrivateKey.
+     * @throws RuntimeException if key loading fails.
+     */
+    PrivateKey getVetPrivateKey(Vet vet);
+
+    /**
+     * Retrieves the PublicKey object corresponding to the Vet's private key.
+     * This might load from a file or be derived if not stored separately.
+     * @param vet The veterinarian.
+     * @return The PublicKey.
+     * @throws RuntimeException if key loading/derivation fails.
+     */
+    PublicKey getVetPublicKey(Vet vet);
+
+    /**
+     * Retrieves the PrivateKey object for the specified Clinic.
+     * FOR TFG/ DEMO, USE ONLY - Loads from a configured file.
+     * @param clinic The clinic.
+     * @return The PrivateKey.
+     * @throws RuntimeException if key loading fails.
+     */
+    PrivateKey getClinicPrivateKey(Clinic clinic);
+
+    /**
+     * Retrieves the PublicKey object corresponding to the Clinic's private key.
+     * @param clinic The clinic.
+     * @return The PublicKey.
+     * @throws RuntimeException if key loading/derivation fails.
+     */
+    PublicKey getClinicPublicKey(Clinic clinic);
 }
