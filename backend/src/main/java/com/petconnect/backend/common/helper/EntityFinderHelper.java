@@ -1,5 +1,7 @@
 package com.petconnect.backend.common.helper;
 
+import com.petconnect.backend.certificate.domain.model.Certificate;
+import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Pet;
@@ -31,6 +33,7 @@ public class EntityFinderHelper {
     private final VetRepository vetRepository;
     private final RecordRepository recordRepository;
     private final BreedRepository breedRepository;
+    private final CertificateRepository certificateRepository;
 
     /**
      * Finds a UserEntity by ID or throws EntityNotFoundException.
@@ -48,7 +51,7 @@ public class EntityFinderHelper {
      * Ensures the found user is actually an Owner.
      * @param ownerId The ID of the owner.
      * @return The found Owner entity.
-     * @throws EntityNotFoundException if user not found or is not an Owner.
+     * @throws EntityNotFoundException if a user isn't found or is not an Owner.
      */
     public Owner findOwnerOrFail(Long ownerId) {
         return userRepository.findById(ownerId)
@@ -84,7 +87,7 @@ public class EntityFinderHelper {
      * @param adminId The ID of the user expected to be an admin.
      * @param actionContext Description of the action being performed (for error messages).
      * @return The found and validated ClinicStaff entity (as an Admin).
-     * @throws AccessDeniedException if user is not ClinicStaff or not an ADMIN.
+     * @throws AccessDeniedException if a user is not ClinicStaff or not an ADMIN.
      */
     public ClinicStaff findAdminStaffOrFail(Long adminId, String actionContext) {
         ClinicStaff staff = findClinicStaffOrFail(adminId, actionContext);
@@ -101,7 +104,7 @@ public class EntityFinderHelper {
      * Ensures the found user is actually a Vet.
      * @param vetId The ID of the vet.
      * @return The found Vet entity.
-     * @throws EntityNotFoundException if user not found or is not a Vet.
+     * @throws EntityNotFoundException if a user isn't found or is not a Vet.
      */
     public Vet findVetOrFail(Long vetId) {
         // Vet repo already returns Vet instances or empty
@@ -154,4 +157,14 @@ public class EntityFinderHelper {
                 .orElseThrow(() -> new EntityNotFoundException(Breed.class.getSimpleName(), breedId));
     }
 
+    /**
+     * Finds a Certificate by ID or throws EntityNotFoundException.
+     * @param certificateId The ID of the certificate.
+     * @return The found Certificate entity.
+     * @throws EntityNotFoundException if not found.
+     */
+    public Certificate findCertificateOrFail(Long certificateId) {
+        return certificateRepository.findById(certificateId)
+                .orElseThrow(() -> new EntityNotFoundException(Certificate.class.getSimpleName(), certificateId));
+    }
 }

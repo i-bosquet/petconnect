@@ -4,7 +4,7 @@ import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
-import com.petconnect.backend.common.service.SigningService;
+import com.petconnect.backend.common.service.impl.SigningServiceImpl;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.Breed;
@@ -67,7 +67,7 @@ class RecordServiceImplTest {
     @Mock private ValidateHelper validateHelper;
     @Mock private UserMapper userMapper;
     @Mock private RecordHelper recordHelper;
-    @Mock private SigningService signingService;
+    @Mock private SigningServiceImpl signingServiceImpl;
 
     // --- Class Under Test ---
     @InjectMocks
@@ -222,7 +222,7 @@ class RecordServiceImplTest {
             doNothing().when(validateHelper).validateRecordCreationDto(vetVaccineDto);
             given(vaccineMapper.fromCreateDto(vaccineDetailsDto)).willReturn(newVaccineEntity);
             given(recordHelper.buildSignableData(pet, vet, vetVaccineDto)).willReturn(expectedDataToSign);
-            given(signingService.generateSignature(vet, expectedDataToSign)).willReturn(expectedSignature);
+            given(signingServiceImpl.generateVetSignature(vet, expectedDataToSign)).willReturn(expectedSignature);
 
             given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
                 Record recordEntity = inv.getArgument(0);
@@ -252,7 +252,7 @@ class RecordServiceImplTest {
             then(validateHelper).should().validateRecordCreationDto(vetVaccineDto);
             then(vaccineMapper).should().fromCreateDto(vaccineDetailsDto);
             then(recordHelper).should().buildSignableData(pet, vet, vetVaccineDto);
-            then(signingService).should().generateSignature(vet, expectedDataToSign);
+            then(signingServiceImpl).should().generateVetSignature(vet, expectedDataToSign);
             then(recordRepository).should().save(recordCaptor.capture());
             then(recordMapper).should().toViewDto(any(Record.class));
 

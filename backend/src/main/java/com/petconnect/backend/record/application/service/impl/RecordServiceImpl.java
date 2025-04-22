@@ -4,7 +4,7 @@ import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
-import com.petconnect.backend.common.service.SigningService;
+import com.petconnect.backend.common.service.impl.SigningServiceImpl;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
@@ -45,7 +45,7 @@ public class RecordServiceImpl implements RecordService {
     private final AuthorizationHelper authorizationHelper;
     private final ValidateHelper validateHelper;
     private final RecordHelper recordHelper;
-    private final SigningService signingService;
+    private final SigningServiceImpl signingServiceImpl;
 
     /**
      * {@inheritDoc}
@@ -82,7 +82,7 @@ public class RecordServiceImpl implements RecordService {
                 throw new IllegalStateException("Only Veterinarians can sign records. User " + creatorUserId + " is not a Vet.");
             }
             String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
-            String signature = signingService.generateSignature(vetCreator, dataToSign);
+            String signature = signingServiceImpl.generateVetSignature(vetCreator, dataToSign);
             newRecord.setVetSignature(signature);
             log.info("Record for Pet {} created and signed by Vet {}", petId, creatorUserId);
         }

@@ -45,7 +45,7 @@ import static org.mockito.BDDMockito.*;
 /**
  * Unit tests for {@link UserServiceImpl}.
  * Verifies logic for retrieving user profiles, finding users, and updating user profiles.
- * Uses mocked UserHelper to simulate authenticated user context.
+ * Use mocked UserHelper to simulate authenticated user context.
  *
  * @author ibosquet
  */

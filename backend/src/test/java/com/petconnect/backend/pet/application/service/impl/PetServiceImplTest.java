@@ -1158,7 +1158,7 @@ class PetServiceImplTest {
             petToUpdate.setColor("White/Black");
             petToUpdate.addVet((Vet) authorizedStaff); // Associate the authorized vet
 
-            // DTO with changes clinic staff can make
+            // DTO with change clinic staff can make
             updateDto = new PetClinicUpdateDto(
                     "White/Brown",                // Color changed
                     Gender.FEMALE,                // Gender changed
