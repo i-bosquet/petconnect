@@ -3,7 +3,6 @@ package com.petconnect.backend.user.domain.repository;
 import com.petconnect.backend.user.domain.model.Vet;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
 
 /**
  * Spring Data JPA repository for {@link Vet} entities.
@@ -50,14 +49,4 @@ public interface VetRepository extends JpaRepository<Vet, Long> {
      * @return true if a vet with the license number exists, false otherwise.
      */
     boolean existsByLicenseNumber(String licenseNumber);
-
-    /**
-     * Finds a Vet entity by its unique username.
-     * Useful for retrieving a vet directly if the username is known,
-     * potentially bypassing the need to query the base UserRepository first.
-     *
-     * @param username The username to search for.
-     * @return An {@link Optional} containing the found Vet, or {@link Optional#empty()} if no Vet with that username exists.
-     */
-    Optional<Vet> findByUsername(String username);
 }

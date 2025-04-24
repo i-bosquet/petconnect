@@ -136,7 +136,7 @@ class RecordControllerIntegrationTest {
      * --- Tests for POST /api/records (Create Record) ---
      */
     @Nested
-    @DisplayName("POST /api/records")
+    @DisplayName("POST /api/records (Create Record)")
     class CreateRecordIntegrationTests {
 
         private RecordCreateDto ownerCreateDto;
@@ -245,7 +245,7 @@ class RecordControllerIntegrationTest {
      * --- Tests for GET /api/records (List Records for Pet) --- ---
      */
     @Nested
-    @DisplayName("GET /api/records")
+    @DisplayName("GET /api/records (List Records for Pet)")
     class ListRecordsIntegrationTests {
 
         private Long recordIdOwner;

@@ -147,9 +147,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
     public ResponseEntity<Map<String, Object>> handleBadLogicExceptions(RuntimeException ex) {
-        // Log as a warning as it indicates a client potentially tried an invalid operation
         log.warn("Bad Request due to illegal state or argument: {}", ex.getMessage());
-        // Decide if 400 or 409 is more appropriate. 400 is often used for invalid inputs/states.
         Map<String, Object> body = createErrorBody(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }

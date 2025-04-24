@@ -250,7 +250,7 @@ class CertificateControllerIntegrationTest {
      * --- Tests for POST /api/certificates (Generate Certificate) ---
      */
     @Nested
-    @DisplayName("POST /api/certificates")
+    @DisplayName("POST /api/certificates (Generate Certificate Tests)")
     class GenerateCertificateTests {
         private Long recordIdSecondVaccineOk;
 
@@ -269,7 +269,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should generate certificate successfully when called by authorized Vet with eligible record")
+        @DisplayName("should return 201 Created and CertificateViewDto when called by authorized Vet with eligible record")
         void generateCertificate_Success() throws Exception {
             CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(recordIdRabiesOk, "AHC-GEN-SUCCESS-" + System.currentTimeMillis());
 
@@ -291,7 +291,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 400 Bad Request if record is not suitable (e.g., not signed, wrong type)")
+        @DisplayName("should return 400 Bad Request when source record is not suitable (unsigned or wrong type)")
         void generateCertificate_BadRequest_RecordNotSuitable() throws Exception {
             CertificateGenerationRequestDto requestUnsigned = new CertificateGenerationRequestDto(recordIdRabiesUnsigned, "AHC-FAIL-UNSIGNED");
             MvcResult resUnsigned = mockMvc.perform(post("/api/certificates")
@@ -314,7 +314,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 409 Conflict if certificate number already exists")
+        @DisplayName("should return 409 Conflict when certificate number already exists")
         void generateCertificate_Conflict_NumberExists() throws Exception {
             String existingCertNumber = "AHC-DUPLICATE-" + System.currentTimeMillis();
             CertificateGenerationRequestDto firstRequest = new CertificateGenerationRequestDto(recordIdRabiesOk, existingCertNumber);
@@ -332,7 +332,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 409 Conflict if certificate already exists for the record")
+        @DisplayName("should return 409 Conflict when certificate already exists for the source record")
         void generateCertificate_Conflict_CertForRecordExists() throws Exception {
             CertificateGenerationRequestDto firstRequest = new CertificateGenerationRequestDto(recordIdRabiesOk, "AHC-REC-DUP1-" + System.currentTimeMillis());
             mockMvc.perform(post("/api/certificates").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(firstRequest))).andExpect(status().isCreated());
@@ -349,7 +349,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden if called by non-Vet (Owner)")
+        @DisplayName("should return 403 Forbidden when called by non-Vet")
         void generateCertificate_Forbidden_Owner() throws Exception {
             CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(recordIdRabiesOk, "AHC-OWNER-FAIL");
             mockMvc.perform(post("/api/certificates")
@@ -360,7 +360,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 Not Found if Record ID does not exist")
+        @DisplayName("should return 404 Not Found when source Record ID does not exist")
         void generateCertificate_NotFound_Record() throws Exception {
             CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(9999L, "AHC-REC-NF");
             mockMvc.perform(post("/api/certificates")
@@ -371,7 +371,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 400 Bad Request if required DTO fields missing")
+        @DisplayName("should return 404 Not Found when source Record ID does not exist")
         void generateCertificate_BadRequest_MissingDtoFields() throws Exception {
             CertificateGenerationRequestDto missingRecordId = new CertificateGenerationRequestDto(null, "AHC-VALID");
             mockMvc.perform(post("/api/certificates").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(missingRecordId)))
@@ -390,7 +390,7 @@ class CertificateControllerIntegrationTest {
      * --- Tests for GET /api/certificates (List Certificates) ---
      */
     @Nested
-    @DisplayName("GET /api/certificates")
+    @DisplayName("GET /api/certificates (List Certificates Tests)")
     class ListCertificatesTests {
 
         private Long certId1, certId2;
@@ -415,7 +415,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return list of certificates when called by Owner")
+        @DisplayName("should return 200 OK with list of certificates when called by Owner")
         void listCertificates_Success_Owner() throws Exception {
             mockMvc.perform(get("/api/certificates")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -426,7 +426,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return list of certificates when called by associated Vet")
+        @DisplayName("should return 200 OK with list of certificates when called by associated Vet")
         void listCertificates_Success_Vet() throws Exception {
             mockMvc.perform(get("/api/certificates")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -436,7 +436,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return empty list if pet has no certificates")
+        @DisplayName("should return 200 OK with empty list when pet has no certificates")
         void listCertificates_Success_NoCerts() throws Exception {
             mockMvc.perform(get("/api/certificates")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -446,7 +446,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden if called by unauthorized user")
+        @DisplayName("should return 403 Forbidden when called by unauthorized user")
         void listCertificates_Forbidden() throws Exception {
             mockMvc.perform(get("/api/certificates")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken)
@@ -460,7 +460,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 Not Found if petId does not exist")
+        @DisplayName("should return 404 Not Found when Pet ID does not exist")
         void listCertificates_NotFound_Pet() throws Exception {
             mockMvc.perform(get("/api/certificates")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -474,7 +474,7 @@ class CertificateControllerIntegrationTest {
      * --- Tests for GET /api/certificates/{certificateId} ---
      */
     @Nested
-    @DisplayName("GET /api/certificates/{certificateId}")
+    @DisplayName("GET /api/certificates/{certificateId}  (Get Certificate By ID Tests)")
     class GetCertificateByIdTests {
 
         private Long certificateIdToGet;
@@ -488,7 +488,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return certificate when called by Owner")
+        @DisplayName("should return 200 OK with certificate details when called by Owner")
         void getCertificateById_Success_Owner() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -497,7 +497,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return certificate when called by associated Vet")
+        @DisplayName("should return 200 OK with certificate details when called by associated Vet")
         void getCertificateById_Success_Vet() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -517,7 +517,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 Not Found if certificate ID does not exist")
+        @DisplayName("should return 404 Not Found when certificate ID does not exist")
         void getCertificateById_NotFound() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}", 9999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -529,7 +529,7 @@ class CertificateControllerIntegrationTest {
      * --- Tests for GET /api/certificates/{certificateId}/qr-data ---
      */
     @Nested
-    @DisplayName("GET /api/certificates/{certificateId}/qr-data")
+    @DisplayName("GET /api/certificates/{certificateId}/qr-data  (Get Certificate QR Data Tests)")
     class GetCertificateQrDataTests {
 
         private Long certificateIdForQr;
@@ -543,7 +543,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return Base45 string when called by Owner")
+        @DisplayName("should return 200 OK with Base45 string when called by Owner")
         void getQrData_Success_Owner() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -553,7 +553,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return Base45 string when called by associated Vet")
+        @DisplayName("should return 200 OK with Base45 string when called by associated Vet")
         void getQrData_Success_Vet() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -571,7 +571,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 Not Found if certificate ID does not exist")
+        @DisplayName("should return 404 Not Found when certificate ID does not exist")
         void getQrData_NotFound() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", 9999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -579,7 +579,7 @@ class CertificateControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized if no token provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void getQrData_Unauthorized() throws Exception {
             mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr))
                     .andExpect(status().isUnauthorized());

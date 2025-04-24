@@ -17,7 +17,6 @@ public class VetPublicKeyAlreadyExistsException extends RuntimeException {
      * indicating the public key is already in use.
      */
     public VetPublicKeyAlreadyExistsException() {
-        // Avoid showing the full public key in the message for security/log readability
         super("Veterinarian public key is already in use.");
     }
 }

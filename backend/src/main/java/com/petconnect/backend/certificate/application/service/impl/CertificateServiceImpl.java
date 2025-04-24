@@ -118,7 +118,6 @@ public class CertificateServiceImpl implements CertificateService {
         log.info("Certificate ID {} generated successfully for Pet ID {} from Record ID {} by Vet ID {}",
                 savedCertificate.getId(), pet.getId(), sourceRecord.getId(), generatingVetId);
 
-        // Map and Return DTO
         return certificateMapper.toViewDto(savedCertificate);
     }
 

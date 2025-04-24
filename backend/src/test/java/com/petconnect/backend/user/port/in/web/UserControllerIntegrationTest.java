@@ -89,11 +89,11 @@ class UserControllerIntegrationTest {
      * Tests for GET /api/users/me
      */
     @Nested
-    @DisplayName("GET /api/users/me")
+    @DisplayName("GET /api/users/me (Get Current User Profile Tests)")
     class GetCurrentUserProfileTests {
 
         @Test
-        @DisplayName("should return Owner profile when called by Owner")
+        @DisplayName("should return 200 OK and OwnerProfileDto when called by authenticated Owner")
         void getCurrentProfile_whenOwner_shouldReturnOwnerDto() throws Exception {
             mockMvc.perform(get("/api/users/me")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -105,7 +105,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return ClinicStaff profile when called by Admin")
+        @DisplayName("should return 200 OK and ClinicStaffProfileDto when called by authenticated Admin")
         void getCurrentProfile_whenAdmin_shouldReturnStaffDto() throws Exception {
             mockMvc.perform(get("/api/users/me")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -118,7 +118,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized when no token provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void getCurrentProfile_whenNoToken_shouldReturnUnauthorized() throws Exception {
             mockMvc.perform(get("/api/users/me"))
                     .andExpect(status().isUnauthorized());
@@ -129,11 +129,11 @@ class UserControllerIntegrationTest {
      * Tests for GET /api/users/{id}
      */
     @Nested
-    @DisplayName("GET /api/users/{id}")
+    @DisplayName("GET /api/users/{id} (Get User By ID Tests)")
     class GetUserByIdTests {
 
         @Test
-        @DisplayName("should return 403 Forbidden when Owner requests ANY ID via this endpoint")
+        @DisplayName("should return 403 Forbidden when Owner requests any user ID")
         void getUserById_whenOwnerRequestsAnyId_shouldReturnForbidden() throws Exception {
             // Arrange
                 UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
@@ -149,7 +149,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return profile when Admin requests own ID")
+        @DisplayName("should return 200 OK and UserProfileDto when Admin requests own profile by ID")
         void getUserById_whenAdminRequestsSelf_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/users/{id}", adminLondonId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -159,7 +159,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return profile when Admin requests any valid ID")
+        @DisplayName("should return 403 Forbidden when Admin requests Owner profile by ID")
         void getUserById_whenAdminRequestsOwner_shouldReturnForbidden() throws Exception {
             // Arrange
             UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
@@ -173,7 +173,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden when Owner requests another user's ID")
+        @DisplayName("should return 403 Forbidden when Owner requests another user's profile by ID")
         void getUserById_whenOwnerRequestsOther_shouldReturnForbidden() throws Exception {
             mockMvc.perform(get("/api/users/{id}", adminLondonId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -181,7 +181,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 Not Found when ID does not exist (as Admin)")
+        @DisplayName("should return 404 Not Found when Admin requests non-existent user ID")
         void getUserById_whenIdNotFound_shouldReturnNotFound() throws Exception {
             mockMvc.perform(get("/api/users/{id}", 9999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -189,7 +189,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized when no token provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void getUserById_whenNoToken_shouldReturnUnauthorized() throws Exception {
             mockMvc.perform(get("/api/users/{id}", adminLondonId))
                     .andExpect(status().isUnauthorized());
@@ -200,11 +200,11 @@ class UserControllerIntegrationTest {
      * Tests for GET /api/users/by-email
      */
     @Nested
-    @DisplayName("GET /api/users/by-email")
+    @DisplayName("GET /api/users/by-email (Get User By Email Tests)")
     class GetUserByEmailTests {
 
         @Test
-        @DisplayName("should return profile when Admin requests valid email")
+        @DisplayName("should return 200 OK and UserProfileDto when Admin requests staff from same clinic by email")
         void getUserByEmail_whenAdminRequests_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/users/by-email")
                             .param("email", "admin.london@petconnect.dev")
@@ -224,7 +224,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 Not Found when email does not exist (as Admin)")
+        @DisplayName("should return 404 Not Found when Admin requests non-existent email")
         void getUserByEmail_whenEmailNotFound_shouldReturnNotFound() throws Exception {
             mockMvc.perform(get("/api/users/by-email")
                             .param("email", "nosuch@email.com")
@@ -233,7 +233,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized when no token provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void getUserByEmail_whenNoToken_shouldReturnUnauthorized() throws Exception {
             mockMvc.perform(get("/api/users/by-email")
                             .param("email", "admin.london@petconnect.dev"))
@@ -245,7 +245,7 @@ class UserControllerIntegrationTest {
      * Tests for PUT /api/users/me (Update Owner Profile)
      */
     @Nested
-    @DisplayName("PUT /api/users/me (Owner Update)")
+    @DisplayName("PUT /api/users/me (Update Owner Profile Tests)")
     class UpdateOwnerProfileTests {
         private OwnerProfileUpdateDto ownerUpdateDto;
 
@@ -255,7 +255,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should update own profile successfully when called by Owner")
+        @DisplayName("should return 200 OK and updated OwnerProfileDto when Owner updates own profile")
         void updateOwnProfile_whenOwner_shouldSucceed() throws Exception {
             mockMvc.perform(put("/api/users/me")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -269,7 +269,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden when called by non-Owner (e.g., Admin)")
+        @DisplayName("should return 403 Forbidden when non-Owner attempts to update owner profile")
         void updateOwnProfile_whenNotOwner_shouldReturnForbidden() throws Exception {
             mockMvc.perform(put("/api/users/me")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -279,7 +279,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 409 Conflict if new username already exists")
+        @DisplayName("should return 409 Conflict when updated username already exists")
         void updateOwnProfile_whenUsernameExists_shouldReturnConflict() throws Exception {
             // Arrange
             OwnerProfileUpdateDto duplicateUsernameDto = new OwnerProfileUpdateDto("admin_london", null, null);
@@ -293,7 +293,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 400 Bad Request if update data invalid")
+        @DisplayName("should return 400 Bad Request when update DTO data is invalid")
         void updateOwnProfile_whenInvalidData_shouldReturnBadRequest() throws Exception {
             // Arrange
             OwnerProfileUpdateDto invalidDto = new OwnerProfileUpdateDto("u", null, null);
@@ -312,7 +312,7 @@ class UserControllerIntegrationTest {
      * Tests for PUT /api/users/me/staff (Update Staff Common Info)
      */
     @Nested
-    @DisplayName("PUT /api/users/me/staff (Staff Update)")
+    @DisplayName("PUT /api/users/me/staff (Update Staff Profile Tests)")
     class UpdateStaffProfileTests {
         private UserProfileUpdateDto staffUpdateDto;
 
@@ -322,7 +322,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should update own profile successfully when called by Admin")
+        @DisplayName("should return 200 OK and updated StaffProfileDto when Admin updates own profile")
         void updateOwnProfile_whenAdmin_shouldSucceed() throws Exception {
             mockMvc.perform(put("/api/users/me/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -335,7 +335,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should update own profile successfully when called by Vet")
+        @DisplayName("should return 200 OK and updated StaffProfileDto when Vet updates own profile")
         void updateOwnProfile_whenVet_shouldSucceed() throws Exception {
             // Arrange
             UserProfileUpdateDto vetUpdateDto = new UserProfileUpdateDto("admin_barcelona_upd", "vet_avatar.png");
@@ -349,7 +349,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden when called by non-Staff (Owner)")
+        @DisplayName("should return 403 Forbidden when Owner attempts to update staff profile")
         void updateOwnProfile_whenNotStaff_shouldReturnForbidden() throws Exception {
             mockMvc.perform(put("/api/users/me/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -359,7 +359,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 409 Conflict if new username already exists")
+        @DisplayName("should return 409 Conflict when updated username already exists")
         void updateOwnProfile_whenUsernameExists_shouldReturnConflict() throws Exception {
             // Arrange
             UserProfileUpdateDto duplicateUsernameDto = new UserProfileUpdateDto("admin_barcelona", null);
@@ -373,7 +373,7 @@ class UserControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 400 Bad Request if update data invalid")
+        @DisplayName("should return 400 Bad Request when update DTO data is invalid")
         void updateOwnProfile_whenInvalidData_shouldReturnBadRequest() throws Exception {
             // Arrange
             UserProfileUpdateDto invalidDto = new UserProfileUpdateDto("u", null);

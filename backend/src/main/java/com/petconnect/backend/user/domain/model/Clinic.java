@@ -17,8 +17,8 @@ import java.util.List;
  * @author ibosquet
  */
 @Data
-@EqualsAndHashCode(callSuper = true, exclude = {"staff"}) // Inherit BaseEntity's equals/hashCode, exclude collections
-@ToString(callSuper = true, exclude = {"staff"}) // Inherit BaseEntity's toString, exclude collections to avoid recursion
+@EqualsAndHashCode(callSuper = true, exclude = {"staff"})
+@ToString(callSuper = true, exclude = {"staff"})
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

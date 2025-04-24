@@ -84,11 +84,11 @@ class AuthControllerIntegrationTest {
      * Tests for POST /api/auth/register
      */
     @Nested
-    @DisplayName("POST /api/auth/register (Public)")
+    @DisplayName("POST /api/auth/register (Register Owner Tests)")
     class RegisterTests{
 
         @Test
-        @DisplayName("POST /api/auth/register - Success (201 Created)")
+        @DisplayName("should return 201 Created and OwnerProfile when registration data is valid")
         void registerOwner_whenValidData_shouldReturnCreatedAndOwnerProfileAndSaveUser() throws Exception {
             // Act & Assert
             MvcResult result = mockMvc.perform(post("/api/auth/register")
@@ -124,7 +124,7 @@ class AuthControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /api/auth/register - Conflict (409) - Email Exists")
+        @DisplayName("should return 409 Conflict when email already exists")
         void registerOwner_whenEmailExists_shouldReturnConflict() throws Exception {
             // Arrange
             OwnerRegistrationDto duplicateEmailDto = new OwnerRegistrationDto(
@@ -144,7 +144,7 @@ class AuthControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /api/auth/register - Conflict (409) - Username Exists")
+        @DisplayName("should return 409 Conflict when username already exists")
         void registerOwner_whenUsernameExists_shouldReturnConflict() throws Exception {
             // Arrange
             OwnerRegistrationDto duplicateUsernameDto = new OwnerRegistrationDto(
@@ -164,7 +164,7 @@ class AuthControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /api/auth/register - Bad Request (400) - Blank Username")
+        @DisplayName("should return 400 Bad Request when username is blank")
         void registerOwner_whenBlankUsername_shouldReturnBadRequest() throws Exception {
             OwnerRegistrationDto invalidDto = new OwnerRegistrationDto("", "valid@email.com", "password123", "12345");
 
@@ -178,7 +178,7 @@ class AuthControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /api/auth/register - Bad Request (400) - Short Username")
+        @DisplayName("should return 400 Bad Request when username is too short")
         void registerOwner_whenShortUsername_shouldReturnBadRequest() throws Exception {
             OwnerRegistrationDto invalidDto = new OwnerRegistrationDto("us", "valid@email.com", "password123", "12345"); // Username "us" (longitud 2)
 
@@ -190,7 +190,7 @@ class AuthControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /api/auth/register - Bad Request (400) - Multiple Invalid Fields")
+        @DisplayName("should return 400 Bad Request with all errors when multiple fields are invalid")
         void registerOwner_whenMultipleInvalidFields_shouldReturnBadRequestWithAllErrors() throws Exception {
             OwnerRegistrationDto invalidDto = new OwnerRegistrationDto("", "valid@email.com", "short", ""); // Blank username/phone, short pass
 
@@ -208,11 +208,11 @@ class AuthControllerIntegrationTest {
      * Tests for POST /api/auth/login
      */
     @Nested
-    @DisplayName("POST /api/auth/login (Public)")
+    @DisplayName("POST /api/auth/login (Login User Tests)")
     class LoginTests{
 
     @Test
-    @DisplayName("POST /api/auth/login - Success (200 OK) - Admin")
+    @DisplayName("should return 200 OK and JWT token when Admin credentials are valid")
     void login_whenAdminCredentialsValid_shouldReturnOkAndToken() throws Exception {
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
@@ -228,7 +228,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login - Success (200 OK) - Newly Registered Owner")
+    @DisplayName("should return 200 OK and JWT token when newly registered Owner credentials are valid")
     void login_whenOwnerCredentialsValid_shouldReturnOkAndToken() throws Exception {
         // Arrange
         mockMvc.perform(post("/api/auth/register")
@@ -246,7 +246,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login - Unauthorized (401) - Invalid Password")
+    @DisplayName("should return 401 Unauthorized when password is invalid")
     void login_whenPasswordInvalid_shouldReturnUnauthorized() throws Exception {
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
@@ -259,7 +259,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login - Unauthorized (401) - User Not Found")
+    @DisplayName("should return 401 Unauthorized when username does not exist")
     void login_whenUserNotFound_shouldReturnUnauthorized() throws Exception {
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
@@ -272,7 +272,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login - Bad Request (400) - Invalid Input")
+    @DisplayName("should return 400 Bad Request when input DTO validation fails")
     void login_whenInputInvalid_shouldReturnBadRequest() throws Exception {
         // Arrange
         AuthLoginRequestDto invalidDto = new AuthLoginRequestDto("user", "");

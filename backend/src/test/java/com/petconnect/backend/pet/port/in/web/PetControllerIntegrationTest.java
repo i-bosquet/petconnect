@@ -132,7 +132,7 @@ class PetControllerIntegrationTest {
      * --- Tests for POST /api/pets (Register Pet) ---
      */
     @Nested
-    @DisplayName("POST /api/pets (Owner Register)")
+    @DisplayName("POST /api/pets (Register Pet Tests 'Owner')")
     class RegisterPetTests {
 
         private PetRegistrationDto petRegDto;
@@ -146,7 +146,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should register pet successfully when called by Owner")
+        @DisplayName("should return 201 Created and PetProfileDto when called by Owner with valid data")
         void registerPet_Success() throws Exception {
             mockMvc.perform(post("/api/pets")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -162,7 +162,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 400 Bad Request if required fields missing")
+        @DisplayName("should return 400 Bad Request when required fields are missing")
         void registerPet_BadRequest_MissingFields() throws Exception {
             PetRegistrationDto invalidDto = new PetRegistrationDto(null, null, null, null, null, null, null, null); // Missing required fields
             mockMvc.perform(post("/api/pets")
@@ -177,7 +177,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden if called by non-Owner (Admin)")
+        @DisplayName("should return 403 Forbidden when called by non-Owner")
         void registerPet_Forbidden_NotOwner() throws Exception {
             mockMvc.perform(post("/api/pets")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -187,7 +187,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized if no token")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void registerPet_Unauthorized() throws Exception {
             mockMvc.perform(post("/api/pets")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -200,7 +200,7 @@ class PetControllerIntegrationTest {
      * --- Tests for GET /api/pets (List Owner's Pets) ---
      */
     @Nested
-    @DisplayName("GET /api/pets (Owner List)")
+    @DisplayName("GET /api/pets (List Owner's Pets Tests)")
     class ListOwnerPetsTests {
 
         private Long petId1, petId2;
@@ -218,7 +218,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return page of owner's pets when called by Owner")
+        @DisplayName("should return 200 OK with page of owner's pets when called by Owner")
         void listPets_Success_Owner() throws Exception {
             mockMvc.perform(get("/api/pets")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -234,7 +234,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden if called by non-Owner (Admin)")
+        @DisplayName("should return 403 Forbidden when called by non-Owner")
         void listPets_Forbidden_NotOwner() throws Exception {
             mockMvc.perform(get("/api/pets")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -242,7 +242,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized if no token")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void listPets_Unauthorized() throws Exception {
             mockMvc.perform(get("/api/pets"))
                     .andExpect(status().isUnauthorized());
@@ -253,7 +253,7 @@ class PetControllerIntegrationTest {
      * --- Tests for Owner modifying Pet (PUT owner-update, PUT deactivate, POST/DELETE associations) ---
      */
     @Nested
-    @DisplayName("PUT|POST|DELETE /api/pets/{petId}/** (Owner Actions)")
+    @DisplayName("PUT|POST|DELETE /api/pets/{petId}/** (Owner Pet Modification Tests)")
     class OwnerPetModificationTests {
 
         private Long petIdToModify;
@@ -281,7 +281,7 @@ class PetControllerIntegrationTest {
          * Tests for PUT /api/pets/{petId}/owner-update
          */
         @Test
-        @DisplayName("[owner-update] should update pet successfully when called by Owner")
+        @DisplayName("should return 200 OK and updated PetProfileDto when called by Owner")
         void updatePetByOwner_Success() throws Exception {
             Long mixedCatBreedId = 45L;
             PetOwnerUpdateDto updateDto = new PetOwnerUpdateDto("UpdatedName", "updated.png", "Gray", null, null, "NEWCHIP123", mixedCatBreedId); // Update several fields
@@ -300,7 +300,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[owner-update] should return 403 Forbidden when called by different Owner")
+        @DisplayName("should return 403 Forbidden when called by a different Owner")
         void updatePetByOwner_Forbidden_DifferentOwner() throws Exception {
             // Arrange
             String otherOwnerUsername = "other_owner_" + System.currentTimeMillis();
@@ -319,7 +319,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[owner-update] should return 404 Not Found if Pet ID does not exist")
+        @DisplayName("should return 404 Not Found when Pet ID does not exist")
         void updatePetByOwner_NotFound() throws Exception {
             PetOwnerUpdateDto updateDto = new PetOwnerUpdateDto("AnyName", null,null,null,null,null,null);
             mockMvc.perform(put("/api/pets/{petId}/owner-update", 9999L) // Non-existent ID
@@ -333,7 +333,7 @@ class PetControllerIntegrationTest {
          * Tests for PUT /api/pets/{petId}/deactivate
          */
         @Test
-        @DisplayName("[deactivate] should deactivate pet successfully when called by Owner")
+        @DisplayName("should return 200 OK and updated PetProfileDto when called by Owner")
         void deactivatePet_Success() throws Exception {
             mockMvc.perform(put("/api/pets/{petId}/deactivate", petIdToModify)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -343,7 +343,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[deactivate] should return 400 Bad Request if pet already inactive")
+        @DisplayName("should return 400 Bad Request when Pet is already inactive")
         void deactivatePet_BadRequest_AlreadyInactive() throws Exception {
             mockMvc.perform(put("/api/pets/{petId}/deactivate", petIdToModify)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -358,7 +358,7 @@ class PetControllerIntegrationTest {
          * Tests for POST /api/pets/{petId}/associate-clinic/{clinicId}
          */
         @Test
-        @DisplayName("[associate-clinic] should associate pet successfully")
+        @DisplayName("should return 204 No Content when association is successful")
         void associateClinic_Success() throws Exception {
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdToModify, clinicId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -372,7 +372,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[associate-clinic] should return 400 Bad Request if pet not PENDING")
+        @DisplayName("should return 400 Bad Request when Pet status is not PENDING")
         void associateClinic_BadRequest_NotPending() throws Exception {
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdToModify, clinicId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -406,7 +406,7 @@ class PetControllerIntegrationTest {
          * Tests for POST /api/pets/{petId}/associate-vet/{vetId}
          */
         @Test
-        @DisplayName("[associate-vet] should associate vet successfully")
+        @DisplayName("should return 204 No Content when association is successful")
         void associateVet_Success() throws Exception {
             mockMvc.perform(post("/api/pets/{petId}/associate-vet/{vetId}", petIdToModify, vetInClinic1Id)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -419,7 +419,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[associate-vet] should return 400 Bad Request if already associated")
+        @DisplayName("should return 400 Bad Request when Vet is already associated")
         void associateVet_BadRequest_AlreadyAssociated() throws Exception {
             mockMvc.perform(post("/api/pets/{petId}/associate-vet/{vetId}", petIdToModify, vetInClinic1Id)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -434,7 +434,7 @@ class PetControllerIntegrationTest {
          * Tests for DELETE /api/pets/{petId}/associate-vet/{vetId}
          */
         @Test
-        @DisplayName("[disassociate-vet] should disassociate vet successfully")
+        @DisplayName("should return 204 No Content when disassociation is successful")
         void disassociateVet_Success() throws Exception {
             mockMvc.perform(post("/api/pets/{petId}/associate-vet/{vetId}", petIdToModify, vetInClinic1Id)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -450,7 +450,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[disassociate-vet] should do nothing and return 204 if vet not associated")
+        @DisplayName("should return 204 No Content when Vet is not associated")
         void disassociateVet_NoOp_NotAssociated() throws Exception {
             mockMvc.perform(delete("/api/pets/{petId}/associate-vet/{vetId}", petIdToModify, vetInClinic1Id)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -462,7 +462,7 @@ class PetControllerIntegrationTest {
      * --- Tests for Staff modifying Pet (PUT activate, PUT clinic-update) ---
      */
     @Nested
-    @DisplayName("PUT /api/pets/{petId}/activate & clinic-update (Staff Actions)")
+    @DisplayName("PUT /api/pets/{petId}/activate & clinic-update (Staff Pet Modification Tests)")
     class StaffPetModificationTests {
 
         private Long pendingPetId;
@@ -518,7 +518,7 @@ class PetControllerIntegrationTest {
          * Tests for PUT /api/pets/{petId}/activate
          */
         @Test
-        @DisplayName("[activate] should activate pet successfully when called by authorized Vet")
+        @DisplayName("should return 200 OK and activated PetProfileDto when called by authorized Vet")
         void activatePet_Success_ByVet() throws Exception {
             mockMvc.perform(put("/api/pets/{petId}/activate", pendingPetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -532,7 +532,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[activate] should return 403 Forbidden when called by Admin (Role not allowed)")
+        @DisplayName("should return 403 Forbidden when called by Admin (role not allowed)")
         void activatePet_Forbidden_ByAdmin() throws Exception {
             mockMvc.perform(put("/api/pets/{petId}/activate", pendingPetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -542,7 +542,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[activate] should return 400 Bad Request if pet not PENDING")
+        @DisplayName("should return 400 Bad Request when Pet status is not PENDING")
         void activatePet_BadRequest_NotPending() throws Exception {
             mockMvc.perform(put("/api/pets/{petId}/activate", activePetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -553,7 +553,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[activate] should return 400 Bad Request if Activation DTO data invalid")
+        @DisplayName("should return 400 Bad Request when Activation DTO data is invalid")
         void activatePet_BadRequest_InvalidDtoData() throws Exception {
             PetActivationDto invalidDto = new PetActivationDto(
                     "Name", "Color", Gender.MALE, LocalDate.now(),
@@ -572,7 +572,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[activate] should return 400 Bad Request if required pet data missing")
+        @DisplayName("should return 400 Bad Request when required pet data is missing before activation")
         void activatePet_BadRequest_MissingData() throws Exception {
             // Arrange
             entityManager.flush(); entityManager.clear();
@@ -592,7 +592,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[activate] should return 403 Forbidden if called by Staff from different clinic")
+        @DisplayName("should return 403 Forbidden when called by Staff from a different clinic")
         void activatePet_Forbidden_WrongClinic() throws Exception {
             String otherVetToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
             mockMvc.perform(put("/api/pets/{petId}/activate", pendingPetId)
@@ -604,7 +604,7 @@ class PetControllerIntegrationTest {
          * Tests for PUT /api/pets/{petId}/clinic-update
          */
         @Test
-        @DisplayName("[clinic-update] should update pet successfully when called by authorized Staff")
+        @DisplayName("should return 200 OK and updated PetProfileDto when called by authorized Staff")
         void updatePetByStaff_Success() throws Exception {
             PetClinicUpdateDto staffUpdateDto = new PetClinicUpdateDto("Updated Color", Gender.MALE, null, "UPDATEDCHIPSTAFF", null);
             mockMvc.perform(put("/api/pets/{petId}/clinic-update", activePetId)
@@ -619,7 +619,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[clinic-update] should return 403 Forbidden if called by unauthorized Staff (wrong clinic)")
+        @DisplayName("should return 403 Forbidden when called by unauthorized Staff")
         void updatePetByStaff_Forbidden_WrongClinic() throws Exception {
             PetClinicUpdateDto staffUpdateDto = new PetClinicUpdateDto("Color", null, null, null, null);
             mockMvc.perform(put("/api/pets/{petId}/clinic-update", activePetId)
@@ -630,7 +630,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[clinic-update] should return 403 Forbidden if called by Owner")
+        @DisplayName("should return 403 Forbidden when called by Owner")
         void updatePetByStaff_Forbidden_Owner() throws Exception {
             PetClinicUpdateDto staffUpdateDto = new PetClinicUpdateDto("Color", null, null, null, null);
             mockMvc.perform(put("/api/pets/{petId}/clinic-update", activePetId)
@@ -641,7 +641,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[clinic-update] should return 404 Not Found if Pet ID does not exist")
+        @DisplayName("should return 404 Not Found when Pet ID does not exist")
         void updatePetByStaff_NotFound_Pet() throws Exception {
             PetClinicUpdateDto staffUpdateDto = new PetClinicUpdateDto("Color", null, null, null, null);
             mockMvc.perform(put("/api/pets/{petId}/clinic-update", 9999L)
@@ -656,7 +656,7 @@ class PetControllerIntegrationTest {
      * --- Tests for Staff retrieving Pet lists (GET /clinic, GET /clinic/pending) ---
      */
     @Nested
-    @DisplayName("GET /api/pets/clinic & /clinic/pending (Staff Listing)")
+    @DisplayName("GET /api/pets/clinic & /clinic/pending (Staff Pet Listing Tests)")
     class StaffPetListingTests {
 
         private Long pendingPetIdClinic1;
@@ -712,7 +712,7 @@ class PetControllerIntegrationTest {
          * Tests for GET /api/pets/clinic
          */
         @Test
-        @DisplayName("[GET /clinic] should return pets associated with staff's clinic (C1)")
+        @DisplayName("should return 200 OK with page of associated pets when called by Staff of that clinic")
         void findMyClinicPets_Success_Clinic1() throws Exception {
             mockMvc.perform(get("/api/pets/clinic")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -725,7 +725,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /clinic] should return pet associated with staff's clinic (C5)")
+        @DisplayName("should return 200 OK with page of associated pets when called by Staff of another clinic")
         void findMyClinicPets_Success_Clinic5() throws Exception {
             mockMvc.perform(get("/api/pets/clinic")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherAdminToken))
@@ -735,7 +735,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /clinic] should return empty page for clinic with no associated pets")
+        @DisplayName("should return 200 OK with empty page when clinic has no associated pets")
         void findMyClinicPets_Success_EmptyClinic() throws Exception {
             // Arrange
             String adminManchesterToken = obtainJwtToken(new AuthLoginRequestDto("admin_manchester", "password123"));
@@ -749,7 +749,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /clinic] should return 403 Forbidden if called by Owner")
+        @DisplayName("should return 403 Forbidden when called by Owner")
         void findMyClinicPets_Forbidden_Owner() throws Exception {
             mockMvc.perform(get("/api/pets/clinic")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -760,7 +760,7 @@ class PetControllerIntegrationTest {
          * Tests for GET /api/pets/clinic/pending
          */
         @Test
-        @DisplayName("[GET /clinic/pending] should return only PENDING pets for staff's clinic")
+        @DisplayName("should return 200 OK with list of PENDING pets when called by Staff of that clinic")
         void findMyClinicPendingPets_Success() throws Exception {
             mockMvc.perform(get("/api/pets/clinic/pending")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -771,7 +771,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /clinic/pending] should return empty list if no pending pets")
+        @DisplayName("should return 200 OK with empty list when clinic has no pending pets")
         void findMyClinicPendingPets_Success_NoPending() throws Exception {
             Pet petPend = petRepository.findById(pendingPetIdClinic1).orElseThrow();
             PetActivationDto activationPend = new PetActivationDto(petPend.getName(), "ColorPend", Gender.FEMALE, petPend.getBirthDate(), petPend.getMicrochip(), petPend.getBreed().getId(), petPend.getImage());
@@ -784,7 +784,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /clinic/pending] should return 403 Forbidden if called by Owner")
+        @DisplayName("should return 403 Forbidden when called by Owner")
         void findMyClinicPendingPets_Forbidden_Owner() throws Exception {
             mockMvc.perform(get("/api/pets/clinic/pending")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -796,7 +796,7 @@ class PetControllerIntegrationTest {
      * --- Tests for General Retrieval (GET /pets/{id}, GET /breeds/{specie}) ---
      */
     @Nested
-    @DisplayName("GET /api/pets/{petId} & /breeds/{specie} (General Retrieval)")
+    @DisplayName("GET /api/pets/{petId} & /breeds/{specie} (General Pet Retrieval Tests)")
     class GeneralRetrievalTests {
 
         private Long ownedPetId;
@@ -822,7 +822,7 @@ class PetControllerIntegrationTest {
          * Tests for GET /api/pets/{id}
          */
         @Test
-        @DisplayName("[GET /{id}] should return pet when requested by Owner")
+        @DisplayName("should return 200 OK with pet profile when requested by Owner")
         void findPetById_Success_Owner() throws Exception {
             mockMvc.perform(get("/api/pets/{id}", ownedPetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -832,7 +832,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /{id}] should return pet when requested by associated Staff")
+        @DisplayName("should return 200 OK with pet profile when requested by associated Staff")
         void findPetById_Success_AssociatedStaff() throws Exception {
             mockMvc.perform(get("/api/pets/{id}", associatedPetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -842,7 +842,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /{id}] should return 403 Forbidden when requested by unassociated Staff")
+        @DisplayName("should return 403 Forbidden when requested by unassociated Staff")
         void findPetById_Forbidden_UnassociatedStaff() throws Exception {
             mockMvc.perform(get("/api/pets/{id}", ownedPetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherAdminToken))
@@ -850,7 +850,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /{id}] should return 404 Not Found for non-existent pet")
+        @DisplayName("should return 404 Not Found when Pet ID does not exist")
         void findPetById_NotFound() throws Exception {
             mockMvc.perform(get("/api/pets/{id}", 9999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)) // Need token
@@ -861,7 +861,7 @@ class PetControllerIntegrationTest {
          * Tests for GET /api/pets/breeds/{specie}
          */
         @Test
-        @DisplayName("[GET /breeds] should return list of breeds for DOG")
+        @DisplayName("should return 200 OK with list of breeds when called by authenticated user for valid species (DOG)")
         void findBreeds_Success_Dog() throws Exception {
             mockMvc.perform(get("/api/pets/breeds/{specie}", Specie.DOG)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -871,7 +871,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /breeds] should return empty list for species with no breeds (if any)")
+        @DisplayName("should return 200 OK with empty list when called by authenticated user for species with no specific breeds")
         void findBreeds_Success_Empty() throws Exception {
             mockMvc.perform(get("/api/pets/breeds/{specie}", Specie.FERRET)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -879,7 +879,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /breeds] should return 400 Bad Request for invalid species path variable")
+        @DisplayName("should return 400 Bad Request when path variable is not a valid Species enum")
         void findBreeds_BadRequest_InvalidSpecies() throws Exception {
             mockMvc.perform(get("/api/pets/breeds/{specie}", "FISH")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -888,7 +888,7 @@ class PetControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[GET /breeds] should return 401 Unauthorized if no token")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void findBreeds_Unauthorized() throws Exception {
             mockMvc.perform(get("/api/pets/breeds/{specie}", Specie.CAT))
                     .andExpect(status().isUnauthorized());

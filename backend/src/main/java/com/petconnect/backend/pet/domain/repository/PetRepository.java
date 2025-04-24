@@ -61,10 +61,28 @@ public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificatio
      */
     boolean existsByMicrochipAndIdNot(String microchip, Long petIdToExclude);
 
+    /**
+     * Finds a paginated list of distinct pets associated with a specific clinic.
+     * Association is defined as either being in PENDING status at the clinic
+     * (via {@code pendingActivationClinic}) OR being actively associated with a
+     * Veterinarian ({@code associatedVets}) who belongs to that clinic.
+     * Uses a custom JPQL query to handle the OR condition across relationships and grouping.
+     *
+     * @param clinicId The ID of the clinic.
+     * @param pageable Pagination information (page number, size, sort order).
+     * @return A {@link Page} containing the distinct {@link Pet} entities associated with the clinic.
+     */
     @Query("SELECT p FROM Pet p LEFT JOIN p.associatedVets vet " +
             "WHERE p.pendingActivationClinic.id = :clinicId OR vet.clinic.id = :clinicId " +
             "GROUP BY p")
     Page<Pet> findPetsAssociatedWithClinic(@Param("clinicId") Long clinicId, Pageable pageable);
 
+    /**
+     * Finds all pets belonging to a specific owner, regardless of their status
+     * (includes PENDING, ACTIVE, and INACTIVE).
+     *
+     * @param ownerId The ID of the owner whose pets are to be retrieved.
+     * @return A {@link List} containing all {@link Pet} entities owned by the specified owner.
+     */
     List<Pet> findByOwnerId(Long ownerId);
 }

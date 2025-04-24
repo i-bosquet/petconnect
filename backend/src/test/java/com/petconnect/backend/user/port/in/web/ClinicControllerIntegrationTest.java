@@ -97,11 +97,11 @@ class ClinicControllerIntegrationTest {
      * Tests for GET /api/clinics (Public Access)
      */
     @Nested
-    @DisplayName("GET /api/clinics (Public Search)")
+    @DisplayName("GET /api/clinics (Public Clinic Search Tests)")
     class GetClinicsPublicTests {
 
         @Test
-        @DisplayName("should return list of clinics without authentication")
+        @DisplayName("should return 200 OK with clinic list when accessed publicly without filters")
         void getClinics_publicAccess_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/clinics")
                             .param("page", "0")
@@ -113,7 +113,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return filtered clinics based on query parameters")
+        @DisplayName("should return 200 OK with filtered clinic list when query parameters are provided")
         void getClinics_withFilters_shouldReturnFilteredList() throws Exception {
             mockMvc.perform(get("/api/clinics")
                             .param("country", Country.UNITED_KINGDOM.name()))
@@ -141,10 +141,10 @@ class ClinicControllerIntegrationTest {
      * Tests for GET /api/clinics/{id} (Public Access)
      */
     @Nested
-    @DisplayName("GET /api/clinics/{id} (Public Detail)")
+    @DisplayName("GET /api/clinics/{id} (Public Clinic Detail Tests)")
     class GetClinicByIdPublicTests {
         @Test
-        @DisplayName("should return clinic details without authentication for valid ID")
+        @DisplayName("should return 200 OK with clinic details when accessed publicly with valid ID")
         void getClinicById_publicAccess_ValidId_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/clinics/{id}", 1L))
                     .andExpect(status().isOk())
@@ -153,7 +153,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 404 without authentication for invalid ID")
+        @DisplayName("should return 404 Not Found when accessed publicly with invalid ID")
         void getClinicById_publicAccess_InvalidId_shouldReturnNotFound() throws Exception {
             mockMvc.perform(get("/api/clinics/{id}", 999L))
                     .andExpect(status().isNotFound())
@@ -166,11 +166,11 @@ class ClinicControllerIntegrationTest {
      * Tests for PUT /api/clinics/{id} (Requires ADMIN Auth)
      */
     @Nested
-    @DisplayName("PUT /api/clinics/{id} (Admin Update)")
+    @DisplayName("PUT /api/clinics/{id} (Admin Update Clinic Tests)")
     class UpdateClinicTests {
 
         @Test
-        @DisplayName("should update clinic successfully when authenticated as Admin of that clinic")
+        @DisplayName("should return 200 OK and updated ClinicDto when called by authorized Admin of the clinic")
         void updateClinic_whenAuthorizedAdmin_shouldSucceed() throws Exception {
             mockMvc.perform(put("/api/clinics/{id}", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -183,7 +183,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden when authenticated as Admin of different clinic")
+        @DisplayName("should return 403 Forbidden when called by Admin of a different clinic")
         void updateClinic_whenAdminFromDifferentClinic_shouldReturnForbidden() throws Exception {
             mockMvc.perform(put("/api/clinics/{id}", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -195,7 +195,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 401 Unauthorized when no token is provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void updateClinic_whenUnauthenticated_shouldReturnUnauthorized() throws Exception {
             mockMvc.perform(put("/api/clinics/{id}", 1L)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -216,7 +216,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("should return 403 Forbidden when authenticated as Owner")
+        @DisplayName("should return 403 Forbidden when called by Owner")
         void updateClinic_whenOwner_shouldReturnForbidden() throws Exception {
             mockMvc.perform(put("/api/clinics/{id}", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -232,11 +232,11 @@ class ClinicControllerIntegrationTest {
      * Tests for GET /api/clinics/{clinicId}/staff/** (Requires ADMIN/VET Auth)
      */
     @Nested
-    @DisplayName("GET /api/clinics/{clinicId}/staff/** (Staff Listing)")
+    @DisplayName("GET /api/clinics/{clinicId}/staff/** (Staff Listing Tests)")
     class GetClinicStaffTests {
 
         @Test
-        @DisplayName("getAllStaffByClinic should succeed when authenticated as Staff of that clinic")
+        @DisplayName("should return 200 OK with all staff list when called by authorized Staff of the clinic")
         void getAllStaffByClinic_whenAuthorized_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/all", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -247,7 +247,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("getActiveStaffByClinic should succeed when authenticated as Staff of that clinic")
+        @DisplayName("should return 200 OK with active staff list when called by authorized Staff of the clinic")
         void getActiveStaffByClinic_whenAuthorized_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/active", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -257,7 +257,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("get staff should return 403 Forbidden when authenticated Staff from different clinic")
+        @DisplayName("should return 403 Forbidden when called by Staff from a different clinic")
         void getStaffByClinic_whenDifferentClinic_shouldReturnForbidden() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/all", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
@@ -267,14 +267,14 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("get staff should return 401 Unauthorized when no token is provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void getStaffByClinic_whenUnauthenticated_shouldReturnUnauthorized() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/all", 1L))
                     .andExpect(status().isUnauthorized());
         }
 
         @Test
-        @DisplayName("get staff should return 404 Not Found when clinic ID does not exist")
+        @DisplayName("should return 404 Not Found when clinic ID does not exist")
         void getStaffByClinic_whenClinicNotFound_shouldReturnNotFound() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/all", 999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -284,7 +284,7 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("get staff should return 403 Forbidden when authenticated as Owner")
+        @DisplayName("should return 403 Forbidden when called by Owner")
         void getStaffByClinic_whenOwner_shouldReturnForbidden() throws Exception {
             mockMvc.perform(get("/api/clinics/{clinicId}/staff/all", 1L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))

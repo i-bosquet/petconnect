@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import nl.minvws.encoding.Base45;
 import COSE.*;
 import com.upokecenter.cbor.CBORObject;
-import com.upokecenter.cbor.CBORType;
 
 /**
  * Implementation of the {@link QrCodeService} interface.
@@ -127,9 +126,8 @@ public class QrCodeServiceImpl implements QrCodeService {
         // Build Signatures Array: [ COSE_Signature_Vet, COSE_Signature_Clinic ]
         CBORObject signaturesArray = CBORObject.NewArray();
 
-        // Assuming RSA_PSS_256 for both for simplicity;
-        signaturesArray.Add(buildCoseSignature(vetSignatureBytes, AlgorithmID.RSA_PSS_256));
-        signaturesArray.Add(buildCoseSignature(clinicSignatureBytes, AlgorithmID.RSA_PSS_256));
+        signaturesArray.Add(buildCoseSignature(vetSignatureBytes));
+        signaturesArray.Add(buildCoseSignature(clinicSignatureBytes));
 
         // Assemble final COSE_Sign Array
         CBORObject coseSignStructure = CBORObject.NewArray();
@@ -149,10 +147,9 @@ public class QrCodeServiceImpl implements QrCodeService {
      * [ protected_headers': bstr, unprotected_headers': map, signature: bstr ]
      *
      * @param signatureBytes The raw bytes of the pre-generated signature.
-     * @param algorithmID The COSE AlgorithmID used for this signature.
      * @return A CBORObject representing the COSE_Signature array.
      */
-    private CBORObject buildCoseSignature(byte[] signatureBytes, AlgorithmID algorithmID)  {
+    private CBORObject buildCoseSignature(byte[] signatureBytes)  {
         try {
             // Protected headers for THIS signature
             CBORObject protectedMap = CBORObject.NewMap();

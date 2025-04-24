@@ -248,7 +248,7 @@ class QrCodeServiceImplTest {
         @DisplayName("should handle null input data gracefully (or throw)")
         void compress_NullInput() {
             assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(qrCodeService, "compressWithZlib", (Object) null))
-                    .isInstanceOf(IllegalArgumentException.class) 
+                    .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Data to be compressed cannot be null");
         }
     }

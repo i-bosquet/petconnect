@@ -4,7 +4,6 @@ import com.petconnect.backend.certificate.domain.model.Certificate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,16 +41,5 @@ public interface CertificateRepository extends JpaRepository<Certificate, Long> 
      * @param recordId The ID of the medical record (make sure the field name matches the entity: medicalRecord.id).
      * @return true if a certificate associated with this record exists, false otherwise.
      */
-    boolean existsByMedicalRecordId(Long recordId); // Corregido para usar el nombre de campo correcto
-
-    /**
-     * Finds all certificates generated based on any of the specified medical record IDs.
-     * This can be useful for batch operations or retrieving certificates linked to a set of related medical events.
-     *
-     * @param recordIds A collection of medical record IDs to search for. Must not be null.
-     * @return A list of {@link Certificate} entities whose associated medical record ID is in the provided collection.
-     *         Returns an empty list if no matching certificates are found or if the input collection is empty.
-     */
-    List<Certificate> findByMedicalRecordIdIn(Collection<Long> recordIds);
-
+    boolean existsByMedicalRecordId(Long recordId);
 }

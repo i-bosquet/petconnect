@@ -118,11 +118,11 @@ class ClinicStaffControllerIntegrationTest {
      * Tests for POST /api/staff (Create Staff)
      */
     @Nested
-    @DisplayName("POST /api/staff")
+    @DisplayName("POST /api/staff (Create Staff Tests)")
     class CreateStaffTests {
 
         @Test
-        @DisplayName("[Success] should create VET when called by authorized Admin")
+        @DisplayName("should return 201 Created and VetProfileDto when creating VET by authorized Admin")
         void createVet_Success() throws Exception {
             MvcResult result = mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
@@ -141,7 +141,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Success] should create ADMIN when called by authorized Admin")
+        @DisplayName("should return 201 Created and StaffProfileDto when creating ADMIN by authorized Admin")
         void createAdmin_Success() throws Exception {
             MvcResult result = mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
@@ -159,7 +159,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 401 Unauthorized if no token provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void createStaff_Unauthorized() throws Exception {
             mockMvc.perform(post("/api/staff")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -168,7 +168,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 403 Forbidden if called by Owner")
+        @DisplayName("should return 403 Forbidden when called by Owner")
         void createStaff_Forbidden_Owner() throws Exception {
             mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -178,7 +178,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 400 Bad Request for invalid data (e.g., missing fields)")
+        @DisplayName("should return 400 Bad Request when creation DTO data is invalid")
         void createStaff_BadRequest_InvalidData() throws Exception {
             ClinicStaffCreationDto invalidDto = new ClinicStaffCreationDto("", "", "", "", "", null, null, null);
             mockMvc.perform(post("/api/staff")
@@ -190,7 +190,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 409 Conflict if username exists")
+        @DisplayName("should return 409 Conflict when username already exists")
         void createStaff_Conflict_UsernameExists() throws Exception {
             ClinicStaffCreationDto duplicateUserDto = new ClinicStaffCreationDto("admin_london", "unique@test.com", "password123", "Nicholas", "Smith", RoleEnum.ADMIN, null, null);
             mockMvc.perform(post("/api/staff")
@@ -202,7 +202,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 409 Conflict if VET license number exists")
+        @DisplayName("should return 409 Conflict when VET license number already exists")
         void createVet_Conflict_LicenseExists() throws Exception {
             // Arrange
             String conflictingLicense = "CONFLICT_LIC_" + System.currentTimeMillis();
@@ -239,7 +239,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 409 Conflict if VET public key exists")
+        @DisplayName("should return 409 Conflict when VET public key already exists")
         void createVet_Conflict_PublicKeyExists() throws Exception {
             // Arrange
             String conflictingKey = "KEY_" + System.currentTimeMillis();
@@ -283,7 +283,7 @@ class ClinicStaffControllerIntegrationTest {
      * Tests for PUT /api/staff/{staffId} (Update)
      */
     @Nested
-    @DisplayName("PUT /api/staff/{staffId}")
+    @DisplayName("PUT /api/staff/{staffId} (Update Staff Tests)")
     class UpdateStaffTests {
 
         private Long staffAdminToUpdateId;
@@ -308,7 +308,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Success] should update ADMIN staff successfully (name/surname)")
+        @DisplayName("should return 200 OK and updated StaffProfileDto when updating ADMIN by authorized Admin")
         void updateAdminStaff_Success() throws Exception {
             ClinicStaffUpdateDto adminUpdate = new ClinicStaffUpdateDto("AdminUpdated", "StaffUpdated", null, null);
             mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId)
@@ -323,7 +323,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Success] should update VET staff successfully (all fields)")
+        @DisplayName("should return 200 OK and updated VetProfileDto when updating VET by authorized Admin")
         void updateVetStaff_Success() throws Exception {
             ClinicStaffUpdateDto vetUpdate = new ClinicStaffUpdateDto("VetUpdated", "StaffUpdated", "VET_LIC_NEW", "VET_KEY_NEW");
             mockMvc.perform(put("/api/staff/{staffId}", staffVetToUpdateId) // Update the newly created Vet
@@ -339,7 +339,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 409 Conflict if updated VET license number exists")
+        @DisplayName("should return 409 Conflict when updated VET license number already exists")
         void updateVet_Conflict_DuplicateLicense() throws Exception {
             // Arrange
             String conflictingLicense = "LIC_CONFLICT_" + System.currentTimeMillis();
@@ -363,7 +363,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 409 Conflict if updated VET public key exists")
+        @DisplayName("should return 409 Conflict when updated VET public key already exists")
         void updateVet_Conflict_DuplicatePublicKey() throws Exception {
             // Arrange
             String conflictingKey = "KEY_CONFLICT_" + System.currentTimeMillis();
@@ -388,7 +388,7 @@ class ClinicStaffControllerIntegrationTest {
 
 
         @Test
-        @DisplayName("[Failure] should return 403 Forbidden if called by Admin from different clinic")
+        @DisplayName("should return 403 Forbidden when called by Admin from a different clinic")
         void updateStaff_Forbidden_DifferentClinic() throws Exception {
             ClinicStaffUpdateDto update = new ClinicStaffUpdateDto("Attempt", "Failed", null, null);
             mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId)
@@ -399,7 +399,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 401 Unauthorized if no token provided")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void updateStaff_Unauthorized() throws Exception {
             ClinicStaffUpdateDto update = new ClinicStaffUpdateDto("Attempt", "Failed", null, null);
             mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId)
@@ -409,7 +409,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] should return 404 Not Found if staff ID does not exist")
+        @DisplayName("should return 404 Not Found when staff ID does not exist")
         void updateStaff_NotFound() throws Exception {
             ClinicStaffUpdateDto update = new ClinicStaffUpdateDto("Attempt", "Failed", null, null);
             mockMvc.perform(put("/api/staff/{staffId}", 9999L)
@@ -424,7 +424,7 @@ class ClinicStaffControllerIntegrationTest {
      * Tests for PUT /api/staff/{staffId}/activate|deactivate
      */
     @Nested
-    @DisplayName("PUT /api/staff/{staffId}/activate & deactivate")
+    @DisplayName("PUT /api/staff/{staffId}/activate & deactivate (Toggle Staff Status Tests)")
     class ToggleStaffStatusTests {
         private Long staffToToggleId;
 
@@ -440,7 +440,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Success] should deactivate active staff")
+        @DisplayName("should return 200 OK and updated profile when deactivating active staff by authorized Admin")
         void deactivateStaff_Success() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
@@ -454,7 +454,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Success] should activate inactive staff")
+        @DisplayName("should return 200 OK and updated profile when activating inactive staff by authorized Admin")
         void activateStaff_Success() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
@@ -470,7 +470,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] deactivate should return 400 Bad Request if already inactive")
+        @DisplayName("should return 400 Bad Request when deactivating already inactive staff")
         void deactivateStaff_Error_AlreadyInactive() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
@@ -482,7 +482,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] activate should return 400 Bad Request if already active")
+        @DisplayName("should return 400 Bad Request when activating already active staff")
         void activateStaff_Error_AlreadyActive() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/activate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
@@ -491,7 +491,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] deactivate should return 400 Bad Request if Admin tries self-deactivation")
+        @DisplayName("should return 400 Bad Request when Admin attempts self-deactivation")
         void deactivateStaff_Error_SelfDeactivation() throws Exception {
             Long adminLondonId = 2L;
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", adminLondonId)
@@ -501,7 +501,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] toggle status should return 403 Forbidden if called by Admin from different clinic")
+        @DisplayName("should return 403 Forbidden when called by Admin from a different clinic")
         void toggleStatus_Forbidden_DifferentClinic() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken))
@@ -512,7 +512,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] toggle status should return 401 Unauthorized if no token")
+        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void toggleStatus_Unauthorized() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId))
                     .andExpect(status().isUnauthorized());
@@ -521,7 +521,7 @@ class ClinicStaffControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("[Failure] toggle status should return 404 Not Found if staff ID not found")
+        @DisplayName("should return 404 Not Found when staff ID does not exist")
         void toggleStatus_NotFound() throws Exception {
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", 9999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))

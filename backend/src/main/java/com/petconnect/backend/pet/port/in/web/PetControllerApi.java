@@ -30,7 +30,7 @@ import java.util.Map;
  *
  * @author ibosquet
  */
-@Tag(name = "🐾 Pet Management", description = "Endpoints for creating, retrieving, updating, and managing pets.")
+@Tag(name = "🐶 Pet Management", description = "Endpoints for creating, retrieving, updating, and managing pets.")
 @SecurityRequirement(name = "bearerAuth")
 public interface PetControllerApi {
 
@@ -49,7 +49,7 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "400", description = "Invalid input data", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not an Owner)", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "404", description = "Breed not found (if ID provided)", content = @Content(schema = @Schema(implementation = Map.class))) // Added 404 for breed
+            @ApiResponse(responseCode = "404", description = "Breed not found (if ID provided)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
     @PostMapping("")
     ResponseEntity<PetProfileDto> registerPet(
@@ -89,7 +89,7 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "404", description = "Pet not found", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/{petId}/owner-update") // Specific path for owner updates
+    @PutMapping("/{petId}/owner-update")
     ResponseEntity<PetProfileDto> updatePetByOwner(
             @Parameter(description = "ID of the pet to update", required = true) @PathVariable Long petId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Fields to update (name, image).", required = true, content = @Content(schema = @Schema(implementation = PetOwnerUpdateDto.class)))
@@ -109,7 +109,7 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "404", description = "Pet not found", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/{petId}/deactivate") // PUT or DELETE might be suitable, using PUT for state change
+    @PutMapping("/{petId}/deactivate")
     ResponseEntity<PetProfileDto> deactivatePet(
             @Parameter(description = "ID of the pet to deactivate", required = true) @PathVariable Long petId);
 
@@ -130,7 +130,7 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "404", description = "Pet or Clinic not found", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PostMapping("/{petId}/associate-clinic/{clinicId}") // POST seems suitable for creating an association request
+    @PostMapping("/{petId}/associate-clinic/{clinicId}")
     ResponseEntity<Void> associatePetToClinicForActivation(
             @Parameter(description = "ID of the PENDING pet", required = true) @PathVariable Long petId,
             @Parameter(description = "ID of the clinic for activation", required = true) @PathVariable Long clinicId);
@@ -150,7 +150,6 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "404", description = "Pet or Vet not found", content = @Content(schema = @Schema(implementation = Map.class))),
-            // Consider 409 Conflict if association already exists? Service currently ignores.
     })
     @PostMapping("/{petId}/associate-vet/{vetId}")
     ResponseEntity<Void> associateVetWithPet(
@@ -173,7 +172,7 @@ public interface PetControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "404", description = "Pet or Vet not found, or Vet not associated", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @DeleteMapping("/{petId}/associate-vet/{vetId}") // DELETE seems appropriate for removing association
+    @DeleteMapping("/{petId}/associate-vet/{vetId}")
     ResponseEntity<Void> disassociateVetFromPet(
             @Parameter(description = "ID of the pet", required = true) @PathVariable Long petId,
             @Parameter(description = "ID of the Vet to disassociate", required = true) @PathVariable Long vetId);
