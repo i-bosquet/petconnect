@@ -84,38 +84,18 @@ public class Clinic extends BaseEntity{
     /**
      * The list of staff members (Vets, Admins) associated with this clinic.
      * Mapped by the 'clinic' field in the ClinicStaff entity.
-     * Fetched lazily and cascade type is typically ALL for managing staff lifecycle with the clinic,
+     * Fetched a lazily and cascade type is typically ALL for managing staff lifecycle with the clinic,
      * or specific types like PERSIST, MERGE, REMOVE depending on requirements.
-     * orphanRemoval=true ensures that if a staff member is removed from this list,
+     * orphanRemoval=true ensures that if a staff member is removed from this list
      * and is not associated with any other clinic (which shouldn't happen with ManyToOne),
      * it gets deleted from the database.
      */
     @OneToMany(
-            mappedBy = "clinic", // Field in ClinicStaff that owns the relationship
-            cascade = CascadeType.ALL, // Cascade operations (persist, remove, etc.) to staff
-            fetch = FetchType.LAZY, // Load staff only when explicitly requested
-            orphanRemoval = true // Remove staff if they are disconnected from the clinic
+            mappedBy = "clinic",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY,
+            orphanRemoval = true
     )
-    @Builder.Default // Initialize with an empty list for the builder
+    @Builder.Default
     private List<ClinicStaff> staff = new ArrayList<>();
-
-    // Helper methods for managing the bidirectional relationship
-
-    /**
-     * Adds a staff member to the clinic and sets the bidirectional relationship.
-     * @param staffMember The ClinicStaff member to add.
-     */
-    public void addStaffMember(ClinicStaff staffMember) {
-        staff.add(staffMember);
-        staffMember.setClinic(this);
-    }
-
-    /**
-     * Removes a staff member from the clinic and unsets the bidirectional relationship.
-     * @param staffMember The ClinicStaff member to remove.
-     */
-    public void removeStaffMember(ClinicStaff staffMember) {
-        staff.remove(staffMember);
-        staffMember.setClinic(null);
-    }
 }

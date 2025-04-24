@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,6 +29,7 @@ import java.util.Collection;
  * @author ibosquet
  */
 @RequiredArgsConstructor
+@Slf4j
 public class JwtTokenFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils; // JWT utility for token validation and extraction
@@ -51,7 +53,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (jwtToken != null) {
-            // Remove the "Bearer " prefix (assumed to be 7 characters long)
+            // Remove the "Bearer" prefix (assumed to be 7 characters long)
             jwtToken = jwtToken.substring(7);
 
             // Validate the JWT token and retrieve the decoded token
@@ -72,9 +74,11 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
 
             // Set the authentication in the SecurityContext
+            log.debug("JWT Filter - Setting authentication for user: {}, Authorities: {}", username, authorities);
             SecurityContext context = SecurityContextHolder.getContext();
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
+            log.debug("SecurityContext Authentication AFTER set: {}", SecurityContextHolder.getContext().getAuthentication());
         }
 
         // Continue with the filter chain

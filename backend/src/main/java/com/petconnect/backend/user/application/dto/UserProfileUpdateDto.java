@@ -12,8 +12,8 @@ import jakarta.validation.constraints.Size;
  * @author ibosquet
  */
 public record UserProfileUpdateDto(
-        @Size(min = 3, max = 50) String username, // Optional: Only update if provided
-        String avatar // Optional: Only update if provided
-        // Email/Password changes might require separate DTOs/Endpoints for security
+        @Size(min = 3, max = 50) String username,
+        String avatar
+
 ) {
 }

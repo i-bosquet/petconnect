@@ -78,7 +78,9 @@ public class GlobalExceptionHandler {
             UsernameAlreadyExistsException.class,
             LicenseNumberAlreadyExistsException.class,
             VetPublicKeyAlreadyExistsException.class,
-            MicrochipAlreadyExistsException.class
+            MicrochipAlreadyExistsException.class,
+            CertificateNumberAlreadyExistsException.class,
+            CertificateAlreadyExistsForRecordException.class
     })
     @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<Map<String, Object>> handleConflictExceptions(RuntimeException ex) {
@@ -138,14 +140,14 @@ public class GlobalExceptionHandler {
     /**
      * Handles common business logic constraint violations like illegal state or arguments.
      * Returns 400 Bad Request or potentially 409 Conflict depending on the context.
-     * Using 400 Bad Request generally for invalid operations based on current state.
+     * Using 400 Bad Request generally for invalid operations based on the current state.
      *
      * @param ex The RuntimeException caught (IllegalStateException or IllegalArgumentException).
      * @return A ResponseEntity containing the standardized error body and status 400.
      */
     @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
     public ResponseEntity<Map<String, Object>> handleBadLogicExceptions(RuntimeException ex) {
-        // Log as warning as it indicates a client potentially tried an invalid operation
+        // Log as a warning as it indicates a client potentially tried an invalid operation
         log.warn("Bad Request due to illegal state or argument: {}", ex.getMessage());
         // Decide if 400 or 409 is more appropriate. 400 is often used for invalid inputs/states.
         Map<String, Object> body = createErrorBody(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
@@ -182,6 +184,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<Map<String, Object>> handleTypeMismatchException(MethodArgumentTypeMismatchException ex) {
+        if (ex.getRequiredType() == null) throw new AssertionError();
         String error = String.format("Invalid value '%s' provided for parameter '%s'. Required type is '%s'.",
                 ex.getValue(), ex.getName(), ex.getRequiredType().getSimpleName());
         log.warn("Type mismatch error: {}", error);

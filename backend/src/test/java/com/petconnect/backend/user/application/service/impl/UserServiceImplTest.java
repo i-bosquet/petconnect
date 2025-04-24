@@ -27,9 +27,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
 
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -118,7 +122,7 @@ class UserServiceImplTest {
         vetUserSameClinic.setPassword("hashedPasswordVet1");
         vetUserSameClinic.setName("Vet");
         vetUserSameClinic.setSurname("SameClinic");
-        vetUserSameClinic.setClinic(clinic1); // Belongs to Clinic 1
+        vetUserSameClinic.setClinic(clinic1);
         vetUserSameClinic.setRoles(Set.of(vetRole));
         vetUserSameClinic.setLicenseNumber("VET_C1");
         vetUserSameClinic.setVetPublicKey("KEY_C1");
@@ -133,7 +137,7 @@ class UserServiceImplTest {
         adminUserOtherClinic.setPassword("hashedPasswordAdmin2");
         adminUserOtherClinic.setName("Admin");
         adminUserOtherClinic.setSurname("OtherClinic");
-        adminUserOtherClinic.setClinic(clinic2); // Belongs to Clinic 2
+        adminUserOtherClinic.setClinic(clinic2);
         adminUserOtherClinic.setRoles(Set.of(adminRole));
         adminUserOtherClinic.setAvatar("avatar_admin2.png");
         adminUserOtherClinic.setActive(true);
@@ -144,6 +148,105 @@ class UserServiceImplTest {
         genericOwnerDto = new UserProfileDto(ownerUser.getId(), ownerUser.getUsername(), ownerUser.getEmail(), Set.of("OWNER"), ownerUser.getAvatar());
         genericStaffDto = new UserProfileDto(adminUser.getId(), adminUser.getUsername(), adminUser.getEmail(), Set.of("ADMIN"), adminUser.getAvatar());
 
+    }
+
+    /**
+     * --- Tests for loadUserByUsername ---
+     */
+    @Nested
+    @DisplayName("loadUserByUsername Tests")
+    class LoadUserByUsernameTests {
+
+
+        @BeforeEach
+        void loadUserSetup() {
+            PermissionEntity readOwnProfilePerm = PermissionEntity.builder().id(1L).name("USER_READ_PROFILE_OWN").build();
+            PermissionEntity createRecordPerm = PermissionEntity.builder().id(20L).name("RECORD_CREATE_ASSOCIATED_CLINIC").build();
+            RoleEntity ownerRoleWithPerms;
+            RoleEntity vetRoleWithPerms;
+
+            ownerRoleWithPerms = RoleEntity.builder()
+                    .id(1L)
+                    .roleEnum(RoleEnum.OWNER)
+                    .permissionList(Set.of(readOwnProfilePerm))
+                    .build();
+
+            vetRoleWithPerms = RoleEntity.builder()
+                    .id(2L)
+                    .roleEnum(RoleEnum.VET)
+                    .permissionList(Set.of(readOwnProfilePerm, createRecordPerm))
+                    .build();
+
+            ownerUser.setRoles(Set.of(ownerRoleWithPerms));
+            vetUserSameClinic.setRoles(Set.of(vetRoleWithPerms));
+        }
+
+        @Test
+        @DisplayName("should load UserDetails correctly for existing Owner user")
+        void loadUserByUsername_Success_Owner() {
+            // Arrange
+            given(userRepository.findByUsername(ownerUser.getUsername())).willReturn(Optional.of(ownerUser));
+
+            List<String> expectedAuthorities = List.of("ROLE_OWNER", "USER_READ_PROFILE_OWN");
+
+            // Act
+            UserDetails userDetails = userService.loadUserByUsername(ownerUser.getUsername());
+
+            // Assert
+            assertThat(userDetails).isNotNull();
+            assertThat(userDetails.getUsername()).isEqualTo(ownerUser.getUsername());
+            assertThat(userDetails.getPassword()).isEqualTo(ownerUser.getPassword());
+            assertThat(userDetails.isEnabled()).isEqualTo(ownerUser.isEnabled());
+            assertThat(userDetails.isAccountNonExpired()).isEqualTo(ownerUser.isAccountNonExpired());
+            assertThat(userDetails.isCredentialsNonExpired()).isEqualTo(ownerUser.isCredentialsNonExpired());
+            assertThat(userDetails.isAccountNonLocked()).isEqualTo(ownerUser.isAccountNonLocked());
+
+            List<String> actualAuthorities = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+            assertThat(actualAuthorities).containsExactlyInAnyOrderElementsOf(expectedAuthorities);
+
+            then(userRepository).should().findByUsername(ownerUser.getUsername());
+        }
+
+        @Test
+        @DisplayName("should load UserDetails correctly for existing Vet user")
+        void loadUserByUsername_Success_Vet() {
+            // Arrange
+            given(userRepository.findByUsername(vetUserSameClinic.getUsername())).willReturn(Optional.of(vetUserSameClinic));
+
+            List<String> expectedAuthorities = List.of("ROLE_VET", "USER_READ_PROFILE_OWN", "RECORD_CREATE_ASSOCIATED_CLINIC");
+
+            // Act
+            UserDetails userDetails = userService.loadUserByUsername(vetUserSameClinic.getUsername());
+
+            // Assert
+            assertThat(userDetails).isNotNull();
+            assertThat(userDetails.getUsername()).isEqualTo(vetUserSameClinic.getUsername());
+            assertThat(userDetails.getPassword()).isEqualTo(vetUserSameClinic.getPassword());
+
+            List<String> actualAuthorities = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+            assertThat(actualAuthorities).containsExactlyInAnyOrderElementsOf(expectedAuthorities);
+
+            then(userRepository).should().findByUsername(vetUserSameClinic.getUsername());
+        }
+
+        @Test
+        @DisplayName("should throw UsernameNotFoundException when user does not exist")
+        void loadUserByUsername_ThrowsUsernameNotFoundException() {
+            // Arrange
+            String nonExistentUsername = "ghost";
+            given(userRepository.findByUsername(nonExistentUsername)).willReturn(Optional.empty());
+
+            // Act & Assert
+            assertThatThrownBy(() -> userService.loadUserByUsername(nonExistentUsername))
+                    .isInstanceOf(UsernameNotFoundException.class)
+                    .hasMessageContaining("El usuario " + nonExistentUsername + " no existe.");
+
+            then(userRepository).should().findByUsername(nonExistentUsername);
+        }
     }
 
     /**
@@ -660,7 +763,7 @@ class UserServiceImplTest {
                     staffArg.setAvatar(dtoArg.avatar());
                 }
                 return null;
-            }).when(userMapper).updateClinicStaffCommonFromDto(eq(updateDto), eq(adminUser));
+            }).when(userMapper).updateClinicStaffCommonFromDto(updateDto, adminUser);
             given(clinicStaffRepository.save(adminUser)).willReturn(adminUser);
             given(userMapper.toClinicStaffProfileDto(adminUser)).willReturn(expectedResultDto);
 
@@ -695,7 +798,6 @@ class UserServiceImplTest {
                     .hasMessageContaining(updateDto.username());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            // Verify AuthorizationHelper
             then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), adminUser);
             then(clinicStaffRepository).should(never()).save(any());
             then(userMapper).should(never()).updateClinicStaffCommonFromDto(any(), any());

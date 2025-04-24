@@ -46,8 +46,6 @@ public class MvcConfig implements WebMvcConfigurer {
                 .addResourceLocations(externalLocation);
 
         // Handler for default images packaged within the application (classpath)
-        // Note: Spring Boot often configures serving from /static/** automatically,
-        // but explicitly defining it ensures clarity and overrides potential conflicts.
         registry.addResourceHandler("/images/**")
                 .addResourceLocations("classpath:/static/images/");
     }

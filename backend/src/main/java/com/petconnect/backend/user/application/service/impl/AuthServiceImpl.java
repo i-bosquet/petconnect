@@ -9,10 +9,10 @@ import com.petconnect.backend.user.application.dto.OwnerProfileDto;
 import com.petconnect.backend.user.application.dto.OwnerRegistrationDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.application.service.AuthService;
+import com.petconnect.backend.user.application.service.UserService;
 import com.petconnect.backend.user.domain.model.Owner;
 import com.petconnect.backend.user.domain.model.RoleEntity;
 import com.petconnect.backend.user.domain.model.RoleEnum;
-import com.petconnect.backend.user.domain.model.UserEntity;
 import com.petconnect.backend.user.domain.repository.OwnerRepository;
 import com.petconnect.backend.user.domain.repository.RoleRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
@@ -20,19 +20,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -43,54 +37,15 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
-public class AuthServiceImpl implements AuthService, UserDetailsService {
+public class AuthServiceImpl implements AuthService{
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
-    private final OwnerRepository ownerRepository; // Need Owner repo to save Owner-specific data
+    private final OwnerRepository ownerRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private static final String DEFAULT_OWNER_AVATAR = "images/avatars/users/owner.png";
     private final RoleRepository roleRepository;
-
-    /**
-     * Loads user-specific data. This method is required by the UserDetailsService interface.
-     * It uses the username (which could be email in our case) to find the user.
-     *
-     * @param username The username (or email) identifying the user whose data is required.
-     * @return a fully populated {@link UserDetails} object (never {@code null})
-     * @throws UsernameNotFoundException if the user could not be found or the user has no
-     *                                   GrantedAuthority
-     */
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException  {
-        // Find user by username
-        UserEntity userEntity = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
-
-        List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
-
-        // Add role authorities (prefix "ROLE_")
-        userEntity.getRoles()
-                .forEach(role -> authorityList.
-                        add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
-
-        // Add permission authorities from roles
-        userEntity.getRoles()
-                .stream()
-                .flatMap(role -> role
-                        .getPermissionList()
-                        .stream())
-                .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
-
-        // Return Spring Security a User object with credentials and authorities
-        return new User(userEntity.getUsername(),
-                userEntity.getPassword(),
-                userEntity.isEnabled(),
-                userEntity.isAccountNonExpired(),
-                userEntity.isCredentialsNonExpired(),
-                userEntity.isAccountNonLocked(),
-                authorityList) ;
-    }
+    private final UserService userService;
 
     /**
      * {@inheritDoc}
@@ -100,18 +55,17 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
     @Transactional
     public OwnerProfileDto registerOwner(OwnerRegistrationDto registrationDTO) {
 
-        // Check if email already exists
         if (userRepository.existsByEmail(registrationDTO.email())) {
             throw new EmailAlreadyExistsException(registrationDTO.email());
         }
-        // Check if a username already exists (Assuming UserRepository gets an existsByUsername method)
+
         if (userRepository.existsByUsername(registrationDTO.username())) {
          throw new UsernameAlreadyExistsException(registrationDTO.username());
         }
 
 
         // Create a new Owner entity
-        Owner newOwner = new Owner(); // Using NoArgsConstructor + Setters
+        Owner newOwner = new Owner();
 
         // Set fields from DTO
         newOwner.setUsername(registrationDTO.username());
@@ -125,17 +79,13 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         Set<RoleEntity> roles = new HashSet<>();
         roles.add(ownerRole);
         newOwner.setRoles(roles);
-        newOwner.setAvatar(DEFAULT_OWNER_AVATAR); // Set default avatar path
+        newOwner.setAvatar(DEFAULT_OWNER_AVATAR);
         newOwner.setEnabled(true);
         newOwner.setAccountNonExpired(true);
         newOwner.setAccountNonLocked(true);
         newOwner.setCredentialsNonExpired(true);
 
-        // Save the new Owner
-        // Because Owner extends UserEntity with a JOINED strategy, saving Owner will also insert into the UserEntity table.
         Owner savedOwner = ownerRepository.save(newOwner);
-
-        // Map to DTO and return
         return userMapper.toOwnerProfileDto(savedOwner);
     }
 
@@ -163,13 +113,10 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
      * @throws BadCredentialsException if the username is not found or the password is incorrect
      */
     public Authentication authenticate(String username, String password) throws BadCredentialsException {
-        UserDetails userDetails = this.loadUserByUsername(username);
 
+        UserDetails userDetails = this.userService.loadUserByUsername(username);
         if (userDetails == null) throw new BadCredentialsException("Invalid username or password");
-
         if (!passwordEncoder.matches(password, userDetails.getPassword())) throw new BadCredentialsException("Incorrect Password");
-
-        // Return an authentication token with granted authorities
         return new UsernamePasswordAuthenticationToken(username, userDetails.getPassword(), userDetails.getAuthorities());
     }
 }

@@ -42,27 +42,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
-@Transactional // Rollback database changes after each test
+@Transactional
 @Slf4j
 class ClinicStaffControllerIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    // Repositories for direct DB verification (optional but useful)
     @Autowired private UserRepository userRepository;
     @Autowired private ClinicStaffRepository clinicStaffRepository;
     @Autowired private EntityManager entityManager;
 
-    // --- Tokens obtained in setUp ---
-    private String adminLondonToken;    // Admin for Clinic 1
-    private String adminBarcelonaToken; // Admin for Clinic 5
-    private String ownerToken;          // Registered Owner
+    private String adminLondonToken;
+    private String adminBarcelonaToken;
+    private String ownerToken;
 
-    // --- DTOs prepared in setUp ---
     private ClinicStaffCreationDto vetCreationDto;
     private ClinicStaffCreationDto adminCreationDto;
 
-    // --- Known IDs (assuming data.sql consistency) ---
     private final Long clinicLondonId = 1L;
 
     /**
@@ -72,11 +68,9 @@ class ClinicStaffControllerIntegrationTest {
      */
     @BeforeEach
     void setUp() throws Exception {
-        // Get JWT Tokens for existing admins from data.sql
         adminLondonToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
         adminBarcelonaToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
 
-        // Register and login an owner for testing unauthorized access
         OwnerRegistrationDto ownerReg = new OwnerRegistrationDto("staff_test_owner_" + System.currentTimeMillis(), "staff.owner."+System.currentTimeMillis()+"@test.com", "password123", "111");
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -84,8 +78,7 @@ class ClinicStaffControllerIntegrationTest {
                 .andExpect(status().isCreated());
         ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
-        // Prepare unique DTOs for creating NEW staff in Clinic 1 (London)
-        long timestamp = System.currentTimeMillis(); // Unique suffix
+        long timestamp = System.currentTimeMillis();
         vetCreationDto = new ClinicStaffCreationDto(
                 "test_vet_" + timestamp, "test.vet" + timestamp + "@test.com",
                 "password123", "Test", "Vet", RoleEnum.VET,
@@ -96,7 +89,6 @@ class ClinicStaffControllerIntegrationTest {
                 "password123", "Test", "Admin", RoleEnum.ADMIN,
                 null, null
         );
-        // Prepare a generic update DTO
         new ClinicStaffUpdateDto("UpdatedName", "UpdatedSurname", "UPD-LIC-" + timestamp, "UPD-KEY-" + timestamp);
     }
 
@@ -133,17 +125,16 @@ class ClinicStaffControllerIntegrationTest {
         @DisplayName("[Success] should create VET when called by authorized Admin")
         void createVet_Success() throws Exception {
             MvcResult result = mockMvc.perform(post("/api/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken) // Admin Clinic 1
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(vetCreationDto)))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.username", is(vetCreationDto.username())))
                     .andExpect(jsonPath("$.roles", contains("VET")))
-                    .andExpect(jsonPath("$.clinicId", is(clinicLondonId.intValue()))) // Created in Admin's clinic
+                    .andExpect(jsonPath("$.clinicId", is(clinicLondonId.intValue())))
                     .andExpect(jsonPath("$.licenseNumber", is(vetCreationDto.licenseNumber())))
                     .andReturn();
 
-            // Optional DB Check
             Long newId = extractStaffIdFromResult(result);
             Optional<UserEntity> userOpt = userRepository.findById(newId);
             assertThat(userOpt).isPresent().get().isInstanceOf(Vet.class);
@@ -161,11 +152,10 @@ class ClinicStaffControllerIntegrationTest {
                     .andExpect(jsonPath("$.roles", contains("ADMIN")))
                     .andExpect(jsonPath("$.clinicId", is(clinicLondonId.intValue())))
                     .andReturn();
-            // Optional DB Check
             Long newId = extractStaffIdFromResult(result);
             Optional<UserEntity> userOpt = userRepository.findById(newId);
-            assertThat(userOpt).isPresent().get().isInstanceOf(ClinicStaff.class); // It's ClinicStaff, not specifically Vet
-            assertThat(userOpt.get()).isNotInstanceOf(Vet.class); // Ensure it's not accidentally a Vet
+            assertThat(userOpt).isPresent().get().isInstanceOf(ClinicStaff.class);
+            assertThat(userOpt.get()).isNotInstanceOf(Vet.class);
         }
 
         @Test
@@ -181,7 +171,7 @@ class ClinicStaffControllerIntegrationTest {
         @DisplayName("[Failure] should return 403 Forbidden if called by Owner")
         void createStaff_Forbidden_Owner() throws Exception {
             mockMvc.perform(post("/api/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken) // Owner cannot create staff
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(adminCreationDto)))
                     .andExpect(status().isForbidden());
@@ -214,13 +204,13 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Failure] should return 409 Conflict if VET license number exists")
         void createVet_Conflict_LicenseExists() throws Exception {
-            // Arrange: Create a Vet with a specific license first
+            // Arrange
             String conflictingLicense = "CONFLICT_LIC_" + System.currentTimeMillis();
             ClinicStaffCreationDto firstVetDto = new ClinicStaffCreationDto(
                     "firstvet_" + conflictingLicense, "first." + conflictingLicense + "@test.com",
                     "password123", "First", "VetLic", RoleEnum.VET,
-                    conflictingLicense, // The license that will cause conflict
-                    "KEY_" + conflictingLicense // A unique key
+                    conflictingLicense,
+                    "KEY_" + conflictingLicense
             );
             log.info("Attempting to create first vet with license: {}", conflictingLicense);
             mockMvc.perform(post("/api/staff")
@@ -229,17 +219,15 @@ class ClinicStaffControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(firstVetDto)))
                     .andExpect(status().isCreated());
 
-            // *** Force synchronization with the database ***
             entityManager.flush();
 
-            // Now attempt to create ANOTHER vet with the SAME license
             ClinicStaffCreationDto duplicateLicenseDto = new ClinicStaffCreationDto(
                     "vet_dup_lic", "vet_dup_lic@test.com", "password123",
                     "Dup", "License", RoleEnum.VET,
-                    conflictingLicense, // <-- USE THE SAME CONFLICTING LICENSE
-                    "UNIQUE_K_" + System.currentTimeMillis() // Unique key
+                    conflictingLicense,
+                    "UNIQUE_K_" + System.currentTimeMillis()
             );
-            log.info("Attempting to create second vet with duplicate license: {}", conflictingLicense); // LOG
+            log.info("Attempting to create second vet with duplicate license: {}", conflictingLicense);
 
             // Act & Assert
             mockMvc.perform(post("/api/staff")
@@ -253,7 +241,7 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Failure] should return 409 Conflict if VET public key exists")
         void createVet_Conflict_PublicKeyExists() throws Exception {
-            // Arrange: Create a Vet with a specific PK first
+            // Arrange
             String conflictingKey = "KEY_" + System.currentTimeMillis();
             ClinicStaffCreationDto firstVetDto = new ClinicStaffCreationDto(
                     "firstvetkey_" + conflictingKey, "first.key." + conflictingKey + "@test.com",
@@ -269,15 +257,14 @@ class ClinicStaffControllerIntegrationTest {
                     .andExpect(status().isCreated());
             log.info("First vet created. Flushing EntityManager...");
 
-            entityManager.flush(); // <---------------- AÑADIR ESTO
+            entityManager.flush();
             log.info("EntityManager flushed.");
 
-            // Now attempt to create ANOTHER vet with the SAME PK
             ClinicStaffCreationDto duplicateKeyDto = new ClinicStaffCreationDto(
                     "vet_dup_key", "vet_dup_key@test.com", "password123",
                     "Dup", "Key", RoleEnum.VET,
                     "UNIQUE_L_" + System.currentTimeMillis(),
-                    conflictingKey //
+                    conflictingKey
             );
             log.info("Attempting to create second vet with duplicate public key: {}", conflictingKey);
 
@@ -286,7 +273,7 @@ class ClinicStaffControllerIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(duplicateKeyDto)))
-                    .andExpect(status().isConflict()) // Espera 409
+                    .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message", containsString("Veterinarian public key is already in use")));
 
         }
@@ -299,12 +286,12 @@ class ClinicStaffControllerIntegrationTest {
     @DisplayName("PUT /api/staff/{staffId}")
     class UpdateStaffTests {
 
-        private Long staffAdminToUpdateId; // Will hold ID of an Admin created in setup
-        private Long staffVetToUpdateId;   // Will hold ID of a Vet created in setup
+        private Long staffAdminToUpdateId;
+        private Long staffVetToUpdateId;
 
         @BeforeEach
         void setupStaffToUpdate() throws Exception {
-            // Create an Admin staff member in Clinic 1 for update tests
+
             MvcResult adminResult = mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -312,7 +299,6 @@ class ClinicStaffControllerIntegrationTest {
                     .andExpect(status().isCreated()).andReturn();
             staffAdminToUpdateId = extractStaffIdFromResult(adminResult);
 
-            // Create a Vet staff member in Clinic 1 for update tests
             MvcResult vetResult = mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -325,7 +311,7 @@ class ClinicStaffControllerIntegrationTest {
         @DisplayName("[Success] should update ADMIN staff successfully (name/surname)")
         void updateAdminStaff_Success() throws Exception {
             ClinicStaffUpdateDto adminUpdate = new ClinicStaffUpdateDto("AdminUpdated", "StaffUpdated", null, null);
-            mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId) // Update the newly created Admin
+            mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(adminUpdate)))
@@ -405,7 +391,6 @@ class ClinicStaffControllerIntegrationTest {
         @DisplayName("[Failure] should return 403 Forbidden if called by Admin from different clinic")
         void updateStaff_Forbidden_DifferentClinic() throws Exception {
             ClinicStaffUpdateDto update = new ClinicStaffUpdateDto("Attempt", "Failed", null, null);
-            // Use Barcelona admin token to update staff created by London admin
             mockMvc.perform(put("/api/staff/{staffId}", staffAdminToUpdateId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -441,11 +426,10 @@ class ClinicStaffControllerIntegrationTest {
     @Nested
     @DisplayName("PUT /api/staff/{staffId}/activate & deactivate")
     class ToggleStaffStatusTests {
-        private Long staffToToggleId; // ID of staff created in setup
+        private Long staffToToggleId;
 
         @BeforeEach
         void setupStaffToToggle() throws Exception {
-            // Create a staff member (Vet for variety) in Clinic 1
             MvcResult result = mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -453,7 +437,6 @@ class ClinicStaffControllerIntegrationTest {
                     .andExpect(status().isCreated()).andReturn();
             staffToToggleId = extractStaffIdFromResult(result);
             assertThat(staffToToggleId).isNotNull();
-            // New staff is active by default
         }
 
         @Test
@@ -473,16 +456,13 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Success] should activate inactive staff")
         void activateStaff_Success() throws Exception {
-            // Deactivate first
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
                     .andExpect(status().isOk());
-            // Now activate
             mockMvc.perform(put("/api/staff/{staffId}/activate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.isActive", is(true)));
-            // Verify DB
             Optional<ClinicStaff> staffOpt = clinicStaffRepository.findById(staffToToggleId);
             assertThat(staffOpt)
                     .isPresent()
@@ -492,11 +472,9 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Failure] deactivate should return 400 Bad Request if already inactive")
         void deactivateStaff_Error_AlreadyInactive() throws Exception {
-            // Deactivate first
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
                     .andExpect(status().isOk());
-            // Try again
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
                     .andExpect(status().isBadRequest())
@@ -506,7 +484,6 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Failure] activate should return 400 Bad Request if already active")
         void activateStaff_Error_AlreadyActive() throws Exception {
-            // Staff is active initially
             mockMvc.perform(put("/api/staff/{staffId}/activate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken))
                     .andExpect(status().isBadRequest())
@@ -526,7 +503,6 @@ class ClinicStaffControllerIntegrationTest {
         @Test
         @DisplayName("[Failure] toggle status should return 403 Forbidden if called by Admin from different clinic")
         void toggleStatus_Forbidden_DifferentClinic() throws Exception {
-            // Use Barcelona admin token to toggle the status of staff in London (staffToToggleId)
             mockMvc.perform(put("/api/staff/{staffId}/deactivate", staffToToggleId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken))
                     .andExpect(status().isForbidden());

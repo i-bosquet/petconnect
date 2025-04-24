@@ -52,16 +52,13 @@ public class RecordServiceImpl implements RecordService {
      */
     @Override
     @Transactional
-    public RecordViewDto createRecord(RecordCreateDto createDto, Long creatorUserId, boolean signRecord) {
-        // Find Pet and Creator User
+    public RecordViewDto createRecord(RecordCreateDto createDto, Long creatorUserId) {
         Long petId = createDto.petId();
         Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
-
         UserEntity creator = entityFinderHelper.findUserOrFail(creatorUserId);
         authorizationHelper.verifyUserAuthorizationForPet(creatorUserId, pet, "create record for");
         validateHelper.validateRecordCreationDto(createDto);
 
-        // Build the Record entity
         Record newRecord = Record.builder()
                 .pet(pet)
                 .creator(creator)
@@ -69,25 +66,20 @@ public class RecordServiceImpl implements RecordService {
                 .description(createDto.description())
                 .build();
 
-        // Handle Vaccine Details if applicable
         if (createDto.type() == RecordType.VACCINE) {
             Vaccine vaccineEntity = vaccineMapper.fromCreateDto(createDto.vaccine());
             newRecord.setVaccineDetails(vaccineEntity);
         }
-
-        // Handle Signing request (if applicable)
-        if (signRecord) {
-            if (!(creator instanceof Vet vetCreator)) {
-                log.warn("Attempt to sign record by non-Vet user: {}", creatorUserId);
-                throw new IllegalStateException("Only Veterinarians can sign records. User " + creatorUserId + " is not a Vet.");
-            }
+        if (creator instanceof Vet vetCreator) {
+            log.info("Creator is Vet (ID: {}), proceeding with signature.", creatorUserId);
             String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
             String signature = signingServiceImpl.generateVetSignature(vetCreator, dataToSign);
             newRecord.setVetSignature(signature);
             log.info("Record for Pet {} created and signed by Vet {}", petId, creatorUserId);
+        } else {
+            log.info("Creator (ID: {}) is not a Vet, record will not be signed.", creatorUserId);
         }
 
-        // Save the record (and cascaded Vaccine if present)
         Record savedRecord = recordRepository.save(newRecord);
         log.info("User {} created new record ID {} for Pet {}", creatorUserId, savedRecord.getId(), petId);
         return recordMapper.toViewDto(savedRecord);

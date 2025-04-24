@@ -39,7 +39,6 @@ public interface RecordControllerApi {
      * If the type is VACCINE, vaccine details must be provided. Vets can optionally sign.
      *
      * @param createDto The DTO containing record details, including the mandatory petId.
-     * @param sign      Optional query parameter (defaults to false). If true and the user is a Vet, attempts to sign.
      * @return ResponseEntity with the created RecordViewDto and status 201.
      */
     @Operation(summary = "Create Medical Record",
@@ -55,9 +54,7 @@ public interface RecordControllerApi {
     @PostMapping("")
     ResponseEntity<RecordViewDto> createRecord(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Details of the record to create. Include 'vaccine' object if type is VACCINE.", required = true, content = @Content(schema = @Schema(implementation = RecordCreateDto.class)))
-            @Valid @RequestBody RecordCreateDto createDto,
-            @Parameter(description = "Set to true if a Veterinarian wants to sign this record upon creation.")
-            @RequestParam(required = false, defaultValue = "false") boolean sign);
+            @Valid @RequestBody RecordCreateDto createDto);
 
     /**
      * Retrieves a paginated list of medical records for the specified pet.

@@ -5,7 +5,7 @@ import com.petconnect.backend.user.domain.model.Country;
 /**
  * DTO for transferring detailed Clinic information (typically in responses).
  * Using Java Record for immutability and conciseness.
- * Includes fields inherited from BaseEntity like id, createdAt etc. if needed in response.
+ * Includes fields inherited from BaseEntity like id, createdAt, etc. if needed in response.
  *
  * @param id The unique identifier of the clinic.
  * @param name The official name of the clinic.
@@ -24,6 +24,6 @@ public record ClinicDto(
         String city,
         Country country,
         String phone,
-        String publicKey // Consider if publicKey should always be returned
+        String publicKey
 ) {}
 

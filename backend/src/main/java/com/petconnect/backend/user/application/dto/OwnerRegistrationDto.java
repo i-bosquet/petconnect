@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
  *
  * @param username UserEntity's unique username.
  * @param email UserEntity's unique email address.
- * @param password UserEntity's chosen password (plain text, will be hashed in service).
+ * @param password UserEntity's chosen password (plain text will be hashed in service).
  * @param phone Owner's contact phone number.
  *
  * @author ibosquet
@@ -26,7 +26,7 @@ public record OwnerRegistrationDto(
         String email,
 
         @NotBlank(message = "Password cannot be blank")
-        @Size(min = 8, message = "Password must be at least 8 characters long") // Example password policy
+        @Size(min = 8, message = "Password must be at least 8 characters long")
         String password,
 
         @NotBlank(message = "Phone number cannot be blank")

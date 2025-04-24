@@ -2,340 +2,372 @@ package com.petconnect.backend.user.application.service.impl;
 
 import com.petconnect.backend.exception.EmailAlreadyExistsException;
 import com.petconnect.backend.exception.UsernameAlreadyExistsException;
+import com.petconnect.backend.security.JwtUtils;
 import com.petconnect.backend.user.application.dto.AuthLoginRequestDto;
 import com.petconnect.backend.user.application.dto.AuthResponseDto;
 import com.petconnect.backend.user.application.dto.OwnerProfileDto;
 import com.petconnect.backend.user.application.dto.OwnerRegistrationDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
-import com.petconnect.backend.user.domain.model.*;
+import com.petconnect.backend.user.application.service.UserService;
+import com.petconnect.backend.user.domain.model.Owner;
+import com.petconnect.backend.user.domain.model.RoleEntity;
+import com.petconnect.backend.user.domain.model.RoleEnum;
 import com.petconnect.backend.user.domain.repository.OwnerRepository;
 import com.petconnect.backend.user.domain.repository.RoleRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
-import com.petconnect.backend.security.JwtUtils;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
-
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.never;
-
 
 /**
  * Unit tests for {@link AuthServiceImpl}.
- * Uses Mockito to mock dependencies.
+ * Verifies the logic for owner registration and user login/authentication.
  *
  * @author ibosquet
  */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
-    @Mock
-    private JwtUtils jwtUtils; // Mocked, not used in registerOwner test directly
-    @Mock
-    private UserRepository userRepository;
-    @Mock
-    private OwnerRepository ownerRepository;
-    @Mock
-    private UserMapper userMapper;
-    @Mock
-    private PasswordEncoder passwordEncoder;
-    @Mock
-    private RoleRepository roleRepository;
+    // --- Mocks ---
+    @Mock private JwtUtils jwtUtils;
+    @Mock private UserRepository userRepository;
+    @Mock private OwnerRepository ownerRepository;
+    @Mock private UserMapper userMapper;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private RoleRepository roleRepository;
+    @Mock private UserService userService;
 
-    @InjectMocks // Creates an instance of AuthServiceImpl and injects the mocks
+    // --- Class Under Test ---
+    @InjectMocks
     private AuthServiceImpl authService;
+
+    // --- Captors ---
+    @Captor private ArgumentCaptor<Owner> ownerCaptor;
+    @Captor private ArgumentCaptor<Authentication> authenticationCaptor;
 
     // --- Test Data ---
     private OwnerRegistrationDto registrationDto;
     private RoleEntity ownerRole;
     private Owner savedOwner;
-    private OwnerProfileDto expectedDto;
+    private OwnerProfileDto expectedOwnerDto;
+    private AuthLoginRequestDto loginRequestDto;
+    private UserDetails userDetails;
+    private String defaultAvatar;
 
-    @BeforeEach // Set up common data before each test
+
+    @BeforeEach
     void setUp() {
-        registrationDto = new OwnerRegistrationDto(
-                "testowner",
-                "test@example.com",
-                "password123",
-                "123456789"
-        );
+        registrationDto = new OwnerRegistrationDto("testuser", "test@example.com", "password123", "123456789");
+        ownerRole = RoleEntity.builder().roleEnum(RoleEnum.OWNER).id(1L).build();
 
-        ownerRole = RoleEntity.builder().id(1L).roleEnum(RoleEnum.OWNER).build(); // Simulate role from DB
-
-        // Simulate the owner entity AFTER it's saved (with ID, hashed password, etc.)
         savedOwner = new Owner();
         savedOwner.setId(1L);
-        savedOwner.setUsername("testowner");
-        savedOwner.setEmail("test@example.com");
-        savedOwner.setPassword("hashedPassword"); // Assume this is the result of encoding
-        savedOwner.setPhone("123456789");
+        savedOwner.setUsername(registrationDto.username());
+        savedOwner.setEmail(registrationDto.email());
+        savedOwner.setPhone(registrationDto.phone());
+        savedOwner.setPassword("hashedPassword");
         savedOwner.setRoles(Set.of(ownerRole));
         savedOwner.setAvatar("images/avatars/users/owner.png");
-        // Set other UserEntity fields if necessary (isEnabled, etc.)
         savedOwner.setEnabled(true);
         savedOwner.setAccountNonExpired(true);
         savedOwner.setAccountNonLocked(true);
         savedOwner.setCredentialsNonExpired(true);
 
+        expectedOwnerDto = new OwnerProfileDto(savedOwner.getId(), savedOwner.getUsername(), savedOwner.getEmail(), Set.of("OWNER"), savedOwner.getAvatar(), savedOwner.getPhone());
 
-        // Simulate the DTO expected as the result
-        expectedDto = new OwnerProfileDto(
-                1L,
-                "testowner",
-                "test@example.com",
-                Set.of("OWNER"),
-                "images/avatars/users/owner.png",
-                "123456789"
-        );
+        loginRequestDto = new AuthLoginRequestDto("testuser", "password123");
+
+        userDetails = new User(savedOwner.getUsername(), savedOwner.getPassword(), true, true, true, true,
+                List.of(new SimpleGrantedAuthority("ROLE_OWNER")));
+        defaultAvatar = (String) ReflectionTestUtils.getField(AuthServiceImpl.class, "DEFAULT_OWNER_AVATAR");
+
     }
 
-    // --- Tests for registerOwner ---
+    /**
+     * --- Tests for registerOwner ---
+     */
+    @Nested
+    @DisplayName("registerOwner Tests")
+    class RegisterOwnerTests {
 
-    @Test
-    void registerOwner_shouldRegisterSuccessfully_whenDataIsValid() {
-        // Given (Arrange): Define mock behavior
-        given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
-        given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
-        given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.of(ownerRole));
-        given(passwordEncoder.encode(registrationDto.password())).willReturn("hashedPassword");
-        // When ownerRepository.save is called with ANY Owner object, return our simulated savedOwner
-        given(ownerRepository.save(any(Owner.class))).willReturn(savedOwner);
-        // When userMapper.toOwnerProfileDto is called with the savedOwner, return the expected DTO
-        given(userMapper.toOwnerProfileDto(savedOwner)).willReturn(expectedDto);
+        @Test
+        @DisplayName("should register Owner successfully when data is valid")
+        void shouldRegisterOwnerSuccessfully() {
+            // Arrange
+            given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
+            given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
+            given(passwordEncoder.encode(registrationDto.password())).willReturn("hashedPassword");
+            given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.of(ownerRole));
+            given(ownerRepository.save(any(Owner.class))).willReturn(savedOwner);
+            given(userMapper.toOwnerProfileDto(savedOwner)).willReturn(expectedOwnerDto);
 
-        // When (Act): Call the method under test
-        OwnerProfileDto actualDto = authService.registerOwner(registrationDto);
+            // Act
+            OwnerProfileDto result = authService.registerOwner(registrationDto);
 
-        // Then (Assert): Verify results and interactions
-        assertThat(actualDto)
-                .isNotNull()
-                .isEqualTo(expectedDto); // Check if the returned DTO is as expected
+            // Assert
+            assertThat(result).isEqualTo(expectedOwnerDto);
 
-        // Verify that save was called exactly once on ownerRepository with an Owner object
-        then(ownerRepository).should().save(any(Owner.class));
-        // Verify other mock interactions if necessary (e.g., passwordEncoder.encode was called)
-        then(passwordEncoder).should().encode("password123");
+            then(userRepository).should().existsByEmail(registrationDto.email());
+            then(userRepository).should().existsByUsername(registrationDto.username());
+            then(passwordEncoder).should().encode(registrationDto.password());
+            then(roleRepository).should().findByRoleEnum(RoleEnum.OWNER);
+            then(ownerRepository).should().save(ownerCaptor.capture());
+            then(userMapper).should().toOwnerProfileDto(savedOwner);
+
+            Owner ownerToSave = ownerCaptor.getValue();
+            assertThat(ownerToSave.getUsername()).isEqualTo(registrationDto.username());
+            assertThat(ownerToSave.getEmail()).isEqualTo(registrationDto.email());
+            assertThat(ownerToSave.getPhone()).isEqualTo(registrationDto.phone());
+            assertThat(ownerToSave.getPassword()).isEqualTo("hashedPassword");
+            assertThat(ownerToSave.getRoles()).containsExactly(ownerRole);
+            assertThat(ownerToSave.getAvatar()).isEqualTo(defaultAvatar);
+            assertThat(ownerToSave.isEnabled()).isTrue();
+            assertThat(ownerToSave.isAccountNonExpired()).isTrue();
+            assertThat(ownerToSave.isAccountNonLocked()).isTrue();
+            assertThat(ownerToSave.isCredentialsNonExpired()).isTrue();
+        }
+
+        @Test
+        @DisplayName("should throw EmailAlreadyExistsException when email is taken")
+        void shouldThrowEmailExists() {
+            // Arrange
+            given(userRepository.existsByEmail(registrationDto.email())).willReturn(true);
+
+            // Act & Assert
+            assertThatThrownBy(() -> authService.registerOwner(registrationDto))
+                    .isInstanceOf(EmailAlreadyExistsException.class)
+                    .hasMessageContaining(registrationDto.email());
+
+            then(userRepository).should().existsByEmail(registrationDto.email());
+            then(userRepository).should(never()).existsByUsername(anyString());
+            then(ownerRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw UsernameAlreadyExistsException when username is taken")
+        void shouldThrowUsernameExists() {
+            // Arrange
+            given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
+            given(userRepository.existsByUsername(registrationDto.username())).willReturn(true);
+
+            // Act & Assert
+            assertThatThrownBy(() -> authService.registerOwner(registrationDto))
+                    .isInstanceOf(UsernameAlreadyExistsException.class)
+                    .hasMessageContaining(registrationDto.username());
+
+            then(userRepository).should().existsByEmail(registrationDto.email());
+            then(userRepository).should().existsByUsername(registrationDto.username());
+            then(ownerRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw IllegalStateException when OWNER role not found")
+        void shouldThrowIllegalStateWhenRoleNotFound() {
+            // Arrange
+            given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
+            given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
+            given(passwordEncoder.encode(registrationDto.password())).willReturn("hashedPassword");
+            given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.empty());
+
+            // Act & Assert
+            assertThatThrownBy(() -> authService.registerOwner(registrationDto))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("OWNER role not found");
+
+            then(userRepository).should().existsByEmail(registrationDto.email());
+            then(userRepository).should().existsByUsername(registrationDto.username());
+            then(passwordEncoder).should().encode(registrationDto.password());
+            then(roleRepository).should().findByRoleEnum(RoleEnum.OWNER);
+            then(ownerRepository).should(never()).save(any());
+        }
     }
 
-    @Test
-    void registerOwner_shouldThrowEmailAlreadyExistsException_whenEmailExists() {
-        // Given: Email already exists
-        given(userRepository.existsByEmail(registrationDto.email())).willReturn(true);
+    /**
+     * --- Tests for loginUser ---
+     */
+    @Nested
+    @DisplayName("loginUser Tests")
+    class LoginUserTests {
 
-        // When & Then: Expect the exception
-        assertThatThrownBy(() -> authService.registerOwner(registrationDto))
-                .isInstanceOf(EmailAlreadyExistsException.class)
-                .hasMessageContaining(registrationDto.email());
+        @Test
+        @DisplayName("should return AuthResponseDto with JWT on successful login")
+        void shouldReturnJwtOnSuccessfulLogin() {
+            String jwtToken = "test.jwt.token";
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(userDetails);
+            given(passwordEncoder.matches(loginRequestDto.password(), userDetails.getPassword())).willReturn(true);
+            given(jwtUtils.createToken(any(Authentication.class))).willReturn(jwtToken);
 
-        // Verify that save was NEVER called
-        then(ownerRepository).should(never()).save(any(Owner.class));
+            // Act
+            AuthResponseDto response = authService.loginUser(loginRequestDto);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.username()).isEqualTo(loginRequestDto.username());
+            assertThat(response.jwt()).isEqualTo(jwtToken);
+            assertThat(response.status()).isTrue();
+            assertThat(response.message()).contains("logged successfully");
+
+            then(userService).should().loadUserByUsername(loginRequestDto.username());
+            then(passwordEncoder).should().matches(loginRequestDto.password(), userDetails.getPassword());
+            then(jwtUtils).should().createToken(authenticationCaptor.capture());
+
+            Authentication authPassedToJwt = authenticationCaptor.getValue();
+            assertThat(authPassedToJwt).isNotNull();
+            assertThat(authPassedToJwt.getName()).isEqualTo(loginRequestDto.username());
+
+            List<String> expectedAuthorityNames = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+            List<String> actualAuthorityNames = authPassedToJwt.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+
+            assertThat(actualAuthorityNames).containsExactlyInAnyOrderElementsOf(expectedAuthorityNames);
+        }
+
+        @Test
+        @DisplayName("should throw BadCredentialsException when username not found during login")
+        void shouldThrowBadCredentialsWhenUsernameNotFound() {
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username()))
+                    .willThrow(new UsernameNotFoundException("User not found"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> authService.loginUser(loginRequestDto))
+                    .isInstanceOf(UsernameNotFoundException.class)
+                    .hasMessageContaining("not found");
+
+            then(userService).should().loadUserByUsername(loginRequestDto.username());
+            then(passwordEncoder).should(never()).matches(anyString(), anyString());
+            then(jwtUtils).should(never()).createToken(any());
+        }
+
+        @Test
+        @DisplayName("should throw BadCredentialsException when password does not match")
+        void shouldThrowBadCredentialsWhenPasswordMismatch() {
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(userDetails);
+            given(passwordEncoder.matches(loginRequestDto.password(), userDetails.getPassword())).willReturn(false);
+
+            // Act & Assert
+            assertThatThrownBy(() -> authService.loginUser(loginRequestDto))
+                    .isInstanceOf(BadCredentialsException.class)
+                    .hasMessageContaining("Incorrect Password");
+
+            then(userService).should().loadUserByUsername(loginRequestDto.username());
+            then(passwordEncoder).should().matches(loginRequestDto.password(), userDetails.getPassword());
+            then(jwtUtils).should(never()).createToken(any());
+        }
     }
 
-    @Test
-    void registerOwner_shouldThrowUsernameAlreadyExistsException_whenUsernameExists() {
-        // Given: Email is ok, but Username already exists
-        given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
-        given(userRepository.existsByUsername(registrationDto.username())).willReturn(true);
+    /**
+     * --- Tests for authenticate method directly
+     */
+    @Nested
+    @DisplayName("authenticate Method Tests")
+    class AuthenticateMethodTests {
 
-        // When & Then: Expect the exception
-        assertThatThrownBy(() -> authService.registerOwner(registrationDto))
-                .isInstanceOf(UsernameAlreadyExistsException.class)
-                .hasMessageContaining(registrationDto.username());
+        @Test
+        @DisplayName("authenticate should return Authentication object on success")
+        void authenticateSuccess() {
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(userDetails);
+            given(passwordEncoder.matches(loginRequestDto.password(), userDetails.getPassword())).willReturn(true);
 
-        // Verify that save was NEVER called
-        then(ownerRepository).should(never()).save(any(Owner.class));
-    }
+            // Act
+            Authentication result = authService.authenticate(loginRequestDto.username(), loginRequestDto.password());
 
-    @Test
-    void registerOwner_shouldThrowIllegalStateException_whenOwnerRoleNotFound() {
-        // Given: Email and username are ok, but an OWNER role doesn't exist in DB (mock returns empty)
-        given(userRepository.existsByEmail(registrationDto.email())).willReturn(false);
-        given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
-        given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.empty());
-        given(passwordEncoder.encode(registrationDto.password())).willReturn("hashedPassword"); // Still need to mock encode
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.getName()).isEqualTo(loginRequestDto.username());
+            assertThat(result).isInstanceOf(UsernamePasswordAuthenticationToken.class);
+            assertThat(result.isAuthenticated()).isTrue();
 
-        // When & Then: Expect the exception
-        assertThatThrownBy(() -> authService.registerOwner(registrationDto))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("OWNER role not found");
+            List<String> expectedAuthorityNames = userDetails.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+            List<String> actualAuthorityNames = result.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+            assertThat(actualAuthorityNames).containsExactlyInAnyOrderElementsOf(expectedAuthorityNames);
+        }
 
-        // Verify that save was NEVER called
-        then(ownerRepository).should(never()).save(any(Owner.class));
-    }
+        @Test
+        @DisplayName("authenticate should throw BadCredentialsException for null UserDetails")
+        void authenticateThrowsForNullUserDetails() {
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(null);
 
+            // Act
+            Throwable thrown = Assertions.catchThrowable(() ->authService.authenticate(loginRequestDto.username(), loginRequestDto.password()));
+            // Assert
+            assertThat(thrown)
+                    .isInstanceOf(BadCredentialsException.class)
+                    .hasMessageContaining("Invalid username or password");
 
-    @Test
-    void loadUserByUsername_shouldReturnUserDetails_whenUserFound() {
-        // Given: Set up a UserEntity with roles and permissions
-        // Use 'savedOwner' from setUp or create a new one specific for this test
-        UserEntity foundUser = new Owner(); // Example using Owner
-        foundUser.setId(1L);
-        foundUser.setUsername("testuser");
-        foundUser.setEmail("test@example.com");
-        foundUser.setPassword("hashedPassword"); // The hashed password
-        foundUser.setEnabled(true);
-        foundUser.setAccountNonExpired(true);
-        foundUser.setAccountNonLocked(true);
-        foundUser.setCredentialsNonExpired(true);
+            then(passwordEncoder).should(never()).matches(any(), any());
+        }
 
-        RoleEntity roleOwner = RoleEntity.builder().id(1L).roleEnum(RoleEnum.OWNER).build();
-        PermissionEntity permReadOwn = PermissionEntity.builder().id(1L).name("PET_READ_OWN").build();
-        PermissionEntity permCreateOwn = PermissionEntity.builder().id(2L).name("PET_CREATE_OWN").build();
-        roleOwner.setPermissionList(Set.of(permReadOwn, permCreateOwn)); // Associate permissions with the role
-        foundUser.setRoles(Set.of(roleOwner)); // Assign the role to the user
-
-        // Mock repository behavior
-        given(userRepository.findByUsername("testuser")).willReturn(Optional.of(foundUser));
-
-        // When: Call the method under test
-        UserDetails userDetails = authService.loadUserByUsername("testuser");
-
-        // Then: Verify the UserDetails object
-        assertThat(userDetails).isNotNull();
-        assertThat(userDetails.getUsername()).isEqualTo("testuser");
-        assertThat(userDetails.getPassword()).isEqualTo("hashedPassword");
-        assertThat(userDetails.isEnabled()).isTrue();
-        assertThat(userDetails.isAccountNonExpired()).isTrue();
-        assertThat(userDetails.isAccountNonLocked()).isTrue();
-        assertThat(userDetails.isCredentialsNonExpired()).isTrue();
-
-        // Verify authorities include the role (with ROLE_ prefix) and the permissions
-        assertThat(userDetails.getAuthorities()).hasSize(3); // ROLE_OWNER + 2 permissions
-        assertThat(userDetails.getAuthorities())
-                .extracting(GrantedAuthority::getAuthority) // Extract authority strings
-                .containsExactlyInAnyOrder("ROLE_OWNER", "PET_READ_OWN", "PET_CREATE_OWN");
-
-        // Verify repository interaction
-        then(userRepository).should().findByUsername("testuser");
-    }
-
-    @Test
-    void loadUserByUsername_shouldThrowUsernameNotFoundException_whenUserNotFound() {
-        // Given: Mock repository returns empty Optional
-        given(userRepository.findByUsername("unknownuser")).willReturn(Optional.empty());
-
-        // When & Then: Expect the exception
-        assertThatThrownBy(() -> authService.loadUserByUsername("unknownuser"))
-                .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("El usuario unknownuser no existe."); // Check your exception message
-
-        // Verify repository interaction
-        then(userRepository).should().findByUsername("unknownuser");
-    }
+        @Test
+        @DisplayName("authenticate should throw BadCredentialsException for wrong password")
+        void authenticateThrowsForWrongPassword() {
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(userDetails);
+            given(passwordEncoder.matches(loginRequestDto.password(), userDetails.getPassword())).willReturn(false); // Mismatch
 
 
-    // --- Tests for loginUser (that internally use authenticating and loadUserByUsername) ---
+            // Act
+            Throwable thrown = Assertions.catchThrowable(() ->authService.authenticate(loginRequestDto.username(), loginRequestDto.password()));
+            // Assert
+            assertThat(thrown)
+                    .isInstanceOf(BadCredentialsException.class)
+                    .hasMessageContaining("Incorrect Password");
+        }
 
-    @Test
-    void loginUser_shouldReturnAuthResponseDtoWithJwt_whenCredentialsAreValid() {
-        // Given: Setup login request and mock underlying authentication process
-        AuthLoginRequestDto loginRequest = new AuthLoginRequestDto("testuser", "password123");
-        String expectedJwt = "mocked.jwt.token";
+        @Test
+        @DisplayName("authenticate should propagate UsernameNotFoundException from UserService")
+        void authenticatePropagatesUsernameNotFound() {
+            // Arrange
+            given(userService.loadUserByUsername(loginRequestDto.username()))
+                    .willThrow(new UsernameNotFoundException("Test User Not Found"));
 
-        // --- Mocking the steps within loginUser and authenticate ---
-        // 1. Mock loadUserByUsername (called by authenticating)
-        UserEntity foundUser = new Owner(); // Reuse setup from the previous test or create new
-        foundUser.setUsername("testuser");
-        foundUser.setPassword("hashedPassword"); // This MUST match the encoded password check
-        foundUser.setEnabled(true);
-        foundUser.setAccountNonExpired(true);
-        foundUser.setAccountNonLocked(true);
-        foundUser.setCredentialsNonExpired(true);
-        RoleEntity roleOwner = RoleEntity.builder().id(1L).roleEnum(RoleEnum.OWNER).permissionList(Set.of()).build(); // Simple role
-        foundUser.setRoles(Set.of(roleOwner));
-        given(userRepository.findByUsername("testuser")).willReturn(Optional.of(foundUser));
+            // Act
+            Throwable thrown = Assertions.catchThrowable(() ->authService.authenticate(loginRequestDto.username(), loginRequestDto.password()));
+            // Assert
+            assertThat(thrown)
+                    .isInstanceOf(UsernameNotFoundException.class)
+                    .hasMessageContaining("Test User Not Found");
 
-        // 2. Mock passwordEncoder.matches (called by authenticating)
-        given(passwordEncoder.matches("password123", "hashedPassword")).willReturn(true); // Crucial: Simulate the correct password match
-
-        // Mock jwtUtils.createToken (called by loginUser after successful authentication)
-        // We need to capture the Authentication object passed to createToken to verify it if needed,
-        // or just mock its return value.
-        // ArgumentCaptor could be used for detailed verification, but mocking return is simpler here.
-        given(jwtUtils.createToken(any(Authentication.class))).willReturn(expectedJwt);
-        // --- End Mocking ---
-
-
-        // When: Call loginUser
-        AuthResponseDto responseDto = authService.loginUser(loginRequest);
-
-        // Then: Verify the response DTO
-        assertThat(responseDto).isNotNull();
-        assertThat(responseDto.username()).isEqualTo("testuser");
-        assertThat(responseDto.jwt()).isEqualTo(expectedJwt);
-        assertThat(responseDto.status()).isTrue();
-        assertThat(responseDto.message()).isEqualTo("UserEntity logged successfully"); // Check a message if important
-
-        // Verify mocks were called as expected
-        then(userRepository).should().findByUsername("testuser");
-        then(passwordEncoder).should().matches("password123", "hashedPassword");
-        then(jwtUtils).should().createToken(any(Authentication.class)); // Verify token creation was triggered
-    }
-
-    @Test
-    void loginUser_shouldThrowBadCredentialsException_whenPasswordIsIncorrect() {
-        // Given: Setup login request
-        AuthLoginRequestDto loginRequest = new AuthLoginRequestDto("testuser", "wrongPassword");
-
-        // --- Mocking for failure ---
-        // Mock loadUserByUsername - User is found
-        UserEntity foundUser = new Owner();
-        foundUser.setUsername("testuser");
-        foundUser.setPassword("hashedPassword"); // Correct hash
-        foundUser.setEnabled(true); // ... set other flags ...
-        given(userRepository.findByUsername("testuser")).willReturn(Optional.of(foundUser));
-
-        // ock passwordEncoder.matches - Simulate INCORRECT password match
-        given(passwordEncoder.matches("wrongPassword", "hashedPassword")).willReturn(false);
-        // --- End Mocking ---
-
-        // When & Then: Expect BadCredentialsException (thrown by authenticating, called by loginUser)
-        assertThatThrownBy(() -> authService.loginUser(loginRequest))
-                .isInstanceOf(BadCredentialsException.class)
-                .hasMessageContaining("Incorrect Password"); // Check the specific message from authenticate()
-
-        // Verify mocks
-        then(userRepository).should().findByUsername("testuser");
-        then(passwordEncoder).should().matches("wrongPassword", "hashedPassword");
-        then(jwtUtils).should(never()).createToken(any(Authentication.class)); // Token should NOT be created
-    }
-
-    @Test
-    void loginUser_shouldThrowUsernameNotFoundException_whenUserNotFound() {
-        // Given: Setup login request
-        AuthLoginRequestDto loginRequest = new AuthLoginRequestDto("unknownuser", "password123");
-
-        // --- Mocking for failure ---
-        // 1. Mock loadUserByUsername - User is NOT found (called by authenticating)
-        given(userRepository.findByUsername("unknownuser")).willReturn(Optional.empty());
-        // --- End Mocking ---
-
-        // When & Then: Expect UsernameNotFoundException (thrown by loadUserByUsername, propagated by authenticating)
-        assertThatThrownBy(() -> authService.loginUser(loginRequest))
-                .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("El usuario unknownuser no existe.");
-
-        // Verify mocks
-        then(userRepository).should().findByUsername("unknownuser");
-        then(passwordEncoder).should(never()).matches(anyString(), anyString()); // Password check shouldn't happen
-        then(jwtUtils).should(never()).createToken(any(Authentication.class)); // Token should NOT be created
+            then(passwordEncoder).should(never()).matches(any(), any());
+        }
     }
 }
 

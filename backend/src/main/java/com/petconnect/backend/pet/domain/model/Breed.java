@@ -68,10 +68,10 @@ public class Breed{
      * (managing pets lifecycle independently).
      */
     @OneToMany(
-            mappedBy = "breed", // Field in Pet entity that owns the relationship
-            fetch = FetchType.LAZY // Load pets only when explicitly requested
+            mappedBy = "breed",
+            fetch = FetchType.LAZY
     )
-    @Builder.Default // Initialize for a builder pattern
+    @Builder.Default
     private List<Pet> pets = new ArrayList<>();
 
     /**

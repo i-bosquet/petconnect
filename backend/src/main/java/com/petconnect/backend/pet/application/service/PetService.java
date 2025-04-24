@@ -18,7 +18,7 @@ import java.util.List;
 public interface PetService {
     /**
      * Registers a new pet for the currently authenticated owner.
-     * Sets the initial status to PENDING and assigns a default image if none provided.
+     * Sets the initial status to PENDING and assigns a default image if none is provided.
      *
      * @param registrationDto DTO containing initial pet details (name, specie, optional image/breedId).
      * @param ownerId The ID of the currently authenticated owner performing the registration.
@@ -36,7 +36,7 @@ public interface PetService {
      * @param vetId The ID of the Vet performing the activation.
      * @param activationDto DTO containing required/verified clinical details. Validation rules are applied.
      * @return The profile DTO of the activated pet.
-     * @throws IllegalStateException if required fields (name, birthDate, gender, microchip, breed, image) are missing on the Pet entity or if status is not PENDING.
+     * @throws IllegalStateException if required fields (name, birthDate, gender, microchip, breed, image) are missing on the Pet entity, or if status is not PENDING.
      * @throws com.petconnect.backend.exception.MicrochipAlreadyExistsException if the pet's existing microchip conflicts with another pet.
      */
     PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long vetId);
@@ -87,7 +87,7 @@ public interface PetService {
      * @param ownerId The ID of the owner whose pets are requested.
      * @param pageable Pagination information.
      * @return A Page of PetProfileDto objects.
-     * @throws org.springframework.security.access.AccessDeniedException if requester is not owner or authorized staff.
+     * @throws org.springframework.security.access.AccessDeniedException if the requester is not owner or authorized staff.
      */
     Page<PetProfileDto> findPetsByOwner(Long ownerId, Pageable pageable);
 
@@ -117,7 +117,7 @@ public interface PetService {
      * @param petId The ID of the PENDING pet.
      * @param clinicId The ID of the target clinic.
      * @param ownerId The ID of the authenticated owner making the association.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if pet or clinic not found.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if a pet or clinic isn't found.
      * @throws org.springframework.security.access.AccessDeniedException if the user is not the owner.
      * @throws IllegalStateException if the pet is not in PENDING status.
      */
@@ -155,7 +155,7 @@ public interface PetService {
      * @param requesterUserId The ID of the staff member making the request.
      * @param pageable Pagination information.
      * @return A Page of PetProfileDto objects associated with the clinic.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if clinic not found.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if a clinic not found.
      * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
      */
     Page<PetProfileDto> findPetsByClinic(Long requesterUserId, Pageable pageable);
@@ -166,7 +166,7 @@ public interface PetService {
      *
      * @param requesterUserId The ID of the staff member making the request.
      * @return A List of PetProfileDto for pets pending activation.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if clinic not found.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if a clinic not found.
      * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
      */
     List<PetProfileDto> findPendingActivationPetsByClinic(Long requesterUserId);

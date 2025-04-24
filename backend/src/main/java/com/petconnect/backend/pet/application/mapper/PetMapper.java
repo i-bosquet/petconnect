@@ -1,6 +1,5 @@
 package com.petconnect.backend.pet.application.mapper;
 
-import com.petconnect.backend.pet.application.dto.PetActivationDto;
 import com.petconnect.backend.pet.application.dto.PetClinicUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetOwnerUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetProfileDto;
@@ -43,7 +42,7 @@ public class PetMapper {
 
     /**
      * Converts a {@link Pet} entity to a detailed {@link PetProfileDto}.
-     * Includes information from related Owners, Breed entities, and Associated Vets. // Javadoc Actualizado
+     * Includes information from related Owners, Breed entities, and Associated Vets.
      * Returns null if the input entity is null.
      *
      * @param pet The Pet entity to convert.
@@ -77,7 +76,7 @@ public class PetMapper {
                 breedId,
                 breedName,
                 pendingClinicId,
-                vetSummaries, // Añadir el set mapeado
+                vetSummaries,
                 pet.getCreatedAt(),
                 pet.getUpdatedAt()
         );
@@ -121,7 +120,7 @@ public class PetMapper {
          changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
          log.debug("Mapper updateFromOwnerDto - Checking 'birthDate': DTO='{}', Current='{}'", dto.birthDate(), pet.getBirthDate());
          changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
-         // Update breed only if resolvedBreed is not null AND different from current
+
          if (resolvedBreed != null) {
              log.debug("Mapper updateFromOwnerDto - Checking 'breed': ResolvedBreedId='{}', CurrentBreedId='{}'",
                      resolvedBreed.getId(), (pet.getBreed() != null ? pet.getBreed().getId() : null));
@@ -151,29 +150,6 @@ public class PetMapper {
         changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
         return changed;
     }
-
-    /**
-     * Applies updates required during Pet activation using {@link PetActivationDto}.
-     * Sets clinical fields and potentially breed.
-     * This assumes the service layer has already validated the input DTO fields.
-     * Returns true if any field was actually modified (useful for logging/auditing).
-     *
-     * @param dto The activation DTO containing verified/updated data.
-     * @param petToActivate The Pet entity (in the PENDING state) to be updated and activated.
-     * @param resolvedBreed The Breed entity corresponding to dto.breedId(), resolved by the service (can be null).
-     * @return true if the entity was modified, false otherwise.
-     */
-    public boolean applyActivationData(PetActivationDto dto, Pet petToActivate, Breed resolvedBreed) {
-        if (dto == null || petToActivate == null) return false;
-        boolean changed = false;
-        changed |= updateStringFieldIfChanged(petToActivate, dto.microchip(), petToActivate::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
-        changed |= updateFieldIfChanged(petToActivate, dto.birthDate(), petToActivate::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
-        changed |= updateFieldIfChanged(petToActivate, dto.gender(), petToActivate::getGender, Pet::setGender, FIELD_GENDER);
-        changed |= updateStringFieldIfChanged(petToActivate, dto.color(), petToActivate::getColor, Pet::setColor, FIELD_COLOR);
-        changed |= updateFieldIfChanged(petToActivate, resolvedBreed, petToActivate::getBreed, Pet::setBreed, FIELD_BREED);
-        return changed;
-    }
-
 
     /**
      * Updates a target field using a setter if the source value is not null
@@ -222,7 +198,7 @@ public class PetMapper {
             return false;
         }
 
-        String effectiveSourceValue = sourceValue.isBlank() ? null : sourceValue; // Simplificado
+        String effectiveSourceValue = sourceValue.isBlank() ? null : sourceValue;
         String currentValue = getter.get();
 
         if (!Objects.equals(effectiveSourceValue, currentValue)) {

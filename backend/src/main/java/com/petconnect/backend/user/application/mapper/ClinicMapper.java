@@ -14,7 +14,7 @@ import java.util.Objects;
  *
  * @author ibosquet
  */
-@Component // Make it a Spring bean so it can be injected
+@Component
 public class ClinicMapper {
 
     /**

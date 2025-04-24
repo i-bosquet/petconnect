@@ -151,7 +151,6 @@ class CertificateServiceImplTest {
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedViewDto);
 
-            // Verify interactions
             then(entityFinderHelper).should().findVetOrFail(vetId);
             then(entityFinderHelper).should().findRecordByIdOrFail(recordId);
             then(certificateHelper).should().validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
@@ -162,7 +161,6 @@ class CertificateServiceImplTest {
             then(certificateRepository).should().save(certificateCaptor.capture());
             then(certificateMapper).should().toViewDto(savedCertificate);
 
-            // Verify saved entity details
             Certificate captured = certificateCaptor.getValue();
             assertThat(captured.getCertificateNumber()).isEqualTo(generationRequestDto.certificateNumber());
             assertThat(captured.getHash()).isEqualTo(payloadHash);
@@ -493,7 +491,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
             Pet associatedPet = savedCertificate.getPet();
             willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterOwnerId, associatedPet, "get QR data for certificate");
-            // Simular fallo en QrCodeService
+
             given(qrCodeService.generateQrData(savedCertificate)).willThrow(new RuntimeException("CBOR failed"));
 
             assertThatThrownBy(() -> certificateService.getQrDataForCertificate(certificateId, requesterOwnerId))

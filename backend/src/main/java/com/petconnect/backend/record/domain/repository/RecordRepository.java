@@ -1,14 +1,16 @@
 package com.petconnect.backend.record.domain.repository;
 
-import com.petconnect.backend.record.domain.model.RecordType;
 import com.petconnect.backend.record.domain.model.Record;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import java.util.List;
 
 /**
  * Spring Data JPA repository for {@link Record} entities.
@@ -30,33 +32,33 @@ public interface RecordRepository extends JpaRepository<Record, Long>, JpaSpecif
     Page<Record> findByPetIdOrderByCreatedAtDesc(Long petId, Pageable pageable);
 
     /**
-     * Finds all records associated with a specific pet and matching a specific type,
-     * ordered by creation date descending. Allows pagination.
+     * Finds all medical records associated with any pet belonging to a specific owner.
+     * This involves joining through the Pet entity to filter by the owner's ID.
+     * Note: This retrieves all records across potentially multiple pets for the owner.
+     * Consider performance implications if an owner has many pets with extensive histories.
+     * Pagination is not applied here; use with caution or add Pageable if needed.
      *
-     * @param petId    The ID of the pet.
-     * @param type     The type of record to filter by.
-     * @param pageable Pagination and sorting information.
-     * @return A Page containing the Pet's Records of the specified type.
+     * @param ownerId The ID of the owner whose pets' records are to be retrieved.
+     * @return A List of all Record entities for all pets owned by the specified owner.
      */
-    Page<Record> findByPetIdAndTypeOrderByCreatedAtDesc(Long petId, RecordType type, Pageable pageable);
+    @Query("SELECT r FROM Record r JOIN r.pet p WHERE p.owner.id = :ownerId")
+    List<Record> findByPetOwnerId(@Param("ownerId") Long ownerId);
 
     /**
-     * Finds the most recent record of a specific type for a given pet.
-     * Useful for checking the date of the last ANNUAL_CHECK or a specific VACCINE.
+     * Deletes all Record entities associated with the specified Pet ID.
+     * This is useful for cleanup operations when a Pet is deleted or during test setup/teardown.
+     * As this is a modifying operation, it should be executed within a transaction.
      *
-     * @param petId The ID of the pet.
-     * @param type  The type of record to find.
-     * @return An Optional containing the most recent Record of that type, or empty if none exist.
+     * @param petId The ID of the Pet whose records should be deleted.
+     * @return the number of records deleted.
      */
-    Optional<Record> findFirstByPetIdAndTypeOrderByCreatedAtDesc(Long petId, RecordType type);
+    @Modifying
+    long deleteAllByPetId(Long petId); // Método añadido
 
     /**
-     * Finds all records created by a specific UserEntity ID, ordered by creation date descending.
-     * Useful for auditing or specific user views if needed.
-     *
-     * @param creatorId The ID of the user who created the records.
-     * @param pageable  Pagination and sorting information.
-     * @return A Page containing Records created by the specified user.
+     * Checks if a record exists for the given pet ID.
+     * @param petId the ID of the pet
+     * @return true if a record exists, false otherwise
      */
-    Page<Record> findByCreatorIdOrderByCreatedAtDesc(Long creatorId, Pageable pageable);
+    boolean existsByPetId(Long petId);
 }

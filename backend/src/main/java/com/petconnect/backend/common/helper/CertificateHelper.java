@@ -1,6 +1,8 @@
 package com.petconnect.backend.common.helper;
 
 import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
+import com.petconnect.backend.exception.CertificateAlreadyExistsForRecordException;
+import com.petconnect.backend.exception.CertificateNumberAlreadyExistsException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.record.domain.model.RecordType;
@@ -49,11 +51,7 @@ public class CertificateHelper {
         }
         // Check if a certificate already exists for this record
         if (certificateRepository.existsByMedicalRecordId(sourceRecord.getId())) {
-            throw new IllegalStateException("A certificate already exists for record " + sourceRecord.getId() + ".");
-        }
-        // Check if the official certificate number already exists
-        if (certificateRepository.findByCertificateNumber(certificateNumber).isPresent()) {
-            throw new IllegalArgumentException("Certificate number '" + certificateNumber + "' is already in use.");
+            throw new CertificateAlreadyExistsForRecordException( sourceRecord.getId());
         }
 
         // Record type must be VACCINE and details must be present
@@ -61,6 +59,12 @@ public class CertificateHelper {
             log.warn("Attempting to generate certificate from non-vaccine record ID {} or missing vaccine details.", sourceRecord.getId());
             throw new IllegalStateException("Certificate generation is currently only supported for signed VACCINE records with details.");
         }
+
+        // Check if the official certificate number already exists
+        if (certificateRepository.findByCertificateNumber(certificateNumber).isPresent()) {
+            throw new CertificateNumberAlreadyExistsException(certificateNumber);
+        }
+
         log.debug("Prerequisites validated for generating certificate from record {}", sourceRecord.getId());
     }
 
@@ -120,7 +124,7 @@ public class CertificateHelper {
 
     /**
      * Builds the 'event' part of the certificate payload based on the source record.
-     * @param sourceRecord The medical record (must be VACCINE type for vaccine details).
+     * @param sourceRecord The medical record (must be a VACCINE type for vaccine details).
      * @return A Map containing event details.
      */
     private Map<String, Object> buildEventPayload(Record sourceRecord) {

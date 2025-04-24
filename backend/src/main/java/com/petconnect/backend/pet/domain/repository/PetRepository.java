@@ -63,6 +63,8 @@ public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificatio
 
     @Query("SELECT p FROM Pet p LEFT JOIN p.associatedVets vet " +
             "WHERE p.pendingActivationClinic.id = :clinicId OR vet.clinic.id = :clinicId " +
-            "GROUP BY p") // Group by to avoid duplicates if you have multiple vets from the same clinic
+            "GROUP BY p")
     Page<Pet> findPetsAssociatedWithClinic(@Param("clinicId") Long clinicId, Pageable pageable);
+
+    List<Pet> findByOwnerId(Long ownerId);
 }

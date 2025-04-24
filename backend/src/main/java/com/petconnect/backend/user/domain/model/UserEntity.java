@@ -17,7 +17,6 @@ import java.util.Set;
  * @author ibosquet
  */
 @Data
-@EqualsAndHashCode(callSuper = false)
 @ToString(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -108,12 +107,8 @@ public class UserEntity extends BaseEntity{
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        // Check if the other object is null or if its actual class (could be a proxy)
-        // is different from this object's actual class.
         if (o == null || getClass() != o.getClass()) return false;
         UserEntity that = (UserEntity) o;
-        // If the ID is null, the entities are not equal unless they are the same instance (checked above).
-        // If the ID is not null, compare by ID.
         return getId() != null && Objects.equals(getId(), that.getId());
     }
 
@@ -126,7 +121,6 @@ public class UserEntity extends BaseEntity{
      */
     @Override
     public int hashCode() {
-        // Use ID for hashCode if persisted, otherwise rely on default Object hashCode or a constant.
         return getId() != null ? Objects.hash(getId()) : getClass().hashCode();
     }
 }

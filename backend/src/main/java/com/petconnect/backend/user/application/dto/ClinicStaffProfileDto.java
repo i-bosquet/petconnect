@@ -17,7 +17,7 @@ import java.util.Set;
  * @param clinicId ID of the associated clinic.
  * @param clinicName Name of the associated clinic.
  * @param licenseNumber (Conditional) Vet's license number if role is VET.
- * @param vetPublicKey (Conditional) Vet's public key if role is VET.
+ * @param vetPublicKey (Conditional) Vet's public key if a role is VET.
  *
  * @author ibosquet
  */

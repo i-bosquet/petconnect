@@ -33,7 +33,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
-
 /**
  * Unit tests for {@link ClinicServiceImpl}.
  * Uses Mockito to mock repository, mapper and helper dependencies.
@@ -86,7 +85,7 @@ class ClinicServiceImplTest {
         updateDto = new ClinicUpdateDto("Updated Name", "Updated Addr", "Updated City", Country.SPAIN, "999");
 
         // Existing Clinic for Update Tests
-        existingClinic = new Clinic(); // Usar setters para BaseEntity ID
+        existingClinic = new Clinic();
         existingClinic.setId(clinicId);
         existingClinic.setName("London Vet");
         existingClinic.setCity("London");

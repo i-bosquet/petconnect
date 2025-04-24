@@ -141,7 +141,6 @@ public class SigningServiceImpl implements SigningService {
     public PublicKey getVetPublicKey(Vet vet) {
         try {
             PrivateKey privateKey = getOrLoadVetPrivateKey();
-            // Derivar clave pública desde la privada (común para RSA)
             if (privateKey instanceof RSAPrivateCrtKey rsaPrivateKey) {
                 KeyFactory kf = KeyFactory.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
                 RSAPublicKeySpec spec = new RSAPublicKeySpec(rsaPrivateKey.getModulus(), rsaPrivateKey.getPublicExponent());

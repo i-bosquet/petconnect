@@ -21,7 +21,6 @@ public interface RecordService {
      * If created by a Vet, allows for optional immediate signing.
      * @param createDto     The DTO containing the record details (type, description, optional vaccine).
      * @param creatorUserId The ID of the User (Owner, Vet, Admin) creating the record.
-     * @param signRecord    (Optional, only relevant for Vets) If true, the creating Vet attempts to sign the record immediately.
      * @return The DTO representation of the newly created record.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if the pet or creator user is not found,
      *                                                                  or if vaccine details are provided, but breed is invalid for a vaccine type.
@@ -29,7 +28,7 @@ public interface RecordService {
      * @throws IllegalArgumentException if the type is VACCINE, but vaccine details are missing in the DTO, or vice versa.
      * @throws IllegalStateException if signing is requested but the creator is not a Vet.
      */
-    RecordViewDto createRecord( RecordCreateDto createDto, Long creatorUserId, boolean signRecord);
+    RecordViewDto createRecord( RecordCreateDto createDto, Long creatorUserId);
 
     /**
      * Retrieves a paginated list of all medical records for a specific pet.

@@ -38,7 +38,7 @@ public record PetActivationDto(
         @NotBlank(message = "Microchip number cannot be blank")
         @Size(max = 50) String microchip,
 
-        @NotNull(message = "Breed must be specified") // Must select specific or Mixed/Other
+        @NotNull(message = "Breed must be specified")
         Long breedId,
 
         @NotBlank(message = "Image path/URL cannot be blank")

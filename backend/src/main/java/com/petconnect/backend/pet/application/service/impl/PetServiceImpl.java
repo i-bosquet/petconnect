@@ -42,18 +42,14 @@ import java.util.Objects;
 @Slf4j
 public class PetServiceImpl implements PetService {
 
-    // --- Repositories ---
     private final PetRepository petRepository;
     private final BreedRepository breedRepository;
 
-    // --- Mappers & Helpers ---
     private final PetMapper petMapper;
     private final BreedMapper breedMapper;
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
 
-    // --- Configuration ---
-    // Default path base for pet avatars if not provided. Configurable via application properties.
     @Value("${app.default.pet.image.path:images/avatars/pets/}")
     private String defaultPetImagePathBase;
 
@@ -63,18 +59,17 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId) {
-        Owner owner = entityFinderHelper.findOwnerOrFail(ownerId); // Find and validate an owner
-        Breed assignedBreed = resolveBreed(registrationDto.breedId(), registrationDto.specie()); // Ensures non-null breed
-        String imagePath = determineInitialImagePath(registrationDto.image(), assignedBreed); // Determine image
+        Owner owner = entityFinderHelper.findOwnerOrFail(ownerId);
+        Breed assignedBreed = resolveBreed(registrationDto.breedId(), registrationDto.specie());
+        String imagePath = determineInitialImagePath(registrationDto.image(), assignedBreed);
 
-        // Create a new Pet entity-Owner provides initial details
         Pet newPet = Pet.builder()
                 .name(registrationDto.name())
                 .owner(owner)
                 .breed(assignedBreed)
                 .image(imagePath)
-                .status(PetStatus.PENDING) // Start as PENDING
-                // Set optional fields provided by an owner during registration
+                .status(PetStatus.PENDING)
+
                 .birthDate(registrationDto.birthDate())
                 .color(registrationDto.color())
                 .gender(registrationDto.gender())
@@ -92,7 +87,7 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public void associatePetToClinicForActivation(Long petId, Long clinicId, Long ownerId) {
-        Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId); // Verify owner and find pet
+        Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
         ensurePetIsInStatus(pet, PetStatus.PENDING, "associate for activation");
         if (pet.getPendingActivationClinic() != null) {
             throw new IllegalStateException("Pet ID " + petId + " is already pending activation at clinic " + pet.getPendingActivationClinic().getId());
@@ -122,13 +117,13 @@ public class PetServiceImpl implements PetService {
 
         validateMicrochipUniqueness(activationDto.microchip(), petId);
 
-        Specie originalSpecie = petToActivate.getBreed().getSpecie(); // Especie no debe cambiar
+        Specie originalSpecie = petToActivate.getBreed().getSpecie();
         Breed resolvedBreed = resolveBreed(activationDto.breedId(), originalSpecie);
         updatePetEntityFromActivationDto(petToActivate, activationDto, resolvedBreed);
 
         petToActivate.setStatus(PetStatus.ACTIVE);
         petToActivate.setPendingActivationClinic(null);
-        Vet assignedVet = assignVetOnActivation(activatingStaff); // Ya simplificado para Vet
+        Vet assignedVet = assignVetOnActivation(activatingStaff);
         petToActivate.addVet(assignedVet);
 
         // Assign a Vet automatically
@@ -143,10 +138,9 @@ public class PetServiceImpl implements PetService {
     @Override
     @Transactional
     public PetProfileDto deactivatePet(Long petId, Long ownerId) {
-        Pet petToDeactivate = findPetByIdAndOwnerOrFail(petId, ownerId); // Verify ownership
-        ensurePetIsNotInStatus(petToDeactivate, PetStatus.INACTIVE, "deactivate"); // Check not already inactive
+        Pet petToDeactivate = findPetByIdAndOwnerOrFail(petId, ownerId);
+        ensurePetIsNotInStatus(petToDeactivate, PetStatus.INACTIVE, "deactivate");
 
-        // Deactivate: Change status and potentially clear associations if needed
         petToDeactivate.setStatus(PetStatus.INACTIVE);
 
         Pet deactivatedPet = petRepository.save(petToDeactivate);
@@ -173,7 +167,6 @@ public class PetServiceImpl implements PetService {
                 petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getColor(), petToUpdate.getImage(),
                 petToUpdate.getMicrochip(), (petToUpdate.getBreed() != null ? petToUpdate.getBreed().getId() : null), changed);
 
-        // Save if changed and map response
         Pet updatedPet = petToUpdate;
         if (changed) {
             log.info("Changes detected, attempting to save Pet {}", petId);
@@ -355,20 +348,17 @@ public class PetServiceImpl implements PetService {
      * Determines an initial image path using a provided path or breed's default.
      */
     private String determineInitialImagePath(String providedImagePath, @NotNull Breed assignedBreed) {
-        // Use user-provided image if available
         if (StringUtils.hasText(providedImagePath)) {
             log.debug("Using provided image path: {}", providedImagePath);
             return providedImagePath;
         }
 
-        // Use a specific breed image if the breed is not generic and has a URL
         boolean isGenericBreed = "Mixed/Other".equals(assignedBreed.getName()) || "Standard/Other".equals(assignedBreed.getName());
         if (!isGenericBreed && StringUtils.hasText(assignedBreed.getImageUrl())) {
             log.debug("Using specific breed image path: {}", assignedBreed.getImageUrl());
             return assignedBreed.getImageUrl();
         }
 
-        // Fallback to generic species image (Species is guaranteed from assignedBreed)
         Specie specie = assignedBreed.getSpecie();
         String basePath = defaultPetImagePathBase.endsWith("/") ? defaultPetImagePathBase : defaultPetImagePathBase + '/';
         String defaultImage = basePath + specie.name().toLowerCase() + ".png";
@@ -381,7 +371,6 @@ public class PetServiceImpl implements PetService {
      * Validates microchip uniqueness, excluding the pet being updated.
      */
     private void validateMicrochipUpdate(String microchip, Pet petBeingUpdated) {
-        // Check only if changed
         if (StringUtils.hasText(microchip) &&
                 !Objects.equals(microchip, petBeingUpdated.getMicrochip()) && petRepository.existsByMicrochipAndIdNot(microchip, petBeingUpdated.getId())) {
             throw new MicrochipAlreadyExistsException(microchip);
@@ -399,7 +388,6 @@ public class PetServiceImpl implements PetService {
      */
     private Vet assignVetOnActivation(ClinicStaff activatingStaff) {
         if (!(activatingStaff instanceof Vet activatingVet)) {
-            // Defensive check - Should ideally be unreachable if SecurityConfig enforces ROLE_VET
             log.error("CRITICAL: Activation process reached assignVetOnActivation but activator (ID: {}) is not a Vet instance.", activatingStaff.getId());
             throw new AccessDeniedException("Activation failed: The user performing the activation is not a veterinarian.");
         }
@@ -498,10 +486,8 @@ public class PetServiceImpl implements PetService {
         log.info("Calling mapper. DTO(Owner): {}, DTO(Clinic): {}, ResolvedBreedId: {}",
                 ownerUpdateDto, clinicUpdateDto, (resolvedBreed != null ? resolvedBreed.getId() : null));
 
-        // Validate Microchip Uniqueness if it's being changed
         validateMicrochipUpdate(newMicrochip, petToUpdate);
 
-        // Call the appropriate mapper method
         boolean changed;
         if (ownerUpdateDto != null) {
             changed = petMapper.updateFromOwnerDto(ownerUpdateDto, petToUpdate, resolvedBreed);
@@ -528,5 +514,4 @@ public class PetServiceImpl implements PetService {
         pet.setBreed(resolvedBreed);
         pet.setImage(dto.image());
     }
-
 }

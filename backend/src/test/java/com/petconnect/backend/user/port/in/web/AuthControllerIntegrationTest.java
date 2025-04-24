@@ -90,7 +90,7 @@ class AuthControllerIntegrationTest {
         @Test
         @DisplayName("POST /api/auth/register - Success (201 Created)")
         void registerOwner_whenValidData_shouldReturnCreatedAndOwnerProfileAndSaveUser() throws Exception {
-            // Act & Assert - Perform request and check HTTP response/JSON body
+            // Act & Assert
             MvcResult result = mockMvc.perform(post("/api/auth/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(validRegistrationDto)))
@@ -104,20 +104,19 @@ class AuthControllerIntegrationTest {
                     .andExpect(jsonPath("$.avatar", is("images/avatars/users/owner.png")))
                     .andReturn();
 
-            // --- Direct Database Verification (Optional but recommended for integration tests) ---
             String responseBody = result.getResponse().getContentAsString();
             OwnerProfileDto responseDto = objectMapper.readValue(responseBody, OwnerProfileDto.class);
             Long newUserId = responseDto.id();
 
             assertThat(newUserId).isNotNull();
-            // Fetch directly from the repository to verify state BEFORE rollback
+
             Optional<UserEntity> userOpt = userRepository.findById(newUserId);
             assertThat(userOpt).isPresent();
             UserEntity user = userOpt.get();
             assertThat(user).isInstanceOf(Owner.class);
             assertThat(user.getUsername()).isEqualTo(validRegistrationDto.username());
             assertThat(user.getEmail()).isEqualTo(validRegistrationDto.email());
-            // Verify the password stored is the HASHED version
+
             assertThat(user.getPassword()).isNotEqualTo(validRegistrationDto.password());
             assertThat(passwordEncoder.matches(validRegistrationDto.password(), user.getPassword())).isTrue();
             assertThat(((Owner) user).getPhone()).isEqualTo(validRegistrationDto.phone());
@@ -127,10 +126,10 @@ class AuthControllerIntegrationTest {
         @Test
         @DisplayName("POST /api/auth/register - Conflict (409) - Email Exists")
         void registerOwner_whenEmailExists_shouldReturnConflict() throws Exception {
-            // Arrange: Use an email known to exist from data.sql
+            // Arrange
             OwnerRegistrationDto duplicateEmailDto = new OwnerRegistrationDto(
                     "anotheruser",
-                    "admin.london@petconnect.dev", // Existing admin email
+                    "admin.london@petconnect.dev",
                     "password123", "111"
             );
 
@@ -139,7 +138,7 @@ class AuthControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(duplicateEmailDto)))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.status", is(409))) // Check body structure from GlobalExceptionHandler
+                    .andExpect(jsonPath("$.status", is(409)))
                     .andExpect(jsonPath("$.error", is("Data Conflict")))
                     .andExpect(jsonPath("$.message", containsString("Email already in use")));
         }
@@ -147,10 +146,10 @@ class AuthControllerIntegrationTest {
         @Test
         @DisplayName("POST /api/auth/register - Conflict (409) - Username Exists")
         void registerOwner_whenUsernameExists_shouldReturnConflict() throws Exception {
-            // Arrange: Use an existing username from data.sql
+            // Arrange
             OwnerRegistrationDto duplicateUsernameDto = new OwnerRegistrationDto(
-                    "admin_london", // Existing username
-                    "new_" + System.currentTimeMillis() + "@test.com", // Unique email
+                    "admin_london",
+                    "new_" + System.currentTimeMillis() + "@test.com",
                     "password123", "111"
             );
 
@@ -215,8 +214,6 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("POST /api/auth/login - Success (200 OK) - Admin")
     void login_whenAdminCredentialsValid_shouldReturnOkAndToken() throws Exception {
-        // Arrange (adminLoginDto from setUp uses credentials from data.sql)
-
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -224,16 +221,16 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.username", is(adminLoginDto.username())))
-                .andExpect(jsonPath("$.message", is("UserEntity logged successfully"))) // Check your exact success message
+                .andExpect(jsonPath("$.message", is("UserEntity logged successfully")))
                 .andExpect(jsonPath("$.status", is(true)))
                 .andExpect(jsonPath("$.jwt", is(notNullValue())))
-                .andExpect(jsonPath("$.jwt", matchesRegex("^[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*$"))); // JWT format
+                .andExpect(jsonPath("$.jwt", matchesRegex("^[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*$")));
     }
 
     @Test
     @DisplayName("POST /api/auth/login - Success (200 OK) - Newly Registered Owner")
     void login_whenOwnerCredentialsValid_shouldReturnOkAndToken() throws Exception {
-        // Arrange: Register the owner first WITHIN THIS TRANSACTION
+        // Arrange
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRegistrationDto)))
@@ -251,8 +248,6 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("POST /api/auth/login - Unauthorized (401) - Invalid Password")
     void login_whenPasswordInvalid_shouldReturnUnauthorized() throws Exception {
-        // Arrange (invalidLoginDto from setUp)
-
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -266,8 +261,6 @@ class AuthControllerIntegrationTest {
     @Test
     @DisplayName("POST /api/auth/login - Unauthorized (401) - User Not Found")
     void login_whenUserNotFound_shouldReturnUnauthorized() throws Exception {
-        // Arrange (nonExistentUserLoginDto from setUp)
-
         // Act & Assert
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -275,13 +268,13 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
                 .andExpect(jsonPath("$.error", is("Authentication Failed")))
-                .andExpect(jsonPath("$.message", is("User account not found for the provided identifier."))); // Or your specific message
+                .andExpect(jsonPath("$.message", is("User account not found for the provided identifier.")));
     }
 
     @Test
     @DisplayName("POST /api/auth/login - Bad Request (400) - Invalid Input")
     void login_whenInputInvalid_shouldReturnBadRequest() throws Exception {
-        // Arrange: DTO with a blank password
+        // Arrange
         AuthLoginRequestDto invalidDto = new AuthLoginRequestDto("user", "");
 
         // Act & Assert

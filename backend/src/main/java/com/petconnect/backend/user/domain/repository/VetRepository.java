@@ -40,7 +40,7 @@ public interface VetRepository extends JpaRepository<Vet, Long> {
      * @param userIdToExclude The ID of the user (Vet) whose record should be excluded from the check.
      * @return true if another vet with the public key exists, false otherwise.
      */
-    boolean existsByVetPublicKeyAndIdNot(String vetPublicKey, Long userIdToExclude); // For checking on update
+    boolean existsByVetPublicKeyAndIdNot(String vetPublicKey, Long userIdToExclude);
 
     /**
      * Checks if a Vet with the given license number exists.
@@ -52,12 +52,12 @@ public interface VetRepository extends JpaRepository<Vet, Long> {
     boolean existsByLicenseNumber(String licenseNumber);
 
     /**
-     * Finds the first available Veterinarian associated with a specific clinic.
-     * Useful for assigning a default Vet when an Admin activates a pet.
-     * The ordering is not guaranteed unless specified (e.g., findFirstByClinicIdOrderByIdAsc).
+     * Finds a Vet entity by its unique username.
+     * Useful for retrieving a vet directly if the username is known,
+     * potentially bypassing the need to query the base UserRepository first.
      *
-     * @param clinicId The ID of the clinic.
-     * @return An Optional containing the first found Vet, or empty if no Vets exist for the clinic.
+     * @param username The username to search for.
+     * @return An {@link Optional} containing the found Vet, or {@link Optional#empty()} if no Vet with that username exists.
      */
-    Optional<Vet> findFirstByClinicId(Long clinicId);
+    Optional<Vet> findByUsername(String username);
 }

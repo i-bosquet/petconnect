@@ -75,7 +75,6 @@ public class ClinicController implements ClinicControllerApi {
     @GetMapping("/{clinicId}/staff/all")
     public ResponseEntity<List<ClinicStaffProfileDto>> getAllStaffByClinic(@PathVariable Long clinicId) {
         Long requesterUserId = userServiceHelper.getAuthenticatedUserId();
-        // Authorization should ideally happen within the service method
         List<ClinicStaffProfileDto> staffList = clinicStaffService.findAllStaffByClinic(clinicId, requesterUserId);
         return ResponseEntity.ok(staffList);
     }
@@ -87,7 +86,6 @@ public class ClinicController implements ClinicControllerApi {
     @GetMapping("/{clinicId}/staff/active")
     public ResponseEntity<List<ClinicStaffProfileDto>> getActiveStaffByClinic(@PathVariable Long clinicId) {
         Long requesterUserId = userServiceHelper.getAuthenticatedUserId();
-        // Authorization should happen within the service method
         List<ClinicStaffProfileDto> staffList = clinicStaffService.findActiveStaffByClinic(clinicId, requesterUserId);
         return ResponseEntity.ok(staffList);
     }

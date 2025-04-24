@@ -48,7 +48,7 @@ public interface SigningService {
 
     /**
      * Retrieves the PrivateKey object for the specified Vet.
-     * FOR TFG/DEMO USE ONLY - Loads from configured file.
+     * FOR TFG/DEMO USE ONLY - Loads from the configured file.
      * @param vet The veterinarian.
      * @return The PrivateKey.
      * @throws RuntimeException if key loading fails.

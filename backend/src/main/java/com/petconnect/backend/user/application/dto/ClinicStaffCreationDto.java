@@ -28,7 +28,7 @@ public record ClinicStaffCreationDto(
         @NotBlank(message = "Email cannot be blank")
         @Email String email,
         @NotBlank(message = "Password cannot be blank")
-        @Size(min = 8) String password, // Consider a different approach for initial passwords
+        @Size(min = 8) String password,
         @NotBlank(message = "First name cannot be blank")
         @Size(max = 100) String name,
         @NotBlank(message = "Surname cannot be blank")
@@ -36,7 +36,6 @@ public record ClinicStaffCreationDto(
         @NotNull(message = "Role cannot be null") RoleEnum role , // Must be VET or ADMIN
         // Vet specific fields - validation might depend on role='VET'
         String licenseNumber, // Required if a role is VET
-        String vetPublicKey   // Required if role is VET
-        // Note: isActive defaults to true in entity
+        String vetPublicKey   // Required if a role is VET
 ) {
 }

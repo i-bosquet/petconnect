@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 @Transactional
-class RecordControllerTest {
+class RecordControllerIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -175,23 +175,7 @@ class RecordControllerTest {
         }
 
         @Test
-        @DisplayName("Should create VACCINE record UNSIGNED when called by Vet (sign=false)")
-        void createRecord_Success_Vet_Vaccine_Unsigned() throws Exception {
-            mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(vetVaccineDto))
-                            .param("sign", "false"))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id", is(notNullValue())))
-                    .andExpect(jsonPath("$.type", is(RecordType.VACCINE.name())))
-                    .andExpect(jsonPath("$.creator.id", is(vetId.intValue())))
-                    .andExpect(jsonPath("$.vaccine.name", is(vaccineDetailsDto.name())))
-                    .andExpect(jsonPath("$.vetSignature", is(nullValue())));
-        }
-
-        @Test
-        @DisplayName("Should create VACCINE record SIGNED when called by Vet (sign=true)")
+        @DisplayName("Should create VACCINE record SIGNED when called by Vet")
         void createRecord_Success_Vet_Vaccine_Signed() throws Exception {
             mockMvc.perform(post("/api/records")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -245,18 +229,6 @@ class RecordControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 400 Bad Request if trying to sign as Owner")
-        void createRecord_BadRequest_SignAsOwner() throws Exception {
-            mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(ownerCreateDto))
-                            .param("sign", "true"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message", containsString("Only Veterinarians can sign records")));
-        }
-
-        @Test
         @DisplayName("Should return 404 Not Found if petId in DTO not found")
         void createRecord_NotFound_Pet() throws Exception {
             RecordCreateDto dtoWithBadPetId = new RecordCreateDto(9999L, RecordType.OTHER, "Bad Pet", null);
@@ -283,49 +255,48 @@ class RecordControllerTest {
         @BeforeEach
         void listRecordsSetup() throws Exception {
             Long clinicId = 1L;
-                mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                        .andExpect(status().isNoContent());
-                entityManager.flush();
-                entityManager.clear();
+            mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isNoContent());
+            entityManager.flush();
+            entityManager.clear();
 
-                RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Owner record for list test", null);
-                MvcResult resOwnerRec = mockMvc.perform(post("/api/records")
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(ownerRecDto)))
-                        .andExpect(status().isCreated()).andReturn();
-                recordIdOwner = objectMapper.readValue(resOwnerRec.getResponse().getContentAsString(), RecordViewDto.class).id();
+            RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Owner record for list test", null);
+            MvcResult resOwnerRec = mockMvc.perform(post("/api/records")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(ownerRecDto)))
+                    .andExpect(status().isCreated()).andReturn();
+            recordIdOwner = objectMapper.readValue(resOwnerRec.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                VaccineCreateDto vacDtoSigned = new VaccineCreateDto("VacListSigned", 1, "LabListS", "BatchListS");
-                RecordCreateDto vetRecDtoSigned = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed record for list test", vacDtoSigned);
-                MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true")
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(vetRecDtoSigned)))
-                        .andExpect(status().isCreated()).andReturn();
-                recordIdVetSigned = objectMapper.readValue(resVetSigned.getResponse().getContentAsString(), RecordViewDto.class).id();
+            VaccineCreateDto vacDtoSigned = new VaccineCreateDto("VacListSigned", 1, "LabListS", "BatchListS");
+            RecordCreateDto vetRecDtoSigned = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed record for list test", vacDtoSigned);
+            MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(vetRecDtoSigned)))
+                    .andExpect(status().isCreated()).andReturn();
+            recordIdVetSigned = objectMapper.readValue(resVetSigned.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                // Vet creates an ILLNESS record, unsigned
-                RecordCreateDto vetRecDtoUnsigned = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Unsigned record for list test", null);
-                MvcResult resVetUnsigned = mockMvc.perform(post("/api/records?sign=false")
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(vetRecDtoUnsigned)))
-                        .andExpect(status().isCreated()).andReturn();
-                recordIdVetUnsigned = objectMapper.readValue(resVetUnsigned.getResponse().getContentAsString(), RecordViewDto.class).id();
+            // Vet creates an ILLNESS record, unsigned
+            RecordCreateDto vetRecDtoUnsigned = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Unsigned record for list test", null);
+            MvcResult resVetUnsigned = mockMvc.perform(post("/api/records?sign=false")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(vetRecDtoUnsigned)))
+                    .andExpect(status().isCreated()).andReturn();
+            recordIdVetUnsigned = objectMapper.readValue(resVetUnsigned.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                // Asociar el vet con el pet
-                mockMvc.perform(post("/api/pets/{petId}/associate-vet/{vetId}", petIdOwned, vetId)
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                        .andExpect(status().isNoContent());
+            mockMvc.perform(post("/api/pets/{petId}/associate-vet/{vetId}", petIdOwned, vetId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isNoContent());
 
-                entityManager.flush();
-                entityManager.clear();
+            entityManager.flush();
+            entityManager.clear();
 
-                assertThat(recordIdOwner).isNotNull();
-                assertThat(recordIdVetSigned).isNotNull();
-                assertThat(recordIdVetUnsigned).isNotNull();
+            assertThat(recordIdOwner).isNotNull();
+            assertThat(recordIdVetSigned).isNotNull();
+            assertThat(recordIdVetUnsigned).isNotNull();
         }
 
         @Test
@@ -562,7 +533,6 @@ class RecordControllerTest {
     class DeleteRecordIntegrationTests {
 
         private Long unsignedOwnerRecordId;
-        private Long unsignedVetRecordId;
         private Long signedVetRecordId;
 
 
@@ -570,38 +540,38 @@ class RecordControllerTest {
         void deleteRecordSetup() throws Exception {
             Long clinicId = 1L;
             Long recordFromOtherOwnerId;
-                mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                        .andExpect(status().isNoContent());
+            mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isNoContent());
 
-                RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Unsigned Owner Rec", null);
-                MvcResult resOwner = mockMvc.perform(post("/api/records").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerRecDto))).andExpect(status().isCreated()).andReturn();
-                unsignedOwnerRecordId = objectMapper.readValue(resOwner.getResponse().getContentAsString(), RecordViewDto.class).id();
+            RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Unsigned Owner Rec", null);
+            MvcResult resOwner = mockMvc.perform(post("/api/records").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerRecDto))).andExpect(status().isCreated()).andReturn();
+            unsignedOwnerRecordId = objectMapper.readValue(resOwner.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                RecordCreateDto vetUnsignedDto = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Unsigned Vet Rec", null);
-                MvcResult resVetUnsigned = mockMvc.perform(post("/api/records?sign=false").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetUnsignedDto))).andExpect(status().isCreated()).andReturn();
-                unsignedVetRecordId = objectMapper.readValue(resVetUnsigned.getResponse().getContentAsString(), RecordViewDto.class).id();
+            RecordCreateDto vetUnsignedDto = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Unsigned Vet Rec", null);
+            MvcResult resVetUnsigned = mockMvc.perform(post("/api/records?sign=false").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetUnsignedDto))).andExpect(status().isCreated()).andReturn();
+            Long unsignedVetRecordId = objectMapper.readValue(resVetUnsigned.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                VaccineCreateDto vacDto = new VaccineCreateDto("VacDeleteTest", 1, "LDel", "BDel");
-                RecordCreateDto vetSignedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Vet Rec", vacDto);
-                MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetSignedDto))).andExpect(status().isCreated()).andReturn();
-                signedVetRecordId = objectMapper.readValue(resVetSigned.getResponse().getContentAsString(), RecordViewDto.class).id();
+            VaccineCreateDto vacDto = new VaccineCreateDto("VacDeleteTest", 1, "LDel", "BDel");
+            RecordCreateDto vetSignedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Vet Rec", vacDto);
+            MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetSignedDto))).andExpect(status().isCreated()).andReturn();
+            signedVetRecordId = objectMapper.readValue(resVetSigned.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                RecordCreateDto otherOwnerDto = new RecordCreateDto(petIdOther, RecordType.OTHER, "Other Owner Rec", null);
-                MvcResult resOther = mockMvc.perform(post("/api/records")
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(otherOwnerDto)))
-                        .andExpect(status().isCreated()).andReturn();
-                recordFromOtherOwnerId = objectMapper.readValue(resOther.getResponse().getContentAsString(), RecordViewDto.class).id();
+            RecordCreateDto otherOwnerDto = new RecordCreateDto(petIdOther, RecordType.OTHER, "Other Owner Rec", null);
+            MvcResult resOther = mockMvc.perform(post("/api/records")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(otherOwnerDto)))
+                    .andExpect(status().isCreated()).andReturn();
+            recordFromOtherOwnerId = objectMapper.readValue(resOther.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-                entityManager.flush();
-                entityManager.clear();
+            entityManager.flush();
+            entityManager.clear();
 
-                assertThat(unsignedOwnerRecordId).isNotNull();
-                assertThat(unsignedVetRecordId).isNotNull();
-                assertThat(signedVetRecordId).isNotNull();
-                assertThat(recordFromOtherOwnerId).isNotNull();
+            assertThat(unsignedOwnerRecordId).isNotNull();
+            assertThat(unsignedVetRecordId).isNotNull();
+            assertThat(signedVetRecordId).isNotNull();
+            assertThat(recordFromOtherOwnerId).isNotNull();
         }
 
         @Test
@@ -614,22 +584,12 @@ class RecordControllerTest {
         }
 
         @Test
-        @DisplayName("Should return success delete unsigned record when called by Vet creator")
-        void deleteUnsigned_Success_ByVetCreator() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", unsignedVetRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
-                    .andExpect(status().isNoContent());
-            assertThat(recordRepository.findById(unsignedVetRecordId)).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Should return 403 Forbidden when Admin tries to delete Vet's record (even same clinic)")
-        void deleteUnsigned_Forbidden_ByAdminSameClinic() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", unsignedVetRecordId)
+        @DisplayName("Should return 403 Forbidden when Admin tries to delete Owner's record")
+        void deleteUnsigned_Forbidden_AdminDeletingOwnerRecord() throws Exception {
+            mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                     .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));
-            assertThat(recordRepository.findById(unsignedVetRecordId)).isPresent();
+                    .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));          assertThat(recordRepository.findById(unsignedOwnerRecordId)).isPresent();
         }
 
         @Test
@@ -659,11 +619,13 @@ class RecordControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 403 Forbidden if Admin from DIFFERENT clinic tries to delete Vet's record")
-        void deleteUnsigned_Forbidden_AdminDifferentClinic() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", unsignedVetRecordId)
+        @DisplayName("Should return 403 Forbidden if Admin from DIFFERENT clinic tries to delete Owner's unsigned record")
+        void deleteUnsigned_Forbidden_AdminDifferentClinicDeletingOwnerRecord() throws Exception {
+            mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));
+            assertThat(recordRepository.findById(unsignedOwnerRecordId)).isPresent();
         }
 
         @Test

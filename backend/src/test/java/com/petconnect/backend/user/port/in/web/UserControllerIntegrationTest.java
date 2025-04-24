@@ -42,12 +42,10 @@ class UserControllerIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private UserRepository userRepository;
 
-    // --- Tokens ---
     private String adminToken;
     private String ownerToken;
     private String vetToken;
 
-    // --- User IDs from data.sql ---
     private final Long adminLondonId = 2L;
     private final String ownerRegisteredUsername = "test_owner_for_user_ctrl";
     private final String ownerRegisteredEmail = "test_owner_uc@test.com";
@@ -55,26 +53,20 @@ class UserControllerIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // --- Obtain Tokens ---
         adminToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
 
-        // Register a fresh owner for these tests to avoid conflicts and know the ID
         OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(
                 ownerRegisteredUsername, ownerRegisteredEmail, "password123", "555-000-111");
 
-        // Ensure this user doesn't exist from a previous failed run if needed (though @Transactional helps)
         userRepository.findByUsername(ownerRegisteredUsername).ifPresent(userRepository::delete);
 
-        // Register Owner
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(ownerReg)))
                 .andExpect(status().isCreated());
 
-        // Login as the new Owner to get their token
         ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
-        // Get a token for another staff member (e.g., admin_barcelona acting as Vet for permission tests)
         vetToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
 
         assertThat(adminToken).isNotNull();
@@ -121,8 +113,8 @@ class UserControllerIntegrationTest {
                     .andExpect(jsonPath("$.username", is("admin_london")))
                     .andExpect(jsonPath("$.email", is("admin.london@petconnect.dev")))
                     .andExpect(jsonPath("$.roles", contains("ADMIN")))
-                    .andExpect(jsonPath("$.clinicId", is(1))) // Assuming clinic 1 for admin_london
-                    .andExpect(jsonPath("$.name", is("John"))); // From data.sql
+                    .andExpect(jsonPath("$.clinicId", is(1)))
+                    .andExpect(jsonPath("$.name", is("John")));
         }
 
         @Test
@@ -143,6 +135,7 @@ class UserControllerIntegrationTest {
         @Test
         @DisplayName("should return 403 Forbidden when Owner requests ANY ID via this endpoint")
         void getUserById_whenOwnerRequestsAnyId_shouldReturnForbidden() throws Exception {
+            // Arrange
                 UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
                 Long ownerId = owner.getId();
 
@@ -158,9 +151,9 @@ class UserControllerIntegrationTest {
         @Test
         @DisplayName("should return profile when Admin requests own ID")
         void getUserById_whenAdminRequestsSelf_shouldSucceed() throws Exception {
-            mockMvc.perform(get("/api/users/{id}", adminLondonId) // Admin requests own profile
+            mockMvc.perform(get("/api/users/{id}", adminLondonId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
-                    .andExpect(status().isOk()) // <-- Espera 200 OK
+                    .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id", is(adminLondonId.intValue())))
                     .andExpect(jsonPath("$.username", is("admin_london")));
         }
@@ -168,12 +161,12 @@ class UserControllerIntegrationTest {
         @Test
         @DisplayName("should return profile when Admin requests any valid ID")
         void getUserById_whenAdminRequestsOwner_shouldReturnForbidden() throws Exception {
-            // Admin requests the dynamically created owner's profile
+            // Arrange
             UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
             Long ownerId = owner.getId();
 
             mockMvc.perform(get("/api/users/{id}", ownerId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)) // Use Admin token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.status", is(403)))
                     .andExpect(jsonPath("$.error", is("Forbidden")));
@@ -182,9 +175,8 @@ class UserControllerIntegrationTest {
         @Test
         @DisplayName("should return 403 Forbidden when Owner requests another user's ID")
         void getUserById_whenOwnerRequestsOther_shouldReturnForbidden() throws Exception {
-            // Owner (dynamic) tries to request Admin London's profile (ID 2)
             mockMvc.perform(get("/api/users/{id}", adminLondonId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)) // Use Owner token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
                     .andExpect(status().isForbidden()); // Fails @PreAuthorize check
         }
 
@@ -192,8 +184,8 @@ class UserControllerIntegrationTest {
         @DisplayName("should return 404 Not Found when ID does not exist (as Admin)")
         void getUserById_whenIdNotFound_shouldReturnNotFound() throws Exception {
             mockMvc.perform(get("/api/users/{id}", 9999L)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)) // Use Admin token
-                    .andExpect(status().isNotFound()); // Expect 404 from orElseGet() in controller
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -215,7 +207,7 @@ class UserControllerIntegrationTest {
         @DisplayName("should return profile when Admin requests valid email")
         void getUserByEmail_whenAdminRequests_shouldSucceed() throws Exception {
             mockMvc.perform(get("/api/users/by-email")
-                            .param("email", "admin.london@petconnect.dev") // Email from data.sql
+                            .param("email", "admin.london@petconnect.dev")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.email", is("admin.london@petconnect.dev")))
@@ -227,8 +219,8 @@ class UserControllerIntegrationTest {
         void getUserByEmail_whenOwnerRequests_shouldReturnForbidden() throws Exception {
             mockMvc.perform(get("/api/users/by-email")
                             .param("email", "admin.london@petconnect.dev")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)) // Owner token
-                    .andExpect(status().isForbidden()); // Fails @PreAuthorize
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -266,7 +258,7 @@ class UserControllerIntegrationTest {
         @DisplayName("should update own profile successfully when called by Owner")
         void updateOwnProfile_whenOwner_shouldSucceed() throws Exception {
             mockMvc.perform(put("/api/users/me")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken) // Owner's token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(ownerUpdateDto)))
                     .andExpect(status().isOk())
@@ -280,30 +272,31 @@ class UserControllerIntegrationTest {
         @DisplayName("should return 403 Forbidden when called by non-Owner (e.g., Admin)")
         void updateOwnProfile_whenNotOwner_shouldReturnForbidden() throws Exception {
             mockMvc.perform(put("/api/users/me")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken) // Use Admin token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(ownerUpdateDto)))
-                    .andExpect(status().isForbidden()); // Fails @PreAuthorize("hasRole('OWNER')")
+                    .andExpect(status().isForbidden());
         }
 
         @Test
         @DisplayName("should return 409 Conflict if new username already exists")
         void updateOwnProfile_whenUsernameExists_shouldReturnConflict() throws Exception {
-            // Arrange: Use an existing username from data.sql
+            // Arrange
             OwnerProfileUpdateDto duplicateUsernameDto = new OwnerProfileUpdateDto("admin_london", null, null);
 
             mockMvc.perform(put("/api/users/me")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(duplicateUsernameDto)))
-                    .andExpect(status().isConflict()) // Expect 409 from service validation
+                    .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message", containsString("Username already taken")));
         }
 
         @Test
         @DisplayName("should return 400 Bad Request if update data invalid")
         void updateOwnProfile_whenInvalidData_shouldReturnBadRequest() throws Exception {
-            OwnerProfileUpdateDto invalidDto = new OwnerProfileUpdateDto("u", null, null); // Username too short
+            // Arrange
+            OwnerProfileUpdateDto invalidDto = new OwnerProfileUpdateDto("u", null, null);
 
             mockMvc.perform(put("/api/users/me")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -332,7 +325,7 @@ class UserControllerIntegrationTest {
         @DisplayName("should update own profile successfully when called by Admin")
         void updateOwnProfile_whenAdmin_shouldSucceed() throws Exception {
             mockMvc.perform(put("/api/users/me/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken) // Admin's token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(staffUpdateDto)))
                     .andExpect(status().isOk())
@@ -344,36 +337,35 @@ class UserControllerIntegrationTest {
         @Test
         @DisplayName("should update own profile successfully when called by Vet")
         void updateOwnProfile_whenVet_shouldSucceed() throws Exception {
-            // Using vetToken (which is admin_barcelona's token in this setup)
+            // Arrange
             UserProfileUpdateDto vetUpdateDto = new UserProfileUpdateDto("admin_barcelona_upd", "vet_avatar.png");
             mockMvc.perform(put("/api/users/me/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken) // Vet's token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(vetUpdateDto)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.username", is(vetUpdateDto.username())))
                     .andExpect(jsonPath("$.avatar", is(vetUpdateDto.avatar())));
-            // Optional: Verify DB change
         }
 
         @Test
         @DisplayName("should return 403 Forbidden when called by non-Staff (Owner)")
         void updateOwnProfile_whenNotStaff_shouldReturnForbidden() throws Exception {
             mockMvc.perform(put("/api/users/me/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken) // Use Owner token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(staffUpdateDto)))
-                    .andExpect(status().isForbidden()); // Fails @PreAuthorize("hasAnyRole('ADMIN','VET')")
+                    .andExpect(status().isForbidden());
         }
 
         @Test
         @DisplayName("should return 409 Conflict if new username already exists")
         void updateOwnProfile_whenUsernameExists_shouldReturnConflict() throws Exception {
-            // Arrange: Try to update admin_london to use admin_barcelona's username
+            // Arrange
             UserProfileUpdateDto duplicateUsernameDto = new UserProfileUpdateDto("admin_barcelona", null);
 
             mockMvc.perform(put("/api/users/me/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken) // Use Admin London's token
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(duplicateUsernameDto)))
                     .andExpect(status().isConflict())
@@ -383,7 +375,8 @@ class UserControllerIntegrationTest {
         @Test
         @DisplayName("should return 400 Bad Request if update data invalid")
         void updateOwnProfile_whenInvalidData_shouldReturnBadRequest() throws Exception {
-            UserProfileUpdateDto invalidDto = new UserProfileUpdateDto("u", null); // Username too short
+            // Arrange
+            UserProfileUpdateDto invalidDto = new UserProfileUpdateDto("u", null);
 
             mockMvc.perform(put("/api/users/me/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)

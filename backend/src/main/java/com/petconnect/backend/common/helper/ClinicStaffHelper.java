@@ -41,14 +41,14 @@ public class ClinicStaffHelper {
      * @param dto The DTO containing the data for the new staff member.
      * @param targetClinic The {@link Clinic} the new staff member will belong to.
      * @return The constructed (but not persisted) {@link ClinicStaff} or {@link Vet} entity.
-     * @throws IllegalArgumentException if VET role specific fields (license, key) are invalid or missing.
+     * @throws IllegalArgumentException if VET role-specific fields (license, key) are invalid or missing.
      * @throws LicenseNumberAlreadyExistsException if the VET license number is already in use.
      * @throws VetPublicKeyAlreadyExistsException if the VET public key is already in use.
      */
     public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto, Clinic targetClinic) {
         ClinicStaff newStaff;
         if (dto.role() == RoleEnum.VET) {
-            // Validate VET specific fields first
+            // Validate VET-specific fields first
             validateHelper.validateVetLicenseNumber(dto.licenseNumber());
             validateHelper.validateVetPublicKey(dto.vetPublicKey(), null);
 

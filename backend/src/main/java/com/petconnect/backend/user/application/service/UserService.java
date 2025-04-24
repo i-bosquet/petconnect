@@ -1,7 +1,9 @@
 package com.petconnect.backend.user.application.service;
 
-import com.petconnect.backend.user.application.dto.*; // Import necessary DTOs
+import com.petconnect.backend.user.application.dto.*;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
 
@@ -16,6 +18,17 @@ import java.util.Optional;
 public interface UserService {
 
     /**
+     * Loads user-specific data. This method is required by the UserDetailsService interface.
+     * It uses the username (which could be email in our case) to find the user.
+     *
+     * @param username The username (or email) identifying the user whose data is required.
+     * @return a fully populated {@link UserDetails} object (never {@code null})
+     * @throws UsernameNotFoundException if the user could not be found or the user has no
+     *                                   GrantedAuthority
+     */
+    UserDetails loadUserByUsername(String username) throws UsernameNotFoundException ;
+
+    /**
      * Retrieves the profile information of the currently authenticated user.
      * Determines the user type and returns the appropriate specific profile DTO.
      *
@@ -23,7 +36,7 @@ public interface UserService {
      *         or consider a common Profile interface if preferred. Returns null if no user is found.
      * @throws IllegalStateException if there is no authenticated user in the security context.
      */
-    Object getCurrentUserProfile(); // Return Object to allow specific DTO types
+    Object getCurrentUserProfile();
 
     /**
      * Finds a user by their unique identifier.

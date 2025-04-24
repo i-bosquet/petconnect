@@ -2,6 +2,7 @@ package com.petconnect.backend.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petconnect.backend.security.JwtUtils;
+import com.petconnect.backend.user.application.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +19,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -37,13 +37,13 @@ import java.util.Map;
  * @author ibosquet
  */
 @Configuration
-@EnableWebSecurity // Enables Spring Security's web security support
+@EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtUtils jwtUtils;
-    private final UserDetailsService userDetailsService;
+    private final UserService userService;
     private final ObjectMapper objectMapper;
 
 
@@ -70,60 +70,60 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(http -> {
-                    // --- PUBLIC ENDPOINTS ---
-                    // Authentication (Login/Register)
-                    http.requestMatchers("/api/auth/**").permitAll();
-                    // Public Clinic Search & Details
-                    http.requestMatchers(HttpMethod.GET, "/api/clinics").permitAll();
-                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{id}").permitAll();
-                    // API Documentation
-                    http.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**").permitAll();
-                    // Static Resources (Images) - Allow GET requests
-                    http.requestMatchers(HttpMethod.GET, "/images/**", "/uploaded-images/**").permitAll();
+                    // --- 1. PUBLIC ENDPOINTS ---
+                    http.requestMatchers("/api/auth/**").permitAll(); // Login/Register
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics").permitAll(); // Search clinics
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{id}").permitAll(); // Get clinic detail
+                    http.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**").permitAll(); // API Docs
+                    http.requestMatchers(HttpMethod.GET, "/images/**", "/uploaded-images/**").permitAll(); // Static Images
 
-                    // --- AUTHENTICATED USER ENDPOINTS (Generic) ---
-                    http.requestMatchers(HttpMethod.GET, "/api/users/me").authenticated(); // Get own profile
-                    http.requestMatchers(HttpMethod.GET, "/api/pets/breeds/{specie}").authenticated(); // List breeds (any authenticated user)
+                    // --- 2. AUTHENTICATED (ANY ROLE - Fine-grained auth in service) ---
+                    http.requestMatchers(HttpMethod.GET, "/api/users/me").authenticated(); // Get own profile (Covered by the specific role rules above, but safe to leave)
+                    http.requestMatchers(HttpMethod.GET, "/api/pets/breeds/{specie}").authenticated(); // List breeds
+                    http.requestMatchers(HttpMethod.GET, "/api/pets/{petId}").authenticated(); // Get Pet details (Owner or associated Staff)
+                    http.requestMatchers(HttpMethod.GET, "/api/records").authenticated(); // List records (requires petId param, checked in service)
+                    http.requestMatchers(HttpMethod.POST, "/api/records").authenticated(); // Create a record (checked in service)
+                    http.requestMatchers(HttpMethod.GET, "/api/records/{recordId}").authenticated(); // Get record detail (checked in service)
+                    http.requestMatchers(HttpMethod.DELETE, "/api/records/{recordId}").authenticated(); // Delete record (checked in service)
+                    http.requestMatchers(HttpMethod.GET, "/api/certificates").authenticated(); // List certificates (requires petId param, checked in service)
+                    http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}").authenticated(); // Get certificate detail (checked in service)
+                    http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}/qr-data").authenticated(); // Get QR data (checked in service)
 
-                    // --- OWNER SPECIFIC ENDPOINTS ---
-                    // User Profile
-                    http.requestMatchers(HttpMethod.PUT, "/api/users/me").hasRole(ROLE_OWNER);
-                    // Pet Management (Owner Actions)
+
+                    // --- 3. ENDPOINTS BY SPECIFIC ROLE ---
+
+                    // --- OWNER ---
+                    http.requestMatchers(HttpMethod.PUT, "/api/users/me").hasRole(ROLE_OWNER); // Update own profile
                     http.requestMatchers(HttpMethod.POST, "/api/pets").hasRole(ROLE_OWNER); // Register pet
-                    http.requestMatchers(HttpMethod.GET, "/api/pets").hasRole(ROLE_OWNER); // List Pets
+                    http.requestMatchers(HttpMethod.GET, "/api/pets").hasRole(ROLE_OWNER); // List own pets
                     http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/owner-update").hasRole(ROLE_OWNER); // Update own pet
                     http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/deactivate").hasRole(ROLE_OWNER); // Deactivate own pet
-                    http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-clinic/{clinicId}").hasRole(ROLE_OWNER); // Associate for activation
+                    http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-clinic/{clinicId}").hasRole(ROLE_OWNER); // Associate pet for activation
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Associate vet
                     http.requestMatchers(HttpMethod.DELETE, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Disassociate vet
 
-                    // --- CLINIC STAFF SPECIFIC ENDPOINTS (VET/ADMIN) ---
-                    // User Profile
-                    http.requestMatchers(HttpMethod.PUT, "/api/users/me/staff").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Update own staff profile
-                    // Staff Management (By Admin ONLY)
+                    // --- VET ---
+                    http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/activate").hasAnyRole(ROLE_VET); // Activate pet
+                    http.requestMatchers(HttpMethod.POST, "/api/certificates").hasRole(ROLE_VET); // Generate Certificate
+
+                    // --- ADMIN ---
                     http.requestMatchers(HttpMethod.POST, "/api/staff").hasRole(ROLE_ADMIN); // Create staff
                     http.requestMatchers(HttpMethod.PUT, "/api/staff/{staffId}").hasRole(ROLE_ADMIN); // Update staff
                     http.requestMatchers(HttpMethod.PUT, "/api/staff/{staffId}/activate").hasRole(ROLE_ADMIN); // Activate staff
                     http.requestMatchers(HttpMethod.PUT, "/api/staff/{staffId}/deactivate").hasRole(ROLE_ADMIN); // Deactivate staff
-                    // Clinic Management (By Admin ONLY)
-                    http.requestMatchers(HttpMethod.PUT, "/api/clinics/{id}").hasRole(ROLE_ADMIN); // Update own clinic
-                    // Staff Listing (By Admin/Vet of that clinic)
-                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/staff/all").hasAnyRole(ROLE_ADMIN, ROLE_VET);
-                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/staff/active").hasAnyRole(ROLE_ADMIN, ROLE_VET);
-                    // Pet Management (Staff Actions)
-                    http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/activate").hasAnyRole(ROLE_VET); // Activate pet
-                    http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/clinic-update").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Update clinical info
-                    http.requestMatchers(HttpMethod.GET, "/api/pets/clinic").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets associated with MY clinic
-                    http.requestMatchers(HttpMethod.GET, "/api/pets/clinic/pending").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets pending at MY clinic
-
-                    // --- SHARED/COMPLEX ACCESS---
-                    http.requestMatchers(HttpMethod.GET, "/api/pets/{petId}").authenticated(); // Owner or associated Staff (checked in service)
-
-                    // --- ADMIN ONLY ACCESS  ---
+                    http.requestMatchers(HttpMethod.PUT, "/api/clinics/{id}").hasRole(ROLE_ADMIN); // Update an own clinic
                     http.requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole(ROLE_ADMIN); // Admin viewing specific user by ID
                     http.requestMatchers(HttpMethod.GET, "/api/users/by-email").hasRole(ROLE_ADMIN); // Admin viewing specific user by email
 
-                    // --- DEFAULT RULE ---
+                    // --- ADMIN or VET ---
+                    http.requestMatchers(HttpMethod.PUT, "/api/users/me/staff").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Update own staff profile
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/staff/all").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List all staff in an own clinic
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/staff/active").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List active staff in an own clinic
+                    http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/clinic-update").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Update clinical info by staff
+                    http.requestMatchers(HttpMethod.GET, "/api/pets/clinic").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets associated with MY clinic
+                    http.requestMatchers(HttpMethod.GET, "/api/pets/clinic/pending").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets pending at MY clinic
+
+                    // --- 4. DEFAULT RULE ---
                     // Any other request requires authentication
                     http.anyRequest().authenticated();
                 })
@@ -156,14 +156,14 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setPasswordEncoder(passwordEncoder);
-        provider.setUserDetailsService(userDetailsService);
+        provider.setUserDetailsService(userService::loadUserByUsername);
         return provider;
     }
 
     /**
      * Creates a custom AuthenticationEntryPoint bean.
      * This entry point is invoked when an unauthenticated user tries to access a protected resource
-     * or when authentication fails (e.g., bad credentials during login attempt handled by DaoAuthenticationProvider).
+     * or when authentication fails (e.g., bad credentials during a login attempt handled by DaoAuthenticationProvider).
      * It returns a 401 Unauthorized response with a JSON error message.
      *
      * @return The custom AuthenticationEntryPoint.
@@ -183,7 +183,7 @@ public class SecurityConfig {
             if (authException instanceof BadCredentialsException) {
                 body.put(MESSAGE, "Invalid username or password.");
             } else {
-                body.put(MESSAGE, authException.getMessage()); // Use message from the exception
+                body.put(MESSAGE, authException.getMessage());
             }
 
             body.put("path", request.getRequestURI());

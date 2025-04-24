@@ -10,7 +10,6 @@ import com.petconnect.backend.certificate.application.service.CertificateService
 import com.petconnect.backend.certificate.domain.model.Certificate;
 import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
 import com.petconnect.backend.common.service.SigningService;
-import com.petconnect.backend.exception.HashingException;
 import com.petconnect.backend.common.service.HashingService;
 import com.petconnect.backend.common.service.QrCodeService;
 import com.petconnect.backend.pet.domain.model.Pet;
@@ -20,6 +19,7 @@ import com.petconnect.backend.user.domain.model.Vet;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.CertificateHelper;
+import com.petconnect.backend.exception.HashingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -69,14 +69,11 @@ class RecordServiceImplTest {
     @Mock private RecordHelper recordHelper;
     @Mock private SigningServiceImpl signingServiceImpl;
 
-    // --- Class Under Test ---
     @InjectMocks
     private RecordServiceImpl recordService;
 
-    // --- Captors ---
     @Captor private ArgumentCaptor<Record> recordCaptor;
 
-    // --- Test Data ---
     private Pet pet;
     private Owner owner;
     private Vet vet;
@@ -106,7 +103,6 @@ class RecordServiceImplTest {
         pet.setOwner(owner);
         pet.setBreed(breed);
 
-        // Simulate Record Entities
         record1 = new Record();
         record1.setId(recordId1);
         record1.setPet(pet);
@@ -124,7 +120,6 @@ class RecordServiceImplTest {
         record2.setVetSignature("SIGNED_BY_VET_XYZ");
         record2.setCreatedAt(LocalDateTime.now());
 
-        // Simulate Record View DTOs
         UserProfileDto ownerDto = new UserProfileDto(ownerId, "testowner", null, Set.of("OWNER"), null);
         UserProfileDto vetDto = new UserProfileDto(vetId, "testvet", null, Set.of("VET"), null);
         recordDto1 = new RecordViewDto(recordId1, RecordType.OTHER, "Observation by owner", null, record1.getCreatedAt(), ownerDto, null);
@@ -149,14 +144,11 @@ class RecordServiceImplTest {
 
         @BeforeEach
         void createSetup() {
-            // DTO for an owner creating ANOTHER record
             ownerRecordDto = new RecordCreateDto( petIdForCreate,RecordType.OTHER, "Felt warm yesterday", null);
 
-            // DTO for vet creating VACCINE record
             vaccineDetailsDto = new VaccineCreateDto("RabiesVac", 1, "LabX", "Batch123");
             vetVaccineDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Rabies vaccination administered", vaccineDetailsDto);
 
-            // Simulate entities BEFORE save
             Record newRecordFromVet;
             Record.builder().pet(pet).creator(owner).type(ownerRecordDto.type())
                     .description(ownerRecordDto.description()).build();
@@ -164,10 +156,8 @@ class RecordServiceImplTest {
                     .description(vetVaccineDto.description()).build();
             newVaccineEntity = Vaccine.builder().name(vaccineDetailsDto.name()).validity(vaccineDetailsDto.validity())
                     .laboratory(vaccineDetailsDto.laboratory()).batchNumber(vaccineDetailsDto.batchNumber()).build();
-            // Associate vaccine with record for simulation
             newRecordFromVet.setVaccineDetails(newVaccineEntity);
 
-            // Simulate View DTOs returned AFTER save
             expectedOwnerRecordViewDto = new RecordViewDto(200L, ownerRecordDto.type(), ownerRecordDto.description(), null, LocalDateTime.now(), userMapper.mapToBaseProfileDTO(owner), null);
             expectedVetVaccineViewDto = new RecordViewDto(201L, vetVaccineDto.type(), vetVaccineDto.description(), "TEMP_SIGNATURE", LocalDateTime.now(), userMapper.mapToBaseProfileDTO(vet), vaccineMapper.toViewDto(newVaccineEntity)); // Assume signed
         }
@@ -180,7 +170,7 @@ class RecordServiceImplTest {
             given(entityFinderHelper.findUserOrFail(ownerId)).willReturn(owner);
             doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(ownerId, pet, "create record for");
             doNothing().when(validateHelper).validateRecordCreationDto(ownerRecordDto);
-            // Mock save to assign ID and return
+
             given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
                 Record recordEntity = inv.getArgument(0);
                 recordEntity.setId(200L);
@@ -189,7 +179,7 @@ class RecordServiceImplTest {
             given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedOwnerRecordViewDto);
 
             // Act
-            RecordViewDto result = recordService.createRecord(ownerRecordDto, ownerId, false);
+            RecordViewDto result = recordService.createRecord(ownerRecordDto, ownerId);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedOwnerRecordViewDto);
@@ -239,13 +229,12 @@ class RecordServiceImplTest {
 
 
             // Act
-            RecordViewDto result = recordService.createRecord( vetVaccineDto, vetId, true);
+            RecordViewDto result = recordService.createRecord( vetVaccineDto, vetId);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedVetVaccineViewDto);
             assertThat(result.vetSignature()).isEqualTo(expectedSignature);
 
-            // Verify interactions
             then(entityFinderHelper).should().findPetByIdOrFail(petId);
             then(entityFinderHelper).should().findUserOrFail(vetId);
             then(authorizationHelper).should().verifyUserAuthorizationForPet(vetId, pet, "create record for");
@@ -275,7 +264,7 @@ class RecordServiceImplTest {
                     .when(validateHelper).validateRecordCreationDto(invalidDto);
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId, false))
+            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Vaccine details are required");
 
@@ -295,26 +284,9 @@ class RecordServiceImplTest {
                     .when(validateHelper).validateRecordCreationDto(invalidDto);
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId, false))
+            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Vaccine details should only be provided");
-
-            then(recordRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw IllegalStateException if signRecord is true but creator is not Vet")
-        void createRecord_Failure_SignNotVet() {
-            // Arrange
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(entityFinderHelper.findUserOrFail(ownerId)).willReturn(owner);
-            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(ownerId, pet, "create record for");
-            doNothing().when(validateHelper).validateRecordCreationDto(ownerRecordDto);
-
-            // Act & Assert
-            assertThatThrownBy(() -> recordService.createRecord( ownerRecordDto, ownerId, true))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Only Veterinarians can sign records");
 
             then(recordRepository).should(never()).save(any());
         }
@@ -334,7 +306,6 @@ class RecordServiceImplTest {
         @BeforeEach
         void findRecordsSetup() {
             pageable = PageRequest.of(0, 10);
-            // Asegurarse de que el pet tiene owner y creadores para los récords
             record1.setPet(pet); record1.setCreator(owner);
             record2.setPet(pet); record2.setCreator(vet);
         }
@@ -607,7 +578,6 @@ class RecordServiceImplTest {
             recordToDeleteSigned.setVetSignature("SIGNATURE_XYZ");
             recordToDeleteSigned.setType(RecordType.ANNUAL_CHECK);
 
-            // Record created by Vet, unsigned, to test deletion by Admin
             Clinic clinic = vet.getClinic();
             if (clinic == null) {
                 clinic = Clinic.builder().build(); clinic.setId(1L);
@@ -620,7 +590,6 @@ class RecordServiceImplTest {
             recordToDeleteByOtherStaff.setVetSignature(null);
             recordToDeleteByOtherStaff.setType(RecordType.ILLNESS);
 
-            // Admin in the SAME clinic as the Vet
             adminSameClinic = new ClinicStaff();
             adminSameClinic.setId(deleterAdminId);
             adminSameClinic.setClinic(clinic);
@@ -684,7 +653,6 @@ class RecordServiceImplTest {
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Cannot delete record " + recordSignedId + " because it has been signed");
 
-            // Verify find helpers called, but delete not
             then(entityFinderHelper).should().findRecordByIdOrFail(recordSignedId);
             then(entityFinderHelper).should().findUserOrFail(creatorVetId);
             then(recordRepository).should(never()).delete(any(Record.class));
@@ -708,7 +676,6 @@ class RecordServiceImplTest {
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not authorized to delete record " + recordUnsignedId);
 
-            // Verify find helpers called, but delete not
             then(entityFinderHelper).should().findRecordByIdOrFail(recordUnsignedId);
             then(entityFinderHelper).should().findUserOrFail(unauthorizedUserId);
             then(recordRepository).should(never()).delete(any(Record.class));

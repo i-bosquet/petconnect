@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Size;
 
 /**
  * DTO for an Admin updating Clinic Staff information.
- * Allows updating name, surname. Activation status handled separately.
+ * Allows updating name, surname. Activation status is handled separately.
  *
  * @param name Updated first name.
  * @param surname Updated last name.

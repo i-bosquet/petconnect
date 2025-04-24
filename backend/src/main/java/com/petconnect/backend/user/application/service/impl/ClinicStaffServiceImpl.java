@@ -91,7 +91,6 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
             log.info("No changes detected for staff ID {}, update skipped.", staffId);
         }
 
-        // Map and return
         return userMapper.toClinicStaffProfileDto(updatedStaff);
     }
 
@@ -102,7 +101,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     @Transactional
     public ClinicStaffProfileDto activateStaff(Long staffId, Long activatingAdminId) {
         ClinicStaff staffToActivate = entityFinderHelper.findClinicStaffOrFail(staffId, "activate");
-        authorizationHelper.verifyAdminActionOnStaff(activatingAdminId, staffToActivate, "activate"); // Verify admin is authorized for this staff
+        authorizationHelper.verifyAdminActionOnStaff(activatingAdminId, staffToActivate, "activate");
 
         if (staffToActivate.isActive()) {
             throw new IllegalStateException("Staff member with id " + staffId + " is already active.");
@@ -120,12 +119,12 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     @Transactional
     public ClinicStaffProfileDto deactivateStaff(Long staffId, Long deactivatingAdminId) {
         ClinicStaff staffToDeactivate = entityFinderHelper.findClinicStaffOrFail(staffId, "deactivate");
-        authorizationHelper.verifyAdminActionOnStaff(deactivatingAdminId, staffToDeactivate, "deactivate"); // Verify admin is authorized for this staff
+        authorizationHelper.verifyAdminActionOnStaff(deactivatingAdminId, staffToDeactivate, "deactivate");
 
         if (!staffToDeactivate.isActive()) {
             throw new IllegalStateException("Staff member with id " + staffId + " is already inactive.");
         }
-        // Prevent self-deactivation
+
         if (staffId.equals(deactivatingAdminId)) {
             throw new IllegalArgumentException("Admin cannot deactivate their own account.");
         }
@@ -141,9 +140,9 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     @Override
     @Transactional(readOnly = true)
     public List<ClinicStaffProfileDto> findActiveStaffByClinic(Long clinicId, Long requesterUserId) {
-        authorizationHelper.verifyClinicStaffAccess(requesterUserId, clinicId, "view active staff for"); // Verify requester can access this clinic's data
+        authorizationHelper.verifyClinicStaffAccess(requesterUserId, clinicId, "view active staff for");
         List<ClinicStaff> staffList = clinicStaffRepository.findByClinicIdAndIsActive(clinicId, true);
-        return userMapper.toClinicStaffProfileDtoList(staffList); // Use mapper
+        return userMapper.toClinicStaffProfileDtoList(staffList);
     }
 
     /**
@@ -152,8 +151,8 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     @Override
     @Transactional(readOnly = true)
     public List<ClinicStaffProfileDto> findAllStaffByClinic(Long clinicId, Long requesterUserId) {
-        authorizationHelper.verifyClinicStaffAccess(requesterUserId, clinicId, "view all staff for"); // Verify requester can access this clinic's data
+        authorizationHelper.verifyClinicStaffAccess(requesterUserId, clinicId, "view all staff for");
         List<ClinicStaff> staffList = clinicStaffRepository.findByClinicId(clinicId);
-        return userMapper.toClinicStaffProfileDtoList(staffList); // Use mapper
+        return userMapper.toClinicStaffProfileDtoList(staffList);
     }
 }

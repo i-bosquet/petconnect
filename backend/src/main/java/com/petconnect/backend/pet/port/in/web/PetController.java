@@ -29,7 +29,7 @@ import java.util.List;
 public class PetController implements PetControllerApi{
 
     private final PetService petService;
-    private final UserHelper userServiceHelper; // Needed to get current user ID
+    private final UserHelper userServiceHelper;
 
     /**
      * {@inheritDoc}

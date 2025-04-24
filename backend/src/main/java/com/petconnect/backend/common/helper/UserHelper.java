@@ -64,7 +64,7 @@ public class UserHelper {
     private String getAuthenticatedUserIdentifier() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // Check for valid, authenticated, non-anonymous user
+        // Check for a valid, authenticated, non-anonymous user
         if (authentication == null ||
                 !authentication.isAuthenticated() ||
                 authentication instanceof AnonymousAuthenticationToken) {

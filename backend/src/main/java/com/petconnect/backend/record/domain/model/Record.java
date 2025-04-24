@@ -76,10 +76,8 @@ public class Record extends BaseEntity {
      * 'type' is VACCINE. The relationship is owned by the Vaccine entity (via 'recordEntity' field)
      * but managed here via cascade options.
      */
-    @OneToOne(mappedBy = "recordEntity", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "recordEntity", cascade = CascadeType.ALL, orphanRemoval = true)
     private Vaccine vaccine;
-
-
 
     // --- Convenience Methods ---
 

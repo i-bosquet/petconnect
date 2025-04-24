@@ -66,7 +66,7 @@ public class EntityFinderHelper {
      * @param actionContext Description of the action being performed (for error messages).
      * @return The found and validated ClinicStaff entity.
      * @throws EntityNotFoundException if user not found.
-     * @throws AccessDeniedException if user is not ClinicStaff.
+     * @throws AccessDeniedException if the user is not ClinicStaff.
      * @throws IllegalStateException if the staff member has no associated clinic.
      */
     public ClinicStaff findClinicStaffOrFail(Long staffId, String actionContext) {

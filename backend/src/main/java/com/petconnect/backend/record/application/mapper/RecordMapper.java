@@ -34,10 +34,7 @@ public class RecordMapper {
             return null;
         }
 
-        // Map the creator using UserMapper
         UserProfileDto creatorDto = userMapper.mapToBaseProfileDTO(entity.getCreator());
-
-        // Map the vaccine details if present (only expected if type is VACCINE)
         VaccineViewDto vaccineDto = vaccineMapper.toViewDto(entity.getVaccine());
 
         return new RecordViewDto(

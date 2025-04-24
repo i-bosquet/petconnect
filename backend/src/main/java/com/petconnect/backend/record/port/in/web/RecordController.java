@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,11 +31,10 @@ public class RecordController implements RecordControllerApi {
     @Override
     @PostMapping("")
     public ResponseEntity<RecordViewDto> createRecord(
-            @Valid @RequestBody RecordCreateDto createDto,
-            @RequestParam(required = false, defaultValue = "false") boolean sign) {
+            @Valid @RequestBody RecordCreateDto createDto) {
 
         Long creatorUserId = userHelper.getAuthenticatedUserId();
-        RecordViewDto createdRecord = recordService.createRecord(createDto, creatorUserId, sign);
+        RecordViewDto createdRecord = recordService.createRecord(createDto, creatorUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdRecord);
     }
 

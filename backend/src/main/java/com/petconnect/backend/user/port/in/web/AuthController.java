@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-
 /**
  * Implementation of the {@link AuthControllerApi}.
  * Handles incoming HTTP requests for authentication and delegates to the {@link AuthService}.
@@ -34,7 +33,6 @@ public class AuthController implements AuthControllerApi {
     @PostMapping("/register")
     public ResponseEntity<OwnerProfileDto> registerOwner(@Valid @RequestBody OwnerRegistrationDto registrationDTO){
         OwnerProfileDto createdOwner = authService.registerOwner(registrationDTO);
-        // Return 201 Created status along with the created owner's profile
         return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);}
 
     /**

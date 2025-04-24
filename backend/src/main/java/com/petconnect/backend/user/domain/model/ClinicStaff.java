@@ -56,7 +56,7 @@ public class ClinicStaff extends UserEntity {
      * Cannot be null. Fetched lazily by default for ManyToOne.
      */
     @NotNull(message = "Clinic association cannot be null")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false) // LAZY is default, optional=false enforces non-null FK
-    @JoinColumn(name = "clinic_id", nullable = false) // Name of the foreign key column in clinic_staff table
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "clinic_id", nullable = false)
     private Clinic clinic;
 }
