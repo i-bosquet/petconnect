@@ -42,7 +42,7 @@
         <sonar.projectName>petconnect_backend</sonar.projectName>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
         <!-- Where will the sonnar report be generated? -->
-        <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.coverage.exclusions>src/**/model/*,src/**/dto/*,src/**/BackendApplication.java,src/**/config/*,src/**/exception/*,src/**/helper/*</sonar.coverage.exclusions>
         <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
     </properties>
@@ -196,13 +196,13 @@
                 <version>${jacoco-maven-plugin.version}</version>
                 <executions>
                     <execution>
-                        <id>prepare-agent</id>
+                        <id>prepare-agent</id> <!-- Prepare the JaCoCo agent BEFORE the tests run -->
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
                     <execution>
-                        <id>report</id>
+                        <id>report</id> <!-- Generate the report AFTER the tests are run -->
                         <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
@@ -221,8 +221,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
-                        -Xshare:off</argLine>
+                    <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar -Xshare:off</argLine>
                 </configuration>
             </plugin>
         </plugins>

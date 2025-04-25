@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data # Named volume for persistence
     ports:
-     - "5432:5432"
+     - "5432:5432" # Map host port 5432 to container port 5432
     networks:
       - petconnect-network
 
@@ -24,26 +24,46 @@ services:
       - "8081:8080" # Map Adminer's internal port 8080 to 8081 on your host machine
     networks:
       - petconnect-network
-    depends_on: # Ensures the database attempts to start first
+    depends_on: # needs the DB to be ready
       - db
 
-  # Servicio Backend
-#  backend:
-#    container_name: petconnect_backend
-#    # ... .
-#    networks:
-#      - petconnect-network
-#    depends_on: # The backend needs the DB to be ready
-#      - db
-
-  # Servicio Frontend
-#  frontend:
-#    container_name: petconnect_frontend
-#    # ...  ...
-#    networks:
-#      - petconnect-network
-#    depends_on: # The backend needs the DB to be ready
-#      - db
+#  Backend Service (Spring Boot Application)
+  backend:
+    container_name: petconnect_backend
+    # Build the image from the Dockerfile in the 'backend' directory
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # Map host port 8080 to container port 8080 (Spring Boot default)
+    networks:
+      - petconnect-network
+    depends_on: # needs the DB to be ready
+      - db
+    # Pass environment variables from the .env file to the Spring Boot container
+    # Spring Boot will automatically use these to override application.properties
+    environment:
+      # Database Connection (matches application.properties placeholders)
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # JWT Secrets (matches application.properties placeholders)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_SECRET_GENERATOR=${JWT_SECRET_GENERATOR}
+      # Key Paths
+      - VET_KEY_PATH=/app/keys/vet_private_key.pem
+      - VET_KEY_PASSWORD=${VET_KEY_PASSWORD}
+      - CLINIC_KEY_PATH=/app/keys/clinic_private_key.pem
+      - CLINIC_KEY_PASSWORD=${CLINIC_KEY_PASSWORD}
+      # Image Path - Matches the container path for images
+      - APP_EXTERNAL_IMAGES_PATH=/app/images # Matches MvcConfig target if serving uploaded images via container
+    volumes:
+      # Mount host directories into the container
+      # :ro for read-only, :rw for read-write
+      - ./keys:/app/keys:ro
+      - ./images:/app/images:rw
 
   # SonarQube Service
   sonarqube:
@@ -61,7 +81,7 @@ services:
     networks:
       - petconnect-network
     depends_on:
-      - db
+      - db # needs the DB to be ready
 
 networks:
   petconnect-network:
