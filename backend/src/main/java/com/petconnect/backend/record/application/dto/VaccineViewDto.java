@@ -15,6 +15,7 @@ public record VaccineViewDto(
         String name,
         Integer validity,
         String laboratory,
-        String batchNumber
+        String batchNumber,
+        Boolean isRabiesVaccine
 ) {
 }

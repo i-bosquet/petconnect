@@ -146,7 +146,7 @@ class RecordServiceImplTest {
         void createSetup() {
             ownerRecordDto = new RecordCreateDto( petIdForCreate,RecordType.OTHER, "Felt warm yesterday", null);
 
-            vaccineDetailsDto = new VaccineCreateDto("RabiesVac", 1, "LabX", "Batch123");
+            vaccineDetailsDto = new VaccineCreateDto("RabiesVac", 1, "LabX", "Batch123", true);
             vetVaccineDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Rabies vaccination administered", vaccineDetailsDto);
 
             Record newRecordFromVet;

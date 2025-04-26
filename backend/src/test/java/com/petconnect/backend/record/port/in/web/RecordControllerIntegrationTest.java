@@ -1,7 +1,6 @@
 package com.petconnect.backend.record.port.in.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.petconnect.backend.pet.application.dto.PetProfileDto;
 import com.petconnect.backend.pet.application.dto.PetRegistrationDto;
 import com.petconnect.backend.pet.domain.model.Gender;
 import com.petconnect.backend.pet.domain.model.Specie;
@@ -26,6 +25,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
+import static com.petconnect.backend.util.IntegrationTestUtils.extractPetIdFromResult;
+import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -68,8 +69,8 @@ class RecordControllerIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
 
-        adminToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
-        adminBarcelonaToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123")); // Usado en tests de delete
+        adminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
+        adminBarcelonaToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123")); // Usado en tests de delete
         Long mixedBreedCatId = 45L;
 
         String ownerUsername = "rec_owner_" + System.currentTimeMillis();
@@ -79,7 +80,7 @@ class RecordControllerIntegrationTest {
         MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerReg))).andExpect(status().isCreated()).andReturn();
         OwnerProfileDto ownerDto = objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
         ownerId = ownerDto.id();
-        ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+        ownerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
         String otherOwnerUsername = "rec_other_owner_" + System.currentTimeMillis();
         OwnerRegistrationDto otherOwnerReg = new OwnerRegistrationDto(otherOwnerUsername, otherOwnerUsername + "@test.com", "password123", "222");
@@ -87,7 +88,7 @@ class RecordControllerIntegrationTest {
         entityManager.flush();
 
         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherOwnerReg))).andExpect(status().isCreated());
-        otherOwnerToken = obtainJwtToken(new AuthLoginRequestDto(otherOwnerReg.username(), otherOwnerReg.password()));
+        otherOwnerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(otherOwnerReg.username(), otherOwnerReg.password()));
 
         String vetUsername = "rec_vet_" + System.currentTimeMillis();
         ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(vetUsername, vetUsername + "@test.com", "password123", "Record", "Vet", RoleEnum.VET, "VETREC" + System.currentTimeMillis(), "VETKEYREC" + System.currentTimeMillis());
@@ -96,15 +97,15 @@ class RecordControllerIntegrationTest {
         MvcResult vetRegResult = mockMvc.perform(post("/api/staff").header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetReg))).andExpect(status().isCreated()).andReturn();
         ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
         vetId = vetDto.id();
-        vetToken = obtainJwtToken(new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
+        vetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
 
         PetRegistrationDto petReg = new PetRegistrationDto("RecordPet", Specie.CAT, LocalDate.now().minusYears(1), mixedBreedCatId, null, "Calico", Gender.FEMALE, null);
         MvcResult petRegRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(petReg))).andExpect(status().isCreated()).andReturn();
-        petIdOwned = extractPetIdFromResult(petRegRes);
+        petIdOwned = extractPetIdFromResult(objectMapper,petRegRes);
 
         PetRegistrationDto otherPetReg = new PetRegistrationDto("OtherPet", Specie.DOG, LocalDate.now().minusYears(2), null, null, null, null, null);
         MvcResult otherPetRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherPetReg))).andExpect(status().isCreated()).andReturn();
-        petIdOther = extractPetIdFromResult(otherPetRes);
+        petIdOther = extractPetIdFromResult(objectMapper,otherPetRes);
 
         assertThat(ownerToken).isNotBlank();
         assertThat(vetToken).isNotBlank();
@@ -112,24 +113,6 @@ class RecordControllerIntegrationTest {
         assertThat(otherOwnerToken).isNotBlank();
         assertThat(petIdOwned).isNotNull();
         assertThat(petIdOther).isNotNull();
-    }
-
-    /** Helper to obtain JWT token */
-    private String obtainJwtToken(AuthLoginRequestDto loginRequest) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
-        AuthResponseDto responseDto = objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponseDto.class);
-        return responseDto.jwt();
-    }
-
-    /** Helper to extract ID from PetProfileDto response */
-    private Long extractPetIdFromResult(MvcResult result) throws Exception {
-        String json = result.getResponse().getContentAsString();
-        PetProfileDto dto = objectMapper.readValue(json, PetProfileDto.class);
-        return dto.id();
     }
 
     /**
@@ -146,7 +129,7 @@ class RecordControllerIntegrationTest {
         @BeforeEach
         void createRecordSetup() throws Exception {
             ownerCreateDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Owner observation", null);
-            vaccineDetailsDto = new VaccineCreateDto("Rabies TestVaccine", 1, "TestLab", "BatchTest");
+            vaccineDetailsDto = new VaccineCreateDto("Rabies TestVaccine", 1, "TestLab", "BatchTest", true);
             vetVaccineDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Vaccination performed", vaccineDetailsDto);
 
             Long clinicId = 1L;
@@ -269,7 +252,7 @@ class RecordControllerIntegrationTest {
                     .andExpect(status().isCreated()).andReturn();
             recordIdOwner = objectMapper.readValue(resOwnerRec.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-            VaccineCreateDto vacDtoSigned = new VaccineCreateDto("VacListSigned", 1, "LabListS", "BatchListS");
+            VaccineCreateDto vacDtoSigned = new VaccineCreateDto("VacListSigned", 1, "LabListS", "BatchListS", true);
             RecordCreateDto vetRecDtoSigned = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed record for list test", vacDtoSigned);
             MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -430,7 +413,7 @@ class RecordControllerIntegrationTest {
                     .andExpect(status().isCreated()).andReturn();
             ownerRecordId = objectMapper.readValue(resOwnerRec.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-            VaccineCreateDto vacDtoSigned = new VaccineCreateDto("VacGetByID", 1, "LabGet", "BatchGet");
+            VaccineCreateDto vacDtoSigned = new VaccineCreateDto("VacGetByID", 1, "LabGet", "BatchGet", true);
             RecordCreateDto vetRecDtoSigned = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed record for GetByID test", vacDtoSigned);
             MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
@@ -502,7 +485,7 @@ class RecordControllerIntegrationTest {
         @Test
         @DisplayName("Should return 403  Forbidden when requested by unassociated Staff")
         void getRecordById_Forbidden_UnassociatedStaff() throws Exception {
-            String otherAdminTokenFromSetup = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
+            String otherAdminTokenFromSetup = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
             mockMvc.perform(get("/api/records/{recordId}", ownerRecordId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherAdminTokenFromSetup))
                     .andExpect(status().isForbidden());
@@ -552,7 +535,7 @@ class RecordControllerIntegrationTest {
             MvcResult resVetUnsigned = mockMvc.perform(post("/api/records?sign=false").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetUnsignedDto))).andExpect(status().isCreated()).andReturn();
             Long unsignedVetRecordId = objectMapper.readValue(resVetUnsigned.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-            VaccineCreateDto vacDto = new VaccineCreateDto("VacDeleteTest", 1, "LDel", "BDel");
+            VaccineCreateDto vacDto = new VaccineCreateDto("VacDeleteTest", 1, "LDel", "BDel", true);
             RecordCreateDto vetSignedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Vet Rec", vacDto);
             MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetSignedDto))).andExpect(status().isCreated()).andReturn();
             signedVetRecordId = objectMapper.readValue(resVetSigned.getResponse().getContentAsString(), RecordViewDto.class).id();

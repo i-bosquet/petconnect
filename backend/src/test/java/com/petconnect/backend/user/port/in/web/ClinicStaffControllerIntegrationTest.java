@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+import static com.petconnect.backend.util.IntegrationTestUtils.extractStaffIdFromResult;
+import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -68,15 +70,15 @@ class ClinicStaffControllerIntegrationTest {
      */
     @BeforeEach
     void setUp() throws Exception {
-        adminLondonToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
-        adminBarcelonaToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
+        adminLondonToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto("admin_london", "password123"));
+        adminBarcelonaToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto("admin_barcelona", "password123"));
 
         OwnerRegistrationDto ownerReg = new OwnerRegistrationDto("staff_test_owner_" + System.currentTimeMillis(), "staff.owner."+System.currentTimeMillis()+"@test.com", "password123", "111");
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(ownerReg)))
                 .andExpect(status().isCreated());
-        ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+        ownerToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
         long timestamp = System.currentTimeMillis();
         vetCreationDto = new ClinicStaffCreationDto(
@@ -90,28 +92,6 @@ class ClinicStaffControllerIntegrationTest {
                 null, null
         );
         new ClinicStaffUpdateDto("UpdatedName", "UpdatedSurname", "UPD-LIC-" + timestamp, "UPD-KEY-" + timestamp);
-    }
-
-    /**
-     * Helper to obtain JWT token via login
-     */
-    private String obtainJwtToken(AuthLoginRequestDto loginRequest) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
-        AuthResponseDto responseDto = objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponseDto.class);
-        return responseDto.jwt();
-    }
-
-    /**
-     * Helper to extract ID from the response body of a staff creation/update
-     */
-    private Long extractStaffIdFromResult(MvcResult result) throws Exception {
-        String json = result.getResponse().getContentAsString();
-        ClinicStaffProfileDto dto = objectMapper.readValue(json, ClinicStaffProfileDto.class);
-        return dto.id();
     }
 
     /**
@@ -135,7 +115,7 @@ class ClinicStaffControllerIntegrationTest {
                     .andExpect(jsonPath("$.licenseNumber", is(vetCreationDto.licenseNumber())))
                     .andReturn();
 
-            Long newId = extractStaffIdFromResult(result);
+            Long newId = extractStaffIdFromResult(objectMapper, result);
             Optional<UserEntity> userOpt = userRepository.findById(newId);
             assertThat(userOpt).isPresent().get().isInstanceOf(Vet.class);
         }
@@ -152,7 +132,7 @@ class ClinicStaffControllerIntegrationTest {
                     .andExpect(jsonPath("$.roles", contains("ADMIN")))
                     .andExpect(jsonPath("$.clinicId", is(clinicLondonId.intValue())))
                     .andReturn();
-            Long newId = extractStaffIdFromResult(result);
+            Long newId = extractStaffIdFromResult(objectMapper, result);
             Optional<UserEntity> userOpt = userRepository.findById(newId);
             assertThat(userOpt).isPresent().get().isInstanceOf(ClinicStaff.class);
             assertThat(userOpt.get()).isNotInstanceOf(Vet.class);
@@ -297,14 +277,14 @@ class ClinicStaffControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(adminCreationDto)))
                     .andExpect(status().isCreated()).andReturn();
-            staffAdminToUpdateId = extractStaffIdFromResult(adminResult);
+            staffAdminToUpdateId = extractStaffIdFromResult(objectMapper, adminResult);
 
             MvcResult vetResult = mockMvc.perform(post("/api/staff")
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminLondonToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(vetCreationDto)))
                     .andExpect(status().isCreated()).andReturn();
-            staffVetToUpdateId = extractStaffIdFromResult(vetResult);
+            staffVetToUpdateId = extractStaffIdFromResult(objectMapper, vetResult);
         }
 
         @Test
@@ -435,7 +415,7 @@ class ClinicStaffControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(vetCreationDto)))
                     .andExpect(status().isCreated()).andReturn();
-            staffToToggleId = extractStaffIdFromResult(result);
+            staffToToggleId = extractStaffIdFromResult(objectMapper, result);
             assertThat(staffToToggleId).isNotNull();
         }
 

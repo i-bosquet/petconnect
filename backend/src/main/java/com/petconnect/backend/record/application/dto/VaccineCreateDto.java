@@ -30,6 +30,10 @@ public record VaccineCreateDto(
 
         @NotBlank(message = "Batch number cannot be blank")
         @Size(max = 50)
-        String batchNumber
+        String batchNumber,
+
+        @NotNull(message = "Must specify if it is a rabies vaccine")
+        Boolean isRabiesVaccine
+
 ) {
 }

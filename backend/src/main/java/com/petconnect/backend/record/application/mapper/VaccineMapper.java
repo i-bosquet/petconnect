@@ -31,6 +31,7 @@ public class VaccineMapper {
                 .validity(dto.validity())
                 .laboratory(dto.laboratory())
                 .batchNumber(dto.batchNumber())
+                .isRabiesVaccine(dto.isRabiesVaccine())
                 .build();
     }
 
@@ -49,7 +50,8 @@ public class VaccineMapper {
                 entity.getName(),
                 entity.getValidity(),
                 entity.getLaboratory(),
-                entity.getBatchNumber()
+                entity.getBatchNumber(),
+                entity.isRabiesVaccine()
         );
     }
 }

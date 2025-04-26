@@ -23,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+
+import static com.petconnect.backend.util.IntegrationTestUtils.extractPetIdFromResult;
+import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -65,8 +68,8 @@ class PetControllerIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
 
-        adminToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
-        otherAdminToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
+        adminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
+        otherAdminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
 
         String ownerUsername = "pet_ctrl_owner_" + System.currentTimeMillis();
         String ownerEmail = ownerUsername + "@test.com";
@@ -82,7 +85,7 @@ class PetControllerIntegrationTest {
                 .andReturn();
         OwnerProfileDto ownerDto = objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
         ownerId = ownerDto.id();
-        ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+        ownerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
         String vetUsername = "pet_ctrl_vet_" + System.currentTimeMillis();
         String vetEmail = vetUsername + "@test.com";
@@ -102,30 +105,12 @@ class PetControllerIntegrationTest {
                 .andReturn();
         ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
         vetId = vetDto.id();
-        vetToken = obtainJwtToken(new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
+        vetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
 
         assertThat(ownerToken).isNotNull();
         assertThat(adminToken).isNotNull();
         assertThat(vetToken).isNotNull();
         assertThat(otherAdminToken).isNotNull();
-    }
-
-    /** Helper to obtain JWT token */
-    private String obtainJwtToken(AuthLoginRequestDto loginRequest) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
-        AuthResponseDto responseDto = objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponseDto.class);
-        return responseDto.jwt();
-    }
-
-    /** Helper to extract ID from PetProfileDto response */
-    private Long extractPetIdFromResult(MvcResult result) throws Exception {
-        String json = result.getResponse().getContentAsString();
-        PetProfileDto dto = objectMapper.readValue(json, PetProfileDto.class);
-        return dto.id();
     }
 
     /**
@@ -213,8 +198,8 @@ class PetControllerIntegrationTest {
 
             MvcResult res1 = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reg1))).andExpect(status().isCreated()).andReturn();
             MvcResult res2 = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reg2))).andExpect(status().isCreated()).andReturn();
-            petId1 = extractPetIdFromResult(res1);
-            petId2 = extractPetIdFromResult(res2);
+            petId1 = extractPetIdFromResult(objectMapper,res1);
+            petId2 = extractPetIdFromResult(objectMapper,res2);
         }
 
         @Test
@@ -271,8 +256,8 @@ class PetControllerIntegrationTest {
 
             MvcResult res1 = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reg1))).andExpect(status().isCreated()).andReturn();
             MvcResult res2 = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reg2))).andExpect(status().isCreated()).andReturn();
-            petIdToModify = extractPetIdFromResult(res1);
-            Long anotherPetId = extractPetIdFromResult(res2);
+            petIdToModify = extractPetIdFromResult(objectMapper,res1);
+            Long anotherPetId = extractPetIdFromResult(objectMapper,res2);
             assertThat(petIdToModify).isNotNull();
             assertThat(anotherPetId).isNotNull();
         }
@@ -306,7 +291,7 @@ class PetControllerIntegrationTest {
             String otherOwnerUsername = "other_owner_" + System.currentTimeMillis();
             OwnerRegistrationDto otherReg = new OwnerRegistrationDto(otherOwnerUsername, otherOwnerUsername + "@test.com", "pass123456", "123");
             mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherReg))).andExpect(status().isCreated());
-            String otherOwnerToken = obtainJwtToken(new AuthLoginRequestDto(otherOwnerUsername, "pass123456"));
+            String otherOwnerToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(otherOwnerUsername, "pass123456"));
 
             PetOwnerUpdateDto updateDto = new PetOwnerUpdateDto("AttemptUpdate", null,null,null,null,null,null);
 
@@ -475,7 +460,7 @@ class PetControllerIntegrationTest {
             PetRegistrationDto pendingReg = new PetRegistrationDto("Pender", Specie.DOG, LocalDate.now().minusMonths(5), mixedDogBreedId, "pending.jpg", "Brown", Gender.MALE, "PENDINGCHIP1");
             MvcResult pendingRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(pendingReg)))
                     .andExpect(status().isCreated()).andReturn();
-            pendingPetId = extractPetIdFromResult(pendingRes);
+            pendingPetId = extractPetIdFromResult(objectMapper,pendingRes);
 
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", pendingPetId, clinicId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -485,7 +470,7 @@ class PetControllerIntegrationTest {
             PetRegistrationDto activeReg = new PetRegistrationDto("ActivoUpdate", Specie.CAT, LocalDate.now().minusMonths(9), mixedCatBreedId, "active.jpg", "Black", Gender.FEMALE, "ACTIVECHIP1");
             MvcResult activeRegRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(activeReg)))
                     .andExpect(status().isCreated()).andReturn();
-            activePetId = extractPetIdFromResult(activeRegRes);
+            activePetId = extractPetIdFromResult(objectMapper,activeRegRes);
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", activePetId, clinicId).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
 
             PetActivationDto activationForActivePet = new PetActivationDto(
@@ -594,7 +579,7 @@ class PetControllerIntegrationTest {
         @Test
         @DisplayName("should return 403 Forbidden when called by Staff from a different clinic")
         void activatePet_Forbidden_WrongClinic() throws Exception {
-            String otherVetToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
+            String otherVetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
             mockMvc.perform(put("/api/pets/{petId}/activate", pendingPetId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherVetToken))
                     .andExpect(status().isForbidden());
@@ -681,16 +666,16 @@ class PetControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(vet5Reg)))
                     .andExpect(status().isCreated()).andReturn();
             objectMapper.readValue(vet5RegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
-            String vet5Token = obtainJwtToken(new AuthLoginRequestDto(vet5Reg.username(), vet5Reg.password()));
+            String vet5Token = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vet5Reg.username(), vet5Reg.password()));
 
             PetRegistrationDto pendingReg = new PetRegistrationDto("PendingList", Specie.DOG, LocalDate.now().minusDays(10), null, null, null, null, "LISTPENDING");
             MvcResult resPend = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(pendingReg))).andExpect(status().isCreated()).andReturn();
-            pendingPetIdClinic1 = extractPetIdFromResult(resPend);
+            pendingPetIdClinic1 = extractPetIdFromResult(objectMapper,resPend);
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", pendingPetIdClinic1, clinic1Id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
 
             PetRegistrationDto activeReg1 = new PetRegistrationDto("ActiveList1", Specie.CAT, LocalDate.now().minusDays(30), null, null, null, null, "LISTACTIVE1");
             MvcResult resAct1 = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(activeReg1))).andExpect(status().isCreated()).andReturn();
-            activePetIdClinic1Vet1 = extractPetIdFromResult(resAct1);
+            activePetIdClinic1Vet1 = extractPetIdFromResult(objectMapper,resAct1);
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", activePetIdClinic1Vet1, clinic1Id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
             Pet petAct1 = petRepository.findById(activePetIdClinic1Vet1).orElseThrow();
             PetActivationDto activation1 = new PetActivationDto(petAct1.getName(), "Color1", Gender.MALE, petAct1.getBirthDate(), petAct1.getMicrochip(), petAct1.getBreed().getId(), petAct1.getImage());
@@ -698,7 +683,7 @@ class PetControllerIntegrationTest {
 
             PetRegistrationDto activeReg5 = new PetRegistrationDto("ActiveList5", Specie.RABBIT, LocalDate.now().minusDays(50), null, null, null, null, "LISTACTIVE5");
             MvcResult resAct5 = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(activeReg5))).andExpect(status().isCreated()).andReturn();
-            activePetIdClinic5 = extractPetIdFromResult(resAct5);
+            activePetIdClinic5 = extractPetIdFromResult(objectMapper,resAct5);
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", activePetIdClinic5, clinic5Id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
             Pet petAct5 = petRepository.findById(activePetIdClinic5).orElseThrow();
             PetActivationDto activation5 = new PetActivationDto(petAct5.getName(), "Color5", Gender.FEMALE, petAct5.getBirthDate(), petAct5.getMicrochip(), petAct5.getBreed().getId(), petAct5.getImage());
@@ -738,7 +723,7 @@ class PetControllerIntegrationTest {
         @DisplayName("should return 200 OK with empty page when clinic has no associated pets")
         void findMyClinicPets_Success_EmptyClinic() throws Exception {
             // Arrange
-            String adminManchesterToken = obtainJwtToken(new AuthLoginRequestDto("admin_manchester", "password123"));
+            String adminManchesterToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_manchester", "password123"));
 
             // Act & Assert
             mockMvc.perform(get("/api/pets/clinic")
@@ -807,11 +792,11 @@ class PetControllerIntegrationTest {
 
             PetRegistrationDto ownerPetReg = new PetRegistrationDto("OwnedPet", Specie.RABBIT, LocalDate.now(), null,null,null,null,null);
             MvcResult resOwner = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerPetReg))).andExpect(status().isCreated()).andReturn();
-            ownedPetId = extractPetIdFromResult(resOwner);
+            ownedPetId = extractPetIdFromResult(objectMapper,resOwner);
 
             PetRegistrationDto assocPetReg = new PetRegistrationDto("AssocPet", Specie.FERRET, LocalDate.now(), null,null,null,null,"ASSOCCHIP");
             MvcResult resAssoc = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(assocPetReg))).andExpect(status().isCreated()).andReturn();
-            associatedPetId = extractPetIdFromResult(resAssoc);
+            associatedPetId = extractPetIdFromResult(objectMapper,resAssoc);
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", associatedPetId, clinicId).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
             Pet petAssoc = petRepository.findById(associatedPetId).orElseThrow();
             PetActivationDto activationAssoc = new PetActivationDto(petAssoc.getName(),"C1",Gender.MALE,petAssoc.getBirthDate(),petAssoc.getMicrochip(),petAssoc.getBreed().getId(),petAssoc.getImage());

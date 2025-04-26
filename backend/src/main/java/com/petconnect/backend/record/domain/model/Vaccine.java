@@ -77,6 +77,10 @@ public class Vaccine {
     @Column(name = "batch_number", nullable = false, length = 50)
     private String batchNumber;
 
+    @NotNull
+    @Column(name = "is_rabies_vaccine", nullable = false)
+    private boolean isRabiesVaccine = false;
+
     // --- Custom equals/hashCode based on ID ---
 
     @Override

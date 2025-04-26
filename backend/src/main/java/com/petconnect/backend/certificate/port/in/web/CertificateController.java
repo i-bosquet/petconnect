@@ -37,7 +37,7 @@ public class CertificateController implements CertificateControllerApi {
     public ResponseEntity<CertificateViewDto> generateCertificate(
             @Valid @RequestBody CertificateGenerationRequestDto requestDto) {
         Long generatingVetId = userHelper.getAuthenticatedUserId();
-        log.info("Received request to generate certificate from Vet ID: {}", generatingVetId);
+        log.info("Received request to generate certificate for Pet ID {} from Vet ID: {}", requestDto.petId(), generatingVetId);
         CertificateViewDto createdCertificate = certificateService.generateCertificate(requestDto, generatingVetId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCertificate);
     }

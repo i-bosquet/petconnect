@@ -1,5 +1,5 @@
 # Build stage - Uses a Maven image to build the application
-FROM maven:3.9.8-eclipse-temurin-21 AS builder
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 

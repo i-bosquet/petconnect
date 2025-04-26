@@ -6,7 +6,7 @@ import com.petconnect.backend.certificate.application.mapper.CertificateMapper;
 import com.petconnect.backend.certificate.domain.model.Certificate;
 import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
 import com.petconnect.backend.common.service.QrCodeService;
-import com.petconnect.backend.exception.HashingException;
+import com.petconnect.backend.exception.*;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.CertificateHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
@@ -16,6 +16,7 @@ import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.record.domain.model.RecordType;
 import com.petconnect.backend.record.domain.model.Vaccine;
+import com.petconnect.backend.record.domain.repository.RecordRepository;
 import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.Owner;
 import com.petconnect.backend.user.domain.model.Vet;
@@ -30,8 +31,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -48,6 +51,7 @@ class CertificateServiceImplTest {
 
     // --- Mocks ---
     @Mock private CertificateRepository certificateRepository;
+    @Mock private RecordRepository recordRepository;
     @Mock private CertificateMapper certificateMapper;
     @Mock private EntityFinderHelper entityFinderHelper;
     @Mock private AuthorizationHelper authorizationHelper;
@@ -63,49 +67,53 @@ class CertificateServiceImplTest {
     // --- Captors ---
     @Captor ArgumentCaptor<Certificate> certificateCaptor;
 
+    // --- Test Data ---
     private Vet generatingVet;
-    private Record sourceRecord;
     private Pet pet;
     private Clinic clinic;
     private Owner owner;
     private CertificateGenerationRequestDto generationRequestDto;
     private Certificate savedCertificate;
     private CertificateViewDto expectedViewDto;
+    private Record validRabiesRecord;
+    private Record validCheckupRecord;
 
     private final Long vetId = 1L;
-    private final Long recordId = 10L;
+    private final String certNumber = "AHC-12345-XYZ";
 
     @BeforeEach
     void setUp() {
-        Vaccine vaccine;
         Long petId = 100L;
         Long clinicId = 5L;
         Long ownerId = 50L;
         Long certificateId = 500L;
 
-        clinic = Clinic.builder().name("Test Clinic Cert").build();
-        clinic.setId(clinicId);
-
+        clinic = Clinic.builder().name("Test Clinic Cert").build(); clinic.setId(clinicId);
         owner = new Owner(); owner.setId(ownerId); owner.setUsername("certowner");
-
         generatingVet = new Vet(); generatingVet.setId(vetId); generatingVet.setClinic(clinic); generatingVet.setUsername("certvet");
-
         pet = new Pet(); pet.setId(petId); pet.setOwner(owner);
 
-        vaccine = Vaccine.builder().name("Rabies Test").build();
-        vaccine.setId(recordId);
+        Vaccine rabiesVaccine = Vaccine.builder().name("Rabivax").isRabiesVaccine(true).validity(1).build();
+        Long rabiesRecordId = 10L;
+        rabiesVaccine.setId(rabiesRecordId);
+        validRabiesRecord = new Record(); validRabiesRecord.setId(rabiesRecordId); validRabiesRecord.setPet(pet); validRabiesRecord.setCreator(generatingVet);
+        validRabiesRecord.setVetSignature("RABIES_SIG"); validRabiesRecord.setType(RecordType.VACCINE);
+        validRabiesRecord.setCreatedAt(LocalDateTime.now().minusMonths(6));
+        validRabiesRecord.setVaccine(rabiesVaccine); rabiesVaccine.setRecordEntity(validRabiesRecord);
 
-        sourceRecord = new Record(); sourceRecord.setId(recordId); sourceRecord.setPet(pet); sourceRecord.setCreator(generatingVet);
-        sourceRecord.setVetSignature("EXISTING_RECORD_SIGNATURE");
-        sourceRecord.setType(RecordType.VACCINE);
-        sourceRecord.setVaccine(vaccine); vaccine.setRecordEntity(sourceRecord);
+        validCheckupRecord = new Record();
+        Long checkupRecordId = 11L;
+        validCheckupRecord.setId(checkupRecordId); validCheckupRecord.setPet(pet); validCheckupRecord.setCreator(generatingVet);
+        validCheckupRecord.setVetSignature("CHECKUP_SIG"); validCheckupRecord.setType(RecordType.ANNUAL_CHECK);
+        validCheckupRecord.setCreatedAt(LocalDateTime.now().minusMonths(2));
 
-        generationRequestDto = new CertificateGenerationRequestDto(recordId, "AHC-12345-XYZ");
+        generationRequestDto = new CertificateGenerationRequestDto(petId, certNumber);
 
         savedCertificate = Certificate.builder()
-                .medicalRecord(sourceRecord).pet(pet).generatorVet(generatingVet).issuingClinic(clinic)
-                .certificateNumber(generationRequestDto.certificateNumber())
-                .payload("{\"json\":\"payload\"}")
+                .medicalRecord(validRabiesRecord)
+                .pet(pet).generatorVet(generatingVet).issuingClinic(clinic)
+                .certificateNumber(certNumber)
+                .payload("{\"key\":\"value\"}")
                 .hash("hashedPayload")
                 .vetSignature("vetSignedHash")
                 .clinicSignature("clinicSignedHash")
@@ -113,7 +121,7 @@ class CertificateServiceImplTest {
         savedCertificate.setId(certificateId);
         savedCertificate.setCreatedAt(LocalDateTime.now());
 
-        expectedViewDto = new CertificateViewDto(certificateId, "AHC-12345-XYZ", null, null, null, null, savedCertificate.getCreatedAt(), "{\"json\":\"payload\"}", "hashedPayload", "vetSignedHash", "clinicSignedHash");
+        expectedViewDto = new CertificateViewDto(certificateId, certNumber, null, null, null, null, savedCertificate.getCreatedAt(), "{\"key\":\"value\"}", "hashedPayload", "vetSignedHash", "clinicSignedHash");
     }
 
     /**
@@ -122,39 +130,49 @@ class CertificateServiceImplTest {
     @Nested
     @DisplayName("generateCertificate Tests")
     class GenerateCertificateTests {
+        Long petId = 100L;
 
         @Test
-        @DisplayName("should generate certificate successfully when all prerequisites met")
-        void generateCertificate_Success() throws HashingException {
-            // Arrange
+        @DisplayName("should generate certificate successfully when Rabies vac and Checkup are valid")
+        void generateCertificate_Success_AllValid() throws HashingException {
+            // --- Arrange --
             String payloadHash = "a1b2c3d4e5f6...";
             String vetSig = "base64VetSig==";
             String clinicSig = "base64ClinicSig==";
+            Map<String, Object> mockPayloadMap = Map.of("key", "value");
 
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(recordId)).willReturn(sourceRecord);
-            willDoNothing().given(certificateHelper).validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
-            given(certificateHelper.buildPayload(pet, sourceRecord, generatingVet, clinic, generationRequestDto.certificateNumber()))
-                    .willReturn(Map.of("key", "value"));
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
 
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(List.of(validCheckupRecord));
+
+            given(certificateRepository.existsByMedicalRecordId(validRabiesRecord.getId())).willReturn(false);
+            given(certificateRepository.findByCertificateNumber(certNumber)).willReturn(Optional.empty());
+            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
+                    .willReturn(mockPayloadMap);
             given(hashingService.hashString(anyString())).willReturn(payloadHash);
             given(signingService.generateVetSignature(generatingVet, payloadHash)).willReturn(vetSig);
             given(signingService.generateClinicSignature(clinic, payloadHash)).willReturn(clinicSig);
-
             given(certificateRepository.save(any(Certificate.class))).willReturn(savedCertificate);
             given(certificateMapper.toViewDto(savedCertificate)).willReturn(expectedViewDto);
 
-
-            // Act
+            // --- Act ---
             CertificateViewDto result = certificateService.generateCertificate(generationRequestDto, vetId);
 
-            // Assert
+            // --- Assert ---
             assertThat(result).isNotNull().isEqualTo(expectedViewDto);
 
             then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findRecordByIdOrFail(recordId);
-            then(certificateHelper).should().validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
-            then(certificateHelper).should().buildPayload(pet, sourceRecord, generatingVet, clinic, generationRequestDto.certificateNumber());
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should().findByCertificateNumber(certNumber);
+            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
+            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
             then(hashingService).should().hashString(anyString());
             then(signingService).should().generateVetSignature(generatingVet, payloadHash);
             then(signingService).should().generateClinicSignature(clinic, payloadHash);
@@ -162,145 +180,221 @@ class CertificateServiceImplTest {
             then(certificateMapper).should().toViewDto(savedCertificate);
 
             Certificate captured = certificateCaptor.getValue();
-            assertThat(captured.getCertificateNumber()).isEqualTo(generationRequestDto.certificateNumber());
+            assertThat(captured.getMedicalRecord()).isEqualTo(validRabiesRecord);
+            assertThat(captured.getCertificateNumber()).isEqualTo(certNumber);
             assertThat(captured.getHash()).isEqualTo(payloadHash);
             assertThat(captured.getVetSignature()).isEqualTo(vetSig);
             assertThat(captured.getClinicSignature()).isEqualTo(clinicSig);
         }
 
         @Test
-        @DisplayName("should throw IllegalStateException if source record not signed")
-        void generateCertificate_Failure_RecordNotSigned() {
-            // Arrange
-            sourceRecord.setVetSignature(null);
+        @DisplayName("should throw MissingRabiesVaccineException if no valid rabies record found")
+        void generateCertificate_Failure_NoValidRabies() {
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(recordId)).willReturn(sourceRecord);
-            willThrow(new IllegalStateException("Source record ... is not signed."))
-                    .given(certificateHelper).validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(Collections.emptyList());
+
+            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+                    .isInstanceOf(MissingRabiesVaccineException.class)
+                    .hasMessageContaining("No valid, signed, and current Rabies vaccine record found");
+
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should(never()).findSignedCheckupsAfterDateDesc(anyLong(), anyList(), any());
+            then(certificateRepository).should(never()).save(any());
+            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("should throw MissingRecentCheckupException if no recent checkup found")
+        void generateCertificate_Failure_NoRecentCheckup() {
+            // Arrange
+            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(Collections.emptyList());
 
             // Act & Assert
             assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("is not signed");
+                    .isInstanceOf(MissingRecentCheckupException.class)
+                    .hasMessageContaining("No signed ANNUAL_CHECK found since");
 
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should(never()).existsByMedicalRecordId(anyLong());
             then(certificateRepository).should(never()).save(any());
+            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
         }
 
         @Test
-        @DisplayName("should throw AccessDeniedException if Vet did not sign the record")
-        void generateCertificate_Failure_VetNotSigner() {
-            Vet anotherVet = new Vet(); anotherVet.setId(999L); anotherVet.setClinic(clinic);
-            sourceRecord.setCreator(anotherVet); // Record created/signed by another vet
-            given(entityFinderHelper.findVetOrFail(generatingVet.getId())).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(generationRequestDto.recordId())).willReturn(sourceRecord);
-            willThrow(new AccessDeniedException("Vet ... cannot generate certificate for record ... as they did not create/sign it."))
-                    .given(certificateHelper).validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
+        @DisplayName("should throw CertificateAlreadyExistsForRecordException if certificate already exists for the found rabies record")
+        void generateCertificate_Failure_CertExistsForFoundRabiesRecord() {
+            // Arrange
+            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(List.of(validCheckupRecord));
 
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> certificateService.generateCertificate(generationRequestDto, generatingVet.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("did not create/sign it");
+            given(certificateRepository.existsByMedicalRecordId(validRabiesRecord.getId())).willReturn(true);
 
+            // Act & Assert
+            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+                    .isInstanceOf(CertificateAlreadyExistsForRecordException.class)
+                    .hasMessageContaining("A certificate already exists for record " + validRabiesRecord.getId());
+
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should(never()).findByCertificateNumber(anyString());
             then(certificateRepository).should(never()).save(any());
+            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
         }
 
-        @Test
-        @DisplayName("should throw IllegalStateException if certificate already exists for record")
-        void generateCertificate_Failure_CertExistsForRecord() {
-            given(entityFinderHelper.findVetOrFail(generatingVet.getId())).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(generationRequestDto.recordId())).willReturn(sourceRecord);
-            willThrow(new IllegalStateException("A certificate already exists for record..."))
-                    .given(certificateHelper).validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> certificateService.generateCertificate(generationRequestDto, generatingVet.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("certificate already exists for record");
-
-            then(certificateRepository).should(never()).save(any());
-        }
 
         @Test
-        @DisplayName("should throw IllegalArgumentException if certificate number already exists")
+        @DisplayName("should throw CertificateNumberAlreadyExistsException if certificate number conflicts")
         void generateCertificate_Failure_CertNumberExists() {
             // Arrange
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(recordId)).willReturn(sourceRecord);
-            willThrow(new IllegalArgumentException("Certificate number '" + generationRequestDto.certificateNumber() + "' is already in use."))
-                    .given(certificateHelper).validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(List.of(validCheckupRecord));
+
+            given(certificateRepository.existsByMedicalRecordId(validRabiesRecord.getId())).willReturn(false);
+            given(certificateRepository.findByCertificateNumber(certNumber)).willReturn(Optional.of(new Certificate()));
 
             // Act & Assert
             assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("is already in use");
+                    .isInstanceOf(CertificateNumberAlreadyExistsException.class)
+                    .hasMessageContaining("'" + certNumber + "' is already in use");
 
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should().findByCertificateNumber(certNumber);
             then(certificateRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw IllegalStateException if record type is not VACCINE")
-        void generateCertificate_Failure_WrongRecordType() {
-            // Arrange
-            sourceRecord.setType(RecordType.ILLNESS);
-            sourceRecord.setVaccine(null);
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(recordId)).willReturn(sourceRecord);
-            willThrow(new IllegalStateException("Certificate generation is currently only supported for signed VACCINE records"))
-                    .given(certificateHelper).validateCertificateGenerationPrerequisites(generatingVet, sourceRecord, generationRequestDto.certificateNumber());
-
-            // Act & Assert
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("only supported for signed VACCINE records");
-
-            then(certificateRepository).should(never()).save(any());
+            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
         }
 
         @Test
         @DisplayName("should throw RuntimeException if hashing fails")
         void generateCertificate_Failure_HashingError() {
+            // Arrange
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(recordId)).willReturn(sourceRecord);
-            willDoNothing().given(certificateHelper).validateCertificateGenerationPrerequisites(any(), any(), anyString());
-            given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
-            given(hashingService.hashString(anyString())).willThrow(new HashingException("SHA-256 Error", new RuntimeException()));
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
 
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(List.of(validCheckupRecord));
+
+            given(certificateRepository.existsByMedicalRecordId(validRabiesRecord.getId())).willReturn(false);
+            given(certificateRepository.findByCertificateNumber(certNumber)).willReturn(Optional.empty());
+            given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
+            given(hashingService.hashString(anyString())).willThrow(new HashingException("Hash fail", null));
 
             // Act & Assert
             assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Failed to hash certificate payload");
+                    .hasMessageContaining("Failed to hash certificate payload")
+                    .hasCauseInstanceOf(HashingException.class)
+                    .hasRootCauseMessage("Hash fail");
 
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should().findByCertificateNumber(certNumber);
+            then(certificateHelper).should().buildPayload(any(), any(), any(), any(), anyString());
+            then(hashingService).should().hashString(anyString());
             then(signingService).should(never()).generateVetSignature(any(), any());
-            then(signingService).should(never()).generateClinicSignature(any(), any());
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should().findByCertificateNumber(certNumber);
+            then(certificateHelper).should().buildPayload(any(), any(), any(), any(), anyString());
+            then(hashingService).should().hashString(anyString());
             then(certificateRepository).should(never()).save(any());
         }
 
         @Test
         @DisplayName("should throw RuntimeException if Vet signing fails")
         void generateCertificate_Failure_VetSigningError() {
+            // Arrange
             String payloadHash = "hash123";
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findRecordByIdOrFail(recordId)).willReturn(sourceRecord);
-            willDoNothing().given(certificateHelper).validateCertificateGenerationPrerequisites(any(), any(), anyString());
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(List.of(validCheckupRecord));
+
+            given(certificateRepository.existsByMedicalRecordId(validRabiesRecord.getId())).willReturn(false);
+            given(certificateRepository.findByCertificateNumber(certNumber)).willReturn(Optional.empty());
             given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
             given(hashingService.hashString(anyString())).willReturn(payloadHash);
-            given(signingService.generateVetSignature(generatingVet, payloadHash)).willThrow(new RuntimeException("Vet signing failed"));
+            given(signingService.generateVetSignature(generatingVet, payloadHash)).willThrow(new RuntimeException("Vet key error"));
 
-
-            // Act & Assert
+            // --- Act & Assert
             assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Failed to generate Vet digital signature");
+                    .hasMessageContaining("Failed to generate Vet digital signature")
+                    .hasCauseInstanceOf(RuntimeException.class)
+                    .hasRootCauseMessage("Vet key error");
 
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should().findByCertificateNumber(certNumber);
+            then(certificateHelper).should().buildPayload(any(), any(), any(), any(), anyString());
+            then(hashingService).should().hashString(anyString());
+            then(signingService).should().generateVetSignature(generatingVet, payloadHash);
             then(signingService).should(never()).generateClinicSignature(any(), any());
             then(certificateRepository).should(never()).save(any());
         }
+        @Test
+        @DisplayName("should throw RuntimeException if Clinic signing fails")
+        void generateCertificate_Failure_ClinicSigningError() {
+            // Arrange
+            String payloadHash = "hash123";
+            String vetSig = "vetSigOk";
+            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(recordRepository.findAllSignedRabiesVaccinesDesc(petId))
+                    .willReturn(List.of(validRabiesRecord));
+            given(recordRepository.findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class)))
+                    .willReturn(List.of(validCheckupRecord));
 
+            given(certificateRepository.existsByMedicalRecordId(validRabiesRecord.getId())).willReturn(false);
+            given(certificateRepository.findByCertificateNumber(certNumber)).willReturn(Optional.empty());
+            given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
+            given(hashingService.hashString(anyString())).willReturn(payloadHash);
+            given(signingService.generateVetSignature(generatingVet, payloadHash)).willReturn(vetSig);
+            given(signingService.generateClinicSignature(clinic, payloadHash)).willThrow(new RuntimeException("Clinic key error"));
+
+            // --- Act & Assert
+            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to generate Clinic digital signature")
+                    .hasCauseInstanceOf(RuntimeException.class)
+                    .hasRootCauseMessage("Clinic key error");
+            then(recordRepository).should().findAllSignedRabiesVaccinesDesc(eq(petId));
+            then(recordRepository).should().findSignedCheckupsAfterDateDesc(eq(petId), eq(List.of(RecordType.ANNUAL_CHECK)), any(LocalDateTime.class));
+            then(certificateRepository).should().existsByMedicalRecordId(validRabiesRecord.getId());
+            then(certificateRepository).should().findByCertificateNumber(certNumber);
+            then(certificateHelper).should().buildPayload(any(), any(), any(), any(), anyString());
+            then(hashingService).should().hashString(anyString());
+            then(signingService).should().generateVetSignature(generatingVet, payloadHash);
+            then(signingService).should().generateClinicSignature(clinic, payloadHash);
+            then(certificateRepository).should(never()).save(any());
+        }
     }
 
     /**
@@ -353,6 +447,7 @@ class CertificateServiceImplTest {
             then(authorizationHelper).should(never()).verifyUserAuthorizationForPet(anyLong(), any(), anyString());
             then(certificateRepository).should(never()).findByPetIdOrderByCreatedAtDesc(anyLong());
         }
+
     }
 
     /**
@@ -416,6 +511,11 @@ class CertificateServiceImplTest {
         private final Long requesterOwnerId = 50L;
         private final Long unauthorizedUserId = 999L;
 
+        @BeforeEach
+        void qrDataSetup() {
+            savedCertificate.setId(certificateId);
+        }
+
         @Test
         @DisplayName("should return Base45 string when requested by authorized Owner")
         void getQrData_Success_ByOwner() {
@@ -444,6 +544,7 @@ class CertificateServiceImplTest {
             String expectedQrData = "HC1:STAFFBASE45...";
             given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
             Pet associatedPet = savedCertificate.getPet();
+            assertThat(associatedPet).isNotNull();
             willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterVetId, associatedPet, "get QR data for certificate");
             given(qrCodeService.generateQrData(savedCertificate)).willReturn(expectedQrData);
 

@@ -1,8 +1,5 @@
 package com.petconnect.backend.common.helper;
 
-import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
-import com.petconnect.backend.exception.CertificateAlreadyExistsForRecordException;
-import com.petconnect.backend.exception.CertificateNumberAlreadyExistsException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.record.domain.model.RecordType;
@@ -12,14 +9,11 @@ import com.petconnect.backend.user.domain.model.Owner;
 import com.petconnect.backend.user.domain.model.Vet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Helper component containing business logic related to Certificates,
@@ -31,42 +25,6 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @Slf4j
 public class CertificateHelper {
-
-    private final CertificateRepository certificateRepository;
-
-    /**
-     * Validates all prerequisites before generating a certificate.
-     *
-     * @param vet               The generating Vet.
-     * @param sourceRecord            The source Record.
-     * @param certificateNumber The proposed certificate number.
-     */
-    public void validateCertificateGenerationPrerequisites(Vet vet, com.petconnect.backend.record.domain.model.Record sourceRecord, String certificateNumber) {
-        // Check if the record is suitable
-        if (!StringUtils.hasText(sourceRecord.getVetSignature())) {
-            throw new IllegalStateException("Cannot generate certificate: Source record " + sourceRecord.getId() + " is not signed.");
-        }
-        if (sourceRecord.getCreator() == null || !Objects.equals(sourceRecord.getCreator().getId(), vet.getId())) {
-            throw new AccessDeniedException("Vet " + vet.getId() + " cannot generate certificate for record " + sourceRecord.getId() + " as they did not create/sign it.");
-        }
-        // Check if a certificate already exists for this record
-        if (certificateRepository.existsByMedicalRecordId(sourceRecord.getId())) {
-            throw new CertificateAlreadyExistsForRecordException( sourceRecord.getId());
-        }
-
-        // Record type must be VACCINE and details must be present
-        if (sourceRecord.getType() != RecordType.VACCINE || sourceRecord.getVaccine() == null) {
-            log.warn("Attempting to generate certificate from non-vaccine record ID {} or missing vaccine details.", sourceRecord.getId());
-            throw new IllegalStateException("Certificate generation is currently only supported for signed VACCINE records with details.");
-        }
-
-        // Check if the official certificate number already exists
-        if (certificateRepository.findByCertificateNumber(certificateNumber).isPresent()) {
-            throw new CertificateNumberAlreadyExistsException(certificateNumber);
-        }
-
-        log.debug("Prerequisites validated for generating certificate from record {}", sourceRecord.getId());
-    }
 
     /**
      * Constructs the certificate payload as a Map.

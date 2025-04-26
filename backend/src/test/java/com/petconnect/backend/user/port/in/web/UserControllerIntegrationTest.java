@@ -14,10 +14,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 
+import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,7 +53,7 @@ class UserControllerIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = obtainJwtToken(new AuthLoginRequestDto("admin_london", "password123"));
+        adminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
 
         OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(
                 ownerRegisteredUsername, ownerRegisteredEmail, "password123", "555-000-111");
@@ -65,24 +65,13 @@ class UserControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(ownerReg)))
                 .andExpect(status().isCreated());
 
-        ownerToken = obtainJwtToken(new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+        ownerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
 
-        vetToken = obtainJwtToken(new AuthLoginRequestDto("admin_barcelona", "password123"));
+        vetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
 
         assertThat(adminToken).isNotNull();
         assertThat(ownerToken).isNotNull();
         assertThat(vetToken).isNotNull();
-    }
-
-    /** Helper to obtain JWT token */
-    private String obtainJwtToken(AuthLoginRequestDto loginRequest) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
-        AuthResponseDto responseDto = objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponseDto.class);
-        return responseDto.jwt();
     }
 
     /**

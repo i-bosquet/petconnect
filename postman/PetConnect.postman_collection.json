@@ -46,14 +46,14 @@
 							}
 						},
 						"url": {
-							"raw": "{{URL_BASE}}/api/clinics/{{clinicId}}",
+							"raw": "{{URL_BASE}}/api/clinics/{{clinicId-London}}",
 							"host": [
 								"{{URL_BASE}}"
 							],
 							"path": [
 								"api",
 								"clinics",
-								"{{clinicId}}"
+								"{{clinicId-London}}"
 							]
 						}
 					},
@@ -113,7 +113,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{URL_BASE}}/api/clinics?country=United%20Kingdom",
+							"raw": "{{URL_BASE}}/api/clinics?country=UNITED_KINGDOM",
 							"host": [
 								"{{URL_BASE}}"
 							],
@@ -124,7 +124,7 @@
 							"query": [
 								{
 									"key": "country",
-									"value": "United%20Kingdom"
+									"value": "UNITED_KINGDOM"
 								}
 							]
 						}
@@ -251,6 +251,34 @@
 						"body": {
 							"mode": "raw",
 							"raw": "{\r\n  \"username\": \"vet-london\",\r\n  \"password\": \"password123\" \r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/auth/login",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "auth/login - vet Paris",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"username\": \"vet-paris\",\r\n  \"password\": \"password123\" \r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1028,6 +1056,15 @@
 										},
 										"method": "PUT",
 										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"id\": 12,\r\n            \"name\": \"Buddy\",\r\n            \"specie\": \"DOG\",\r\n            \"color\": \"write\",\r\n            \"gender\": \"FEMALE\",\r\n            \"birthDate\": \"2023-05-15\",\r\n            \"microchip\": \"XXX-467-562\",\r\n            \"image\": \"images/avatars/pets/dog.png\",\r\n            \"breedId\": 56\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
 										"url": {
 											"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/activate",
 											"host": [
@@ -1378,6 +1415,199 @@
 								"api",
 								"pets",
 								"{{petId-1}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "records - create by owner",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{ownerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"petId\": {{petId-1}},\r\n  \"type\": \"OTHER\",\r\n  \"description\": \"Pet seemed a bit quiet today after the walk. Monitoring.\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/records",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"records"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "records - create vaccine - vet London",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vetTokenLondon}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"petId\": {{petId-1}},\r\n  \"type\": \"VACCINE\",\r\n  \"description\": \"Administered annual Rabies vaccination (Brand: Rabivax-3). Well tolerated.\",\r\n  \"vaccine\": {\r\n    \"name\": \"Rabivax-3\",\r\n    \"validity\": 3, \r\n    \"laboratory\": \"VetPharm Global\",\r\n    \"batchNumber\": \"RV3-2025-LOT55B\"\r\n  }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/records",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"records"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "records - create check - vet London",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vetTokenLondon}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"petId\": {{petId-1}},\r\n  \"type\": \"ANNUAL_CHECK\",\r\n  \"description\": \"Annual wellness examination. Pet is healthy. Discussed parasite prevention. Weight stable. Recommended dental cleaning in 6 months.\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/records",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"records"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "records - listById - owner",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{ownerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/records/17",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"records",
+								"17"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "records - listById - staff",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminTokenLondon}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL_BASE}}/api/records/17",
+							"host": [
+								"{{URL_BASE}}"
+							],
+							"path": [
+								"api",
+								"records",
+								"17"
 							]
 						}
 					},

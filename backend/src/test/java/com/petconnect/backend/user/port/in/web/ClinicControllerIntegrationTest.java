@@ -2,7 +2,6 @@ package com.petconnect.backend.user.port.in.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petconnect.backend.user.application.dto.AuthLoginRequestDto;
-import com.petconnect.backend.user.application.dto.AuthResponseDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.application.dto.OwnerRegistrationDto;
 import com.petconnect.backend.user.domain.model.Country;
@@ -16,9 +15,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -68,29 +67,10 @@ class ClinicControllerIntegrationTest {
 
         AuthLoginRequestDto  testOwnerLoginDto = new AuthLoginRequestDto(testOwnerRegDto.username(), testOwnerRegDto.password());
 
-        adminToken = obtainJwtToken(adminLoginDto);
-        vetToken = obtainJwtToken(vetLoginDto);
-        ownerToken = obtainJwtToken(testOwnerLoginDto);
+        adminToken = obtainJwtToken(mockMvc, objectMapper,adminLoginDto);
+        vetToken = obtainJwtToken(mockMvc, objectMapper,vetLoginDto);
+        ownerToken = obtainJwtToken(mockMvc, objectMapper,testOwnerLoginDto);
         assertThat(ownerToken).isNotNull();
-    }
-
-    /**
-     * Helper method to perform login via MockMvc and extract the JWT token.
-     * @param loginRequest DTO with login credentials.
-     * @return The JWT token string.
-     * @throws Exception If MockMvc perform fails.
-     */
-    private String obtainJwtToken(AuthLoginRequestDto loginRequest) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.jwt", is(notNullValue())))
-                .andReturn();
-
-        String responseBody = result.getResponse().getContentAsString();
-        AuthResponseDto responseDto = objectMapper.readValue(responseBody, AuthResponseDto.class);
-        return responseDto.jwt();
     }
 
     /**

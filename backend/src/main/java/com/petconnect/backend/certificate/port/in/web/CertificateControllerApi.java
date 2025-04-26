@@ -58,7 +58,7 @@ public interface CertificateControllerApi {
     })
     @PostMapping("")
     ResponseEntity<CertificateViewDto> generateCertificate(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Details needed for certificate generation.", required = true,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Details needed for certificate generation (Pet ID and official Cert Number).", required = true,
                     content = @Content(schema = @Schema(implementation = CertificateGenerationRequestDto.class)))
             @Valid @RequestBody CertificateGenerationRequestDto requestDto);
 

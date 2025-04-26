@@ -80,7 +80,7 @@ public class GlobalExceptionHandler {
             VetPublicKeyAlreadyExistsException.class,
             MicrochipAlreadyExistsException.class,
             CertificateNumberAlreadyExistsException.class,
-            CertificateAlreadyExistsForRecordException.class
+            CertificateAlreadyExistsForRecordException.class,
     })
     @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<Map<String, Object>> handleConflictExceptions(RuntimeException ex) {
@@ -132,7 +132,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         log.error("An unexpected error occurred: {}", ex.getMessage(), ex);
-        // *** USA EL HELPER y devuelve ResponseEntity ***
         Map<String, Object> body = createErrorBody(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred. Please try again later.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
@@ -145,7 +144,12 @@ public class GlobalExceptionHandler {
      * @param ex The RuntimeException caught (IllegalStateException or IllegalArgumentException).
      * @return A ResponseEntity containing the standardized error body and status 400.
      */
-    @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
+    @ExceptionHandler({
+            IllegalStateException.class,
+            IllegalArgumentException.class,
+            MissingRecentCheckupException.class,
+            MissingRabiesVaccineException.class
+    })
     public ResponseEntity<Map<String, Object>> handleBadLogicExceptions(RuntimeException ex) {
         log.warn("Bad Request due to illegal state or argument: {}", ex.getMessage());
         Map<String, Object> body = createErrorBody(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
