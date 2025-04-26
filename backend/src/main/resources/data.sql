@@ -209,7 +209,7 @@ INSERT INTO breed (id, name, specie, image_url) VALUES (9, 'Russian Blue', 'CAT'
 INSERT INTO breed (id, name, specie, image_url) VALUES (10, 'Siamese', 'CAT', 'images/avatars/pets/cat_siamese.png') ON CONFLICT (name, specie) DO NOTHING;
 INSERT INTO breed (id, name, specie, image_url) VALUES (11, 'Siberian', 'CAT', 'images/avatars/pets/cat_siberian.png') ON CONFLICT (name, specie) DO NOTHING;
 INSERT INTO breed (id, name, specie, image_url) VALUES (12, 'Tabby', 'CAT', 'images/avatars/pets/cat_tabby.png') ON CONFLICT (name, specie) DO NOTHING;
-INSERT INTO breed (id, name, specie, image_url) VALUES (13, 'White', 'CAT', 'images/avatars/pets/cat_write.png') ON CONFLICT (name, specie) DO NOTHING;
+INSERT INTO breed (id, name, specie, image_url) VALUES (13, 'White', 'CAT', 'images/avatars/pets/cat_white.png') ON CONFLICT (name, specie) DO NOTHING;
 
 -- DOG Breeds
 INSERT INTO breed (id, name, specie, image_url) VALUES (14, 'Argentine Dogo', 'DOG', 'images/avatars/pets/dog_argentine_dogo.png') ON CONFLICT (name, specie) DO NOTHING;

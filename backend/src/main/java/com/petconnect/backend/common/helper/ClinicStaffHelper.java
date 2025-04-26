@@ -81,7 +81,7 @@ public class ClinicStaffHelper {
     private void setCommonStaffFields(ClinicStaff staff, ClinicStaffCreationDto dto, Clinic clinic) {
         staff.setUsername(dto.username());
         staff.setEmail(dto.email());
-        staff.setPassword(passwordEncoder.encode(dto.password())); // Hash password
+        staff.setPassword(passwordEncoder.encode(dto.password()));
         staff.setName(dto.name());
         staff.setSurname(dto.surname());
 
@@ -91,12 +91,7 @@ public class ClinicStaffHelper {
         roles.add(staffRole);
         staff.setRoles(roles);
 
-        staff.setClinic(clinic);        // Assign the clinic
-        staff.setActive(true);          // New staff are active by default
-        staff.setEnabled(true);         // Enable user account fields from UserEntity
-        staff.setAccountNonExpired(true);
-        staff.setAccountNonLocked(true);
-        staff.setCredentialsNonExpired(true);
+        staff.setClinic(clinic);
         staff.setActive(true);
         staff.setEnabled(true);
         staff.setAccountNonExpired(true);

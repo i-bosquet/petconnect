@@ -1,7 +1,5 @@
 package com.petconnect.backend.common.service.impl;
 
-import COSE.AlgorithmID;
-import COSE.HeaderKeys;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.petconnect.backend.certificate.domain.model.Certificate;
 import com.petconnect.backend.pet.domain.model.Pet;

@@ -531,10 +531,6 @@ class RecordControllerIntegrationTest {
             MvcResult resOwner = mockMvc.perform(post("/api/records").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerRecDto))).andExpect(status().isCreated()).andReturn();
             unsignedOwnerRecordId = objectMapper.readValue(resOwner.getResponse().getContentAsString(), RecordViewDto.class).id();
 
-            RecordCreateDto vetUnsignedDto = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Unsigned Vet Rec", null);
-            MvcResult resVetUnsigned = mockMvc.perform(post("/api/records?sign=false").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetUnsignedDto))).andExpect(status().isCreated()).andReturn();
-            Long unsignedVetRecordId = objectMapper.readValue(resVetUnsigned.getResponse().getContentAsString(), RecordViewDto.class).id();
-
             VaccineCreateDto vacDto = new VaccineCreateDto("VacDeleteTest", 1, "LDel", "BDel", true);
             RecordCreateDto vetSignedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Vet Rec", vacDto);
             MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetSignedDto))).andExpect(status().isCreated()).andReturn();
@@ -552,7 +548,6 @@ class RecordControllerIntegrationTest {
             entityManager.clear();
 
             assertThat(unsignedOwnerRecordId).isNotNull();
-            assertThat(unsignedVetRecordId).isNotNull();
             assertThat(signedVetRecordId).isNotNull();
             assertThat(recordFromOtherOwnerId).isNotNull();
         }
