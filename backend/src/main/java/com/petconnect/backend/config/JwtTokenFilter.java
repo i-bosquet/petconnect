@@ -1,6 +1,7 @@
 package com.petconnect.backend.config;
 
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.petconnect.backend.security.JwtUtils;
 import jakarta.servlet.FilterChain;
@@ -52,36 +53,44 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         // Retrieve the JWT token from the Authorization header
         String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (jwtToken != null) {
+        if (jwtToken != null && jwtToken.startsWith("Bearer ")) {
             // Remove the "Bearer" prefix (assumed to be 7 characters long)
             jwtToken = jwtToken.substring(7);
 
-            // Validate the JWT token and retrieve the decoded token
-            DecodedJWT decodedJWT = jwtUtils.validateToken(jwtToken);
+            try {
+                // Validate the JWT token and retrieve the decoded token
+                DecodedJWT decodedJWT = jwtUtils.validateToken(jwtToken);
 
-            // Extract the username from the decoded token
-            String username = jwtUtils.extractUsername(decodedJWT);
+                // Extract the username from the decoded token
+                String username = jwtUtils.extractUsername(decodedJWT);
 
-            // Extract the authorities claim as a comma-separated string
-            String stringAuthorities = jwtUtils.getSpecificClaim(decodedJWT, "authorities").asString();
+                // Extract the authorities claim as a comma-separated string
+                String stringAuthorities = jwtUtils.getSpecificClaim(decodedJWT, "authorities").asString();
 
-            // Convert the comma-separated string into a collection of GrantedAuthority objects
-            Collection<? extends GrantedAuthority> authorities =
-                    AuthorityUtils.commaSeparatedStringToAuthorityList(stringAuthorities);
+                // Convert the comma-separated string into a collection of GrantedAuthority objects
+                Collection<? extends GrantedAuthority> authorities =
+                        AuthorityUtils.commaSeparatedStringToAuthorityList(stringAuthorities);
 
-            // Create an Authentication object using the username and authorities
-            Authentication authentication =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+                // Create an Authentication object using the username and authorities
+                Authentication authentication =
+                        new UsernamePasswordAuthenticationToken(username, null, authorities);
 
-            // Set the authentication in the SecurityContext
-            log.debug("JWT Filter - Setting authentication for user: {}, Authorities: {}", username, authorities);
-            SecurityContext context = SecurityContextHolder.getContext();
-            context.setAuthentication(authentication);
-            SecurityContextHolder.setContext(context);
-            log.debug("SecurityContext Authentication AFTER set: {}", SecurityContextHolder.getContext().getAuthentication());
+                // Set the authentication in the SecurityContext
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("JWT Filter - Setting authentication for user: {}, Authorities: {}", username, authorities);
+
+            } catch (JWTVerificationException e) {
+                // If token validation fails (expired, invalid signature, etc.)
+                log.warn("Invalid JWT token received: {}. Reason: {}", jwtToken, e.getMessage());
+                // Explicitly clear the context to ensure no potentially stale/invalid authentication remains
+                SecurityContextHolder.clearContext();
+            }
+        } else {
+            // Log if the Authorization header is missing or doesn't start with Bearer
+            if (jwtToken != null) { log.trace("Authorization header present but not Bearer type."); }
+            else { log.trace("No Authorization header found."); }
         }
-
-        // Continue with the filter chain
+        // Continue with the filter chain regardless of whether authentication was set or not
         filterChain.doFilter(request, response);
     }
 }
