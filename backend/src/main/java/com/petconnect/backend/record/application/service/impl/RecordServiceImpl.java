@@ -23,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -125,76 +124,47 @@ public class RecordServiceImpl implements RecordService {
     @Transactional
     public RecordViewDto updateUnsignedRecord(Long recordId, RecordUpdateDto updateDto, Long requesterUserId) {
         log.info("Attempting to update record ID: {} by User ID: {}", recordId, requesterUserId);
-        Record record = entityFinderHelper.findRecordByIdOrFail(recordId);
+        Record recordtoUpdate = entityFinderHelper.findRecordByIdOrFail(recordId);
         UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
-        UserEntity creator = record.getCreator();
 
-        // Check if Signed
-        if (StringUtils.hasText(record.getVetSignature())) {
+        if (StringUtils.hasText(recordtoUpdate.getVetSignature())) {
             log.warn("Update failed for Record ID {}: Record is signed.", recordId);
             throw new RecordSignedException(recordId);
         }
 
-        // Check if Record Type is VACCINE
-        if (record.getType() == RecordType.VACCINE) {
+        if (recordtoUpdate.getType() == RecordType.VACCINE) {
             log.warn("Update failed for Record ID {}: Cannot update records of type VACCINE.", recordId);
             throw new RecordUpdateVaccineException(recordId, "records of type VACCINE cannot be updated.");
         }
 
-        boolean authorized = false;
-
-        if (requester instanceof Owner && creator instanceof Owner && Objects.equals(requesterUserId, creator.getId())) {
-            authorized = true;
-            log.debug("Authorization check: Owner {} updating their own record {}.", requesterUserId, recordId);
+        if (updateDto.type() != null && updateDto.type() == RecordType.VACCINE) {
+            log.error("Update failed for Record ID {}: Attempted to change type TO VACCINE.", recordId);
+            throw new RecordUpdateVaccineException(recordId, "cannot change record type to VACCINE.");
         }
 
-        else if (requester instanceof ClinicStaff requesterStaff && creator instanceof ClinicStaff creatorStaff) {
-                if (requesterStaff.getClinic() != null &&
-                        creatorStaff.getClinic() != null &&
-                        Objects.equals(requesterStaff.getClinic().getId(), creatorStaff.getClinic().getId()))
-                {
-                    authorized = true;
-                    log.debug("Authorization check: Staff {} updating record {} created by admin {} in same clinic {}.",
-                            requesterUserId, recordId, creator.getId(), requesterStaff.getClinic().getId());
-                } else {
-                    log.warn("Authorization denied: Staff {} from clinic {} attempting to update record {} created by admin {} from clinic {}.",
-                            requesterUserId, (requesterStaff.getClinic() != null ? requesterStaff.getClinic().getId() : "null"),
-                            recordId, creator.getId(), (creatorStaff.getClinic() != null ? creatorStaff.getClinic().getId() : "null"));
-                }
-        }
-
-        if (!authorized) {
-            log.warn("Authorization failed: User {} cannot update Record ID {} created by User {} (Type: {}).",
-                    requesterUserId, recordId, creator.getId(), creator.getClass().getSimpleName());
-            throw new AccessDeniedException("User " + requesterUserId + " is not authorized to update record " + recordId + ".");
-        }
-
+        authorizationHelper.verifyUserAuthorizationForUnsignedRecordUpdate(requester, recordtoUpdate);
         log.debug("Authorization successful for User {} updating Record ID {}", requesterUserId, recordId);
 
         boolean changed = false;
 
-        if (updateDto.type() != null && updateDto.type() != record.getType()) {
-            if (updateDto.type() == RecordType.VACCINE) {
-                log.error("Update failed for Record ID {}: Attempted to change type TO VACCINE.", recordId);
-                throw new  RecordUpdateVaccineException(recordId, "cannot change record type to VACCINE.");
-            }
-            log.info("Updating Record ID {} type from {} to {}", recordId, record.getType(), updateDto.type());
-            record.setType(updateDto.type());
+        if (updateDto.type() != null && updateDto.type() != recordtoUpdate.getType()) {
+
+            log.info("Updating Record ID {} type from {} to {}", recordId, recordtoUpdate.getType(), updateDto.type());
+            recordtoUpdate.setType(updateDto.type());
             changed = true;
         }
-
         String newDescription = updateDto.description();
-        String currentDescription = record.getDescription();
-        String effectiveNewDescription = (newDescription != null && newDescription.isBlank()) ? null : newDescription;
-        if (newDescription != null && !Objects.equals(effectiveNewDescription, currentDescription)) {
-            log.info("Updating Record ID {} description.", recordId);
-            record.setDescription(effectiveNewDescription);
-            changed = true;
+        if (newDescription != null) {
+            String effectiveNewDescription = newDescription.isBlank() ? null : newDescription;
+            if (!Objects.equals(effectiveNewDescription, recordtoUpdate.getDescription())) {
+                log.info("Updating Record ID {} description.", recordId);
+                recordtoUpdate.setDescription(effectiveNewDescription);
+                changed = true;
+            }
         }
-
-        Record updatedRecord = record;
+        Record updatedRecord = recordtoUpdate;
         if (changed) {
-            updatedRecord = recordRepository.save(record);
+            updatedRecord = recordRepository.save(recordtoUpdate);
             log.info("Record ID {} updated successfully by User ID {}", recordId, requesterUserId);
         } else {
             log.info("No effective changes detected for Record ID {}, update skipped.", recordId);
@@ -208,28 +178,15 @@ public class RecordServiceImpl implements RecordService {
      */
     @Override
     @Transactional
-    public void deleteUnsignedRecord(Long recordId, Long requesterUserId) {
-        Record recordEntity = entityFinderHelper.findRecordByIdOrFail(recordId);
+    public void deleteRecord(Long recordId, Long requesterUserId) {
+        log.info("Attempting to delete Record ID {} by User ID {}", recordId, requesterUserId);
+        Record recordToDelete = entityFinderHelper.findRecordByIdOrFail(recordId);
         UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
 
-        if (StringUtils.hasText(recordEntity.getVetSignature())) {
-            throw new IllegalStateException("Cannot delete record " + recordId + " because it has been signed by a veterinarian.");
-        }
+        authorizationHelper.verifyUserAuthorizationForRecordDeletion(requester, recordToDelete);
 
-        boolean isCreator = Objects.equals(recordEntity.getCreator().getId(), requesterUserId);
-        boolean isAdminDeletingStaffRecord = false;
-        switch (requester) {
-            case ClinicStaff requesterStaff when recordEntity.getCreator() instanceof ClinicStaff recordCreatorStaff && recordCreatorStaff.getClinic() != null && Objects.equals(requesterStaff.getClinic().getId(), recordCreatorStaff.getClinic().getId()) && requesterStaff.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN) ->
-                    isAdminDeletingStaffRecord = true;
-            case null, default -> {
-            }
-        }
-
-        if (!isCreator && !isAdminDeletingStaffRecord) {
-            throw new AccessDeniedException("User " + requesterUserId + " is not authorized to delete record " + recordId + ".");
-        }
-
-        recordRepository.delete(recordEntity);
-        log.info("User {} deleted unsigned record ID {}", requesterUserId, recordId);
+        recordRepository.delete(recordToDelete);
+        log.info("Record ID {} deleted successfully by User ID {}", recordId, requesterUserId);
     }
+
 }

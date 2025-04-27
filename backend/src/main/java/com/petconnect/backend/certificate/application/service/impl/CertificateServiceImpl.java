@@ -151,6 +151,12 @@ public class CertificateServiceImpl implements CertificateService {
             throw new RuntimeException("Failed to generate Clinic digital signature.", e);
         }
 
+        if (!validRabiesRecord.isImmutable()) {
+            log.info("Marking Record ID {} as immutable because it is being used for Certificate {}", validRabiesRecord.getId(), requestDto.certificateNumber());
+            validRabiesRecord.setImmutable(true);
+        } else {
+            log.warn("Record ID {} was already marked as immutable before certificate generation commit.", validRabiesRecord.getId());
+        }
 
         // Build and Save Certificate Entity
         Certificate newCertificate = Certificate.builder()

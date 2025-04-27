@@ -1,7 +1,9 @@
 package com.petconnect.backend.common.helper;
 
 import com.petconnect.backend.exception.EntityNotFoundException;
+import com.petconnect.backend.exception.RecordImmutableException;
 import com.petconnect.backend.exception.UsernameAlreadyExistsException;
+import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.user.domain.model.*;
@@ -214,5 +216,157 @@ public class AuthorizationHelper {
             throw new AccessDeniedException(String.format("User (ID: %d, Clinic: %d) cannot %s clinic %d.",
                     requesterUserId, requesterClinic.getId(), actionDescription, targetClinicId));
         }
+    }
+
+    /**
+     * Verifies if a user is authorized to update a specific *unsigned* medical record.
+     * Authorization Rules:
+     * 1. User must be the original creator of the record.
+     * 2. OR: If the creator was ClinicStaff, the requester must be ClinicStaff (any role)
+     *    from the SAME clinic as the creator.
+     *
+     * @param requester The UserEntity attempting the update.
+     * @param recordToUpdate    The Record entity to be updated (must be unsigned).
+     * @throws AccessDeniedException if the requester is not authorized.
+     * @throws IllegalStateException if the record creator or clinic association is inconsistent.
+     */
+    public void verifyUserAuthorizationForUnsignedRecordUpdate(UserEntity requester, Record recordToUpdate) {
+        UserEntity creator = recordToUpdate.getCreator();
+        if (creator == null) {
+            throw new IllegalStateException("Record " + recordToUpdate.getId() + " has no creator assigned.");
+        }
+
+        // Is the requester the creator?
+        if (Objects.equals(requester.getId(), creator.getId())) {
+            log.debug("Authorization granted for update: Requester {} is the creator of record {}.", requester.getId(), recordToUpdate.getId());
+            return;
+        }
+
+        // Is the requester staff from the same clinic as the staff creator?
+        if (requester instanceof ClinicStaff requesterStaff && creator instanceof ClinicStaff creatorStaff) {
+            Clinic requesterClinic = requesterStaff.getClinic();
+            Clinic creatorClinic = creatorStaff.getClinic();
+
+            if (requesterClinic != null && creatorClinic != null && Objects.equals(requesterClinic.getId(), creatorClinic.getId())) {
+                log.debug("Authorization granted for update: Staff {} from clinic {} updating record {} created by staff {} from same clinic.",
+                        requester.getId(), requesterClinic.getId(), recordToUpdate.getId(), creator.getId());
+                return;
+            } else {
+                log.warn("Authorization check failed: Staff {} (Clinic: {}) and creator Staff {} (Clinic: {}) are not from the same clinic.",
+                        requester.getId(), (requesterClinic != null ? requesterClinic.getId() : "null"),
+                        creator.getId(), (creatorClinic != null ? creatorClinic.getId() : "null"));
+            }
+        }
+
+        // If neither rule matched:
+        log.warn("Authorization denied: User {} cannot update record {} created by user {} ({}).",
+                requester.getId(), recordToUpdate.getId(), creator.getId(), creator.getClass().getSimpleName());
+        throw new AccessDeniedException("User " + requester.getId() + " is not authorized to update record " + recordToUpdate.getId() + ".");
+    }
+
+
+    /**
+     * Verifies if a user is authorized to delete a specific medical record based on its state (signed/unsigned, immutable).
+     * Delegates checks to specific private methods based on signature status.
+     *
+     * @param requester      The UserEntity attempting the deletion.
+     * @param recordToDelete The Record entity to be deleted.
+     * @throws AccessDeniedException    if the requester is not authorized based on the rules.
+     * @throws RecordImmutableException if deletion is attempted on an immutable record.
+     * @throws IllegalStateException    if the record creator is inconsistent.
+     */
+    public void verifyUserAuthorizationForRecordDeletion(UserEntity requester, Record recordToDelete) {
+        UserEntity creator = recordToDelete.getCreator();
+        if (creator == null) {
+            log.error("Record {} has no creator assigned. Cannot verify deletion authorization.", recordToDelete.getId());
+            throw new IllegalStateException("Record " + recordToDelete.getId() + " has no creator assigned.");
+        }
+
+        if (StringUtils.hasText(recordToDelete.getVetSignature())) {
+            verifySignedRecordDeletionAuthorization(requester, recordToDelete, creator);
+        } else {
+            verifyUnsignedRecordDeletionAuthorization(requester, recordToDelete, creator);
+        }
+    }
+
+    /**
+     * Verifies authorization for deleting a SIGNED medical record.
+     * Rules: Must be the signing Vet AND the record must NOT be immutable.
+     *
+     * @param requester The UserEntity attempting the deletion.
+     * @param recordToDelete    The signed Record entity.
+     * @param creator   The UserEntity who created the record (expected to be the signing Vet).
+     * @throws RecordImmutableException if the record is immutable.
+     * @throws AccessDeniedException    if the requester is not the signing Vet.
+     */
+    private void verifySignedRecordDeletionAuthorization(UserEntity requester, Record recordToDelete, UserEntity creator) {
+        log.debug("Verifying deletion authorization for SIGNED Record ID {}", recordToDelete.getId());
+
+        // Check immutability first
+        if (recordToDelete.isImmutable()) {
+            log.warn("Deletion denied for Record ID {}: Record is immutable.", recordToDelete.getId());
+            throw new RecordImmutableException(recordToDelete.getId());
+        }
+
+        // Check if the requester is the signing Vet
+        if (!(requester instanceof Vet) || !Objects.equals(creator.getId(), requester.getId())) {
+            log.warn("Deletion denied for SIGNED (but not immutable) Record ID {}: Requester {} is not the signing Vet {}.",
+                    recordToDelete.getId(), requester.getId(), creator.getId());
+            throw new AccessDeniedException("Only the signing veterinarian can delete a signed record (if not linked to a certificate). User " + requester.getId() + " is not authorized.");
+        }
+
+        // If checks pass:
+        log.debug("Authorization granted: Signing Vet {} deleting non-immutable signed record {}.", requester.getId(), recordToDelete.getId());
+    }
+
+    /**
+     * Verifies authorization for deleting an UNSIGNED medical record.
+     * Rules: Must be the creator OR an Admin from the same clinic (if creator was staff).
+     *
+     * @param requester The UserEntity attempting the deletion.
+     * @param recordToDelete    The unsigned Record entity.
+     * @param creator   The UserEntity who created the record.
+     * @throws AccessDeniedException if the requester is not authorized.
+     */
+    private void verifyUnsignedRecordDeletionAuthorization(UserEntity requester, Record recordToDelete, UserEntity creator) {
+        log.debug("Verifying deletion authorization for UNSIGNED Record ID {}", recordToDelete.getId());
+
+        // Check if the requester is the creator
+        if (Objects.equals(creator.getId(), requester.getId())) {
+            log.debug("Authorization granted: Creator {} deleting own unsigned record {}.", requester.getId(), recordToDelete.getId());
+            return; // Authorized
+        }
+
+        // Check if the requester is Admin deleting record created by staff in the same clinic
+        if (requester instanceof ClinicStaff requesterStaff && creator instanceof ClinicStaff recordCreatorStaff && isAdminDeletingSameClinicStaffRecord(requesterStaff, recordCreatorStaff)) {
+            log.debug("Authorization granted: Admin {} deleting unsigned record {} created by staff {} in same clinic.",
+                    requester.getId(), recordToDelete.getId(), creator.getId());
+            return; // Authorized
+        }
+
+        // If neither rule matched:
+        log.warn("Deletion denied for UNSIGNED Record ID {}: Requester {} is not the creator {} nor an authorized Admin of the same clinic.",
+                recordToDelete.getId(), requester.getId(), creator.getId());
+        throw new AccessDeniedException("User " + requester.getId() + " is not authorized to delete unsigned record " + recordToDelete.getId() + ".");
+    }
+
+    /**
+     * Helper method to check the specific condition for an Admin deleting a record
+     * created by another staff member in the same clinic.
+     *
+     * @param requesterStaff The ClinicStaff attempting the deletion.
+     * @param recordCreatorStaff The ClinicStaff who created the record.
+     * @return true if the requester is an Admin and both are in the same clinic, false otherwise.
+     */
+    private boolean isAdminDeletingSameClinicStaffRecord(ClinicStaff requesterStaff, ClinicStaff recordCreatorStaff) {
+        Clinic requesterClinic = requesterStaff.getClinic();
+        Clinic creatorClinic = recordCreatorStaff.getClinic();
+
+        boolean isAdmin = requesterStaff.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.ADMIN);
+
+        return isAdmin &&
+                requesterClinic != null &&
+                creatorClinic != null &&
+                Objects.equals(requesterClinic.getId(), creatorClinic.getId());
     }
 }

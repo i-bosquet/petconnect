@@ -82,7 +82,8 @@ public class GlobalExceptionHandler {
             CertificateNumberAlreadyExistsException.class,
             CertificateAlreadyExistsForRecordException.class,
             RecordSignedException.class,
-            RecordUpdateVaccineException.class
+            RecordUpdateVaccineException.class,
+            RecordImmutableException.class
     })
     @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<Map<String, Object>> handleConflictExceptions(RuntimeException ex) {

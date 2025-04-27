@@ -6,6 +6,7 @@ import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
 import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.exception.EntityNotFoundException;
+import com.petconnect.backend.exception.RecordImmutableException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Specie;
@@ -682,12 +683,17 @@ class RecordServiceImplTest {
             // Arrange
             given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
             given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
+            doThrow(new AccessDeniedException("User " + ownerUserId + " is not authorized to update record " + recordStaffRecId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(owner, recordToUpdateStaff);
 
             // Act & Assert
             assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, ownerUserId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
 
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordStaffRecId);
+            then(entityFinderHelper).should().findUserOrFail(ownerUserId);
+            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(owner, recordToUpdateStaff);
             then(recordRepository).should(never()).save(any());
         }
 
@@ -697,12 +703,17 @@ class RecordServiceImplTest {
             // Arrange
             given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
             given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
+            doThrow(new AccessDeniedException("User " + requesterAdminSameClinicId + " is not authorized to update record " + recordOwnerRecId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(adminSameClinic, recordToUpdateOwner);
 
             // Act & Assert
             assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoDesc, requesterAdminSameClinicId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not authorized to update record " + recordOwnerRecId);
 
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordOwnerRecId);
+            then(entityFinderHelper).should().findUserOrFail(requesterAdminSameClinicId);
+            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(adminSameClinic, recordToUpdateOwner);
             then(recordRepository).should(never()).save(any());
         }
 
@@ -712,12 +723,17 @@ class RecordServiceImplTest {
             // Arrange
             given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
             given(entityFinderHelper.findUserOrFail(requesterStaffOtherClinicId)).willReturn(requesterStaffOtherClinic);
+            doThrow(new AccessDeniedException("User " + requesterStaffOtherClinicId + " is not authorized to update record " + recordStaffRecId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(requesterStaffOtherClinic, recordToUpdateStaff);
 
             // Act & Assert
             assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, requesterStaffOtherClinicId))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
 
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordStaffRecId);
+            then(entityFinderHelper).should().findUserOrFail(requesterStaffOtherClinicId);
+            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(requesterStaffOtherClinic, recordToUpdateStaff); // Verificar llamada al helper
             then(recordRepository).should(never()).save(any());
         }
 
@@ -750,11 +766,11 @@ class RecordServiceImplTest {
     }
 
     /**
-     * --- Tests for deleteUnsignedRecord ---
+     * --- Tests for deleteRecord ---
      */
     @Nested
-    @DisplayName("deleteUnsignedRecord Tests")
-    class DeleteUnsignedRecordTests {
+    @DisplayName("deleteRecord Tests")
+    class DeleteRecordTests {
 
         private Record recordToDeleteUnsigned;
         private Record recordToDeleteSigned;
@@ -806,8 +822,8 @@ class RecordServiceImplTest {
          * Test successful deletion when the requester is the creator and the record is unsigned.
          */
         @Test
-        @DisplayName("should delete record successfully when requester is creator and record unsigned")
-        void delete_Success_ByCreator() {
+        @DisplayName("should delete UNSIGNED record successfully when requester is creator (Owner)")
+        void deleteUnsigned_Success_ByOwnerCreator() {
             Long creatorOwnerId = ownerId;
             // Arrange
             given(entityFinderHelper.findRecordByIdOrFail(recordUnsignedId)).willReturn(recordToDeleteUnsigned);
@@ -815,7 +831,7 @@ class RecordServiceImplTest {
             doNothing().when(recordRepository).delete(recordToDeleteUnsigned);
 
             // Act
-            recordService.deleteUnsignedRecord(recordUnsignedId, creatorOwnerId);
+            recordService.deleteRecord(recordUnsignedId, creatorOwnerId);
 
             // Assert
             then(entityFinderHelper).should().findRecordByIdOrFail(recordUnsignedId);
@@ -828,15 +844,15 @@ class RecordServiceImplTest {
          * and the record is unsigned.
          */
         @Test
-        @DisplayName("should delete record successfully when requester is Admin from same clinic and record unsigned")
-        void delete_Success_ByAdminSameClinic() {
+        @DisplayName("should delete UNSIGNED record successfully when requester is Admin from same clinic")
+        void deleteUnsigned_Success_ByAdminSameClinic() {
             // Arrange
             given(entityFinderHelper.findRecordByIdOrFail(recordByVetId)).willReturn(recordToDeleteByOtherStaff);
             given(entityFinderHelper.findUserOrFail(deleterAdminId)).willReturn(adminSameClinic);
             doNothing().when(recordRepository).delete(recordToDeleteByOtherStaff);
 
             // Act
-            recordService.deleteUnsignedRecord(recordByVetId, deleterAdminId);
+            recordService.deleteRecord(recordByVetId, deleterAdminId);
 
             // Assert
             then(entityFinderHelper).should().findRecordByIdOrFail(recordByVetId);
@@ -844,79 +860,117 @@ class RecordServiceImplTest {
             then(recordRepository).should().delete(recordToDeleteByOtherStaff);
         }
 
-        /**
-         * Test failure when attempting to delete a signed record.
-         */
         @Test
-        @DisplayName("should throw IllegalStateException when attempting to delete signed record")
-        void delete_Failure_RecordSigned() {
-            // Arrange
-            given(entityFinderHelper.findRecordByIdOrFail(recordSignedId)).willReturn(recordToDeleteSigned);
-            given(entityFinderHelper.findUserOrFail(creatorVetId)).willReturn(vet);
-
-            // Act & Assert
-            assertThatThrownBy(() -> recordService.deleteUnsignedRecord(recordSignedId, creatorVetId))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Cannot delete record " + recordSignedId + " because it has been signed");
-
-            then(entityFinderHelper).should().findRecordByIdOrFail(recordSignedId);
-            then(entityFinderHelper).should().findUserOrFail(creatorVetId);
-            then(recordRepository).should(never()).delete(any(Record.class));
-        }
-
-        /**
-         * Test failure when the requester is not the creator nor an authorized Admin.
-         */
-        @Test
-        @DisplayName("should throw AccessDeniedException if requester not creator or authorized Admin")
-        void delete_Failure_Unauthorized() {
-            // Arrange
+        @DisplayName("should throw AccessDeniedException if unauthorized user tries to delete UNSIGNED record")
+        void deleteUnsigned_Failure_Unauthorized() {
             Long unauthorizedUserId = 99L;
             UserEntity unauthorizedUser = new Owner(); unauthorizedUser.setId(unauthorizedUserId);
 
             given(entityFinderHelper.findRecordByIdOrFail(recordUnsignedId)).willReturn(recordToDeleteUnsigned);
             given(entityFinderHelper.findUserOrFail(unauthorizedUserId)).willReturn(unauthorizedUser);
 
+            doThrow(new AccessDeniedException("User " + unauthorizedUserId + " is not authorized to delete unsigned record " + recordUnsignedId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForRecordDeletion(unauthorizedUser, recordToDeleteUnsigned);
+
             // Act & Assert
-            assertThatThrownBy(() -> recordService.deleteUnsignedRecord(recordUnsignedId, unauthorizedUserId))
+            assertThatThrownBy(() -> recordService.deleteRecord(recordUnsignedId, unauthorizedUserId))
                     .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to delete record " + recordUnsignedId);
+                    .hasMessage("User " + unauthorizedUserId + " is not authorized to delete unsigned record " + recordUnsignedId + ".");
 
             then(entityFinderHelper).should().findRecordByIdOrFail(recordUnsignedId);
             then(entityFinderHelper).should().findUserOrFail(unauthorizedUserId);
+            then(authorizationHelper).should().verifyUserAuthorizationForRecordDeletion(unauthorizedUser, recordToDeleteUnsigned);
             then(recordRepository).should(never()).delete(any(Record.class));
         }
 
-        /**
-         * Test failure when Admin tries to delete record created by staff from a DIFFERENT clinic.
-         */
         @Test
-        @DisplayName("should throw AccessDeniedException if Admin from different clinic")
-        void delete_Failure_AdminDifferentClinic() {
+        @DisplayName("should throw AccessDeniedException if Admin from different clinic tries to delete UNSIGNED record")
+        void deleteUnsigned_Failure_AdminDifferentClinic() {
             // Arrange
-            Clinic otherClinic = new Clinic();
-            otherClinic.setId(99L);
-            otherClinic.setName("Other Clinic Test");
-
-            ClinicStaff adminOtherClinic = new ClinicStaff();
-            adminOtherClinic.setId(88L);
-            adminOtherClinic.setClinic(otherClinic);
-            adminOtherClinic.setRoles(Set.of(adminRole));
+            Clinic otherClinic = new Clinic(); otherClinic.setId(99L);
+            ClinicStaff adminOtherClinic = new ClinicStaff(); adminOtherClinic.setId(88L); adminOtherClinic.setClinic(otherClinic); adminOtherClinic.setRoles(Set.of(adminRole));
 
             given(entityFinderHelper.findRecordByIdOrFail(recordByVetId)).willReturn(recordToDeleteByOtherStaff);
             given(entityFinderHelper.findUserOrFail(88L)).willReturn(adminOtherClinic);
+            doThrow(new AccessDeniedException("User " + 88L + " is not authorized to delete unsigned record " + recordByVetId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForRecordDeletion(adminOtherClinic, recordToDeleteByOtherStaff);
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.deleteUnsignedRecord(recordByVetId, 88L))
+            assertThatThrownBy(() -> recordService.deleteRecord(recordByVetId, 88L))
                     .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to delete record " + recordByVetId);
+                    .hasMessageContaining("is not authorized to delete unsigned record " + recordByVetId);
 
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordByVetId);
+            then(entityFinderHelper).should().findUserOrFail(88L);
+            then(authorizationHelper).should().verifyUserAuthorizationForRecordDeletion(adminOtherClinic, recordToDeleteByOtherStaff);
             then(recordRepository).should(never()).delete(any(Record.class));
         }
 
-        /**
-         * Test failure when the record ID does not exist.
-         */
+
+        @Test
+        @DisplayName("should delete SIGNED record successfully when requester is signing Vet AND record is NOT immutable")
+        void deleteSigned_Success_SigningVet_NotImmutable() {
+            // Arrange
+            recordToDeleteSigned.setImmutable(false);
+            given(entityFinderHelper.findRecordByIdOrFail(recordSignedId)).willReturn(recordToDeleteSigned);
+            given(entityFinderHelper.findUserOrFail(creatorVetId)).willReturn(vet);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForRecordDeletion(vet, recordToDeleteSigned);
+            doNothing().when(recordRepository).delete(recordToDeleteSigned);
+
+            // Act
+            recordService.deleteRecord(recordSignedId, creatorVetId);
+
+            // Assert
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordSignedId);
+            then(entityFinderHelper).should().findUserOrFail(creatorVetId);
+            then(authorizationHelper).should().verifyUserAuthorizationForRecordDeletion(vet, recordToDeleteSigned);
+            then(recordRepository).should().delete(recordToDeleteSigned);
+        }
+
+        @Test
+        @DisplayName("should throw RecordImmutableException when trying to delete SIGNED and IMMUTABLE record (even by signing Vet)")
+        void deleteSigned_Failure_Immutable() {
+            // Arrange
+            recordToDeleteSigned.setImmutable(true); // *** Marcar como inmutable ***
+            given(entityFinderHelper.findRecordByIdOrFail(recordSignedId)).willReturn(recordToDeleteSigned);
+            given(entityFinderHelper.findUserOrFail(creatorVetId)).willReturn(vet);
+            doThrow(new RecordImmutableException(recordSignedId))
+                    .when(authorizationHelper).verifyUserAuthorizationForRecordDeletion(vet, recordToDeleteSigned);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.deleteRecord(recordSignedId, creatorVetId))
+                    .isInstanceOf(RecordImmutableException.class)
+                    .hasMessageContaining("Record " + recordSignedId + " is immutable and cannot be modified or deleted");
+
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordSignedId);
+            then(entityFinderHelper).should().findUserOrFail(creatorVetId);
+            then(authorizationHelper).should().verifyUserAuthorizationForRecordDeletion(vet, recordToDeleteSigned);
+            then(recordRepository).should(never()).delete(any(Record.class));
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException when NON-signing user tries to delete SIGNED record (even if not immutable)")
+        void deleteSigned_Failure_NotSigningVet() {
+            // Arrange
+            recordToDeleteSigned.setImmutable(false);
+            Long nonSigningUserId = ownerId;
+
+            given(entityFinderHelper.findRecordByIdOrFail(recordSignedId)).willReturn(recordToDeleteSigned);
+            given(entityFinderHelper.findUserOrFail(nonSigningUserId)).willReturn(owner);
+            doThrow(new AccessDeniedException("Only the signing veterinarian can delete a signed record..."))
+                    .when(authorizationHelper).verifyUserAuthorizationForRecordDeletion(owner, recordToDeleteSigned);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.deleteRecord(recordSignedId, nonSigningUserId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Only the signing veterinarian can delete a signed record");
+
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordSignedId);
+            then(entityFinderHelper).should().findUserOrFail(nonSigningUserId);
+            then(authorizationHelper).should().verifyUserAuthorizationForRecordDeletion(owner, recordToDeleteSigned);
+            then(recordRepository).should(never()).delete(any(Record.class));
+        }
+
         @Test
         @DisplayName("should throw EntityNotFoundException if record not found")
         void delete_Failure_RecordNotFound() {
@@ -925,7 +979,7 @@ class RecordServiceImplTest {
                     .willThrow(new EntityNotFoundException(Record.class.getSimpleName(), 999L));
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.deleteUnsignedRecord(999L, ownerId))
+            assertThatThrownBy(() -> recordService.deleteRecord(999L, ownerId))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Record not found with id: 999");
 
@@ -933,9 +987,6 @@ class RecordServiceImplTest {
             then(recordRepository).should(never()).delete(any(Record.class));
         }
 
-        /**
-         * Test failure when the requester user ID does not exist.
-         */
         @Test
         @DisplayName("should throw EntityNotFoundException if requester user not found")
         void delete_Failure_RequesterNotFound() {
@@ -946,7 +997,7 @@ class RecordServiceImplTest {
                     .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), nonExistentUserId));
 
             // Act & Assert
-            assertThatThrownBy(() -> recordService.deleteUnsignedRecord(recordUnsignedId, nonExistentUserId))
+            assertThatThrownBy(() -> recordService.deleteRecord(recordUnsignedId, nonExistentUserId))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("UserEntity not found with id: " + nonExistentUserId);
 

@@ -742,24 +742,43 @@ class RecordControllerIntegrationTest {
 
         private Long unsignedOwnerRecordId;
         private Long signedVetRecordId;
-
+        private Long unsignedAdminRecordId;
 
         @BeforeEach
         void deleteRecordSetup() throws Exception {
             Long clinicId = 1L;
-            Long recordFromOtherOwnerId;
             mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
                     .andExpect(status().isNoContent());
 
             RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Unsigned Owner Rec", null);
             MvcResult resOwner = mockMvc.perform(post("/api/records").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerRecDto))).andExpect(status().isCreated()).andReturn();
-            unsignedOwnerRecordId = objectMapper.readValue(resOwner.getResponse().getContentAsString(), RecordViewDto.class).id();
+            unsignedOwnerRecordId = extractRecordIdFromResult(objectMapper, resOwner);
 
             VaccineCreateDto vacDto = new VaccineCreateDto("VacDeleteTest", 1, "LDel", "BDel", true);
             RecordCreateDto vetSignedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Vet Rec", vacDto);
-            MvcResult resVetSigned = mockMvc.perform(post("/api/records?sign=true").header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetSignedDto))).andExpect(status().isCreated()).andReturn();
-            signedVetRecordId = objectMapper.readValue(resVetSigned.getResponse().getContentAsString(), RecordViewDto.class).id();
+            MvcResult resVetSigned = mockMvc.perform(post("/api/records")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(vetSignedDto)))
+                    .andExpect(status().isCreated()).andReturn();
+            signedVetRecordId = extractRecordIdFromResult(objectMapper, resVetSigned);
+
+            Record signedRec = recordRepository.findById(signedVetRecordId).orElseThrow();
+            assertThat(signedRec.getVetSignature()).as("Record created by Vet should be signed").isNotNull();
+            assertThat(signedRec.isImmutable()).as("Record should not be immutable yet").isFalse();
+
+            RecordCreateDto adminUnsignedDto = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Unsigned Admin Rec", null);
+            MvcResult resAdminUnsigned = mockMvc.perform(post("/api/records")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(adminUnsignedDto)))
+                    .andExpect(status().isCreated()).andReturn();
+            unsignedAdminRecordId = extractRecordIdFromResult(objectMapper, resAdminUnsigned);
+
+            Record unsignedAdminRec = recordRepository.findById(unsignedAdminRecordId).orElseThrow();
+            assertThat(unsignedAdminRec.getVetSignature()).as("Record created by Admin should be unsigned").isNull();
+            assertThat(unsignedAdminRec.getCreator().getId()).as("Creator should be the Admin").isEqualTo(2L);
 
             RecordCreateDto otherOwnerDto = new RecordCreateDto(petIdOther, RecordType.OTHER, "Other Owner Rec", null);
             MvcResult resOther = mockMvc.perform(post("/api/records")
@@ -767,18 +786,19 @@ class RecordControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(otherOwnerDto)))
                     .andExpect(status().isCreated()).andReturn();
-            recordFromOtherOwnerId = objectMapper.readValue(resOther.getResponse().getContentAsString(), RecordViewDto.class).id();
+            Long recordFromOtherOwnerId = extractRecordIdFromResult(objectMapper, resOther);
 
             entityManager.flush();
             entityManager.clear();
 
             assertThat(unsignedOwnerRecordId).isNotNull();
             assertThat(signedVetRecordId).isNotNull();
+            assertThat(unsignedAdminRecordId).isNotNull();
             assertThat(recordFromOtherOwnerId).isNotNull();
         }
 
         @Test
-        @DisplayName("Should return success  delete unsigned record when called by Owner creator")
+        @DisplayName("[Unsigned] Should return 204 No Content when Owner deletes own record")
         void deleteUnsigned_Success_ByOwnerCreator() throws Exception {
             mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
@@ -787,53 +807,94 @@ class RecordControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("Should return 403 Forbidden when Admin tries to delete Owner's record")
+        @DisplayName("[Unsigned] Should return 204 No Content when Admin deletes record from staff in same clinic")
+        void deleteUnsigned_Success_ByAdminSameClinic() throws Exception {
+            mockMvc.perform(delete("/api/records/{recordId}", unsignedAdminRecordId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                    .andExpect(status().isNoContent());
+            assertThat(recordRepository.findById(unsignedAdminRecordId)).isEmpty();
+        }
+
+
+        @Test
+        @DisplayName("[Unsigned] Should return 403 Forbidden when Admin tries to delete Owner's record")
         void deleteUnsigned_Forbidden_AdminDeletingOwnerRecord() throws Exception {
             mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));          assertThat(recordRepository.findById(unsignedOwnerRecordId)).isPresent();
-        }
-
-        @Test
-        @DisplayName("Should return 400 Bad Request when trying to delete SIGNED record")
-        void deleteUnsigned_BadRequest_RecordIsSigned() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", signedVetRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message", containsString("because it has been signed")));
-            assertThat(recordRepository.findById(signedVetRecordId)).isPresent();
-        }
-
-        @Test
-        @DisplayName("Should return 403 Forbidden if non-creator Owner tries to delete record")
-        void deleteUnsigned_Forbidden_WrongOwner() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("Should return 403 Forbidden if Vet tries to delete Owner's record")
-        void deleteUnsigned_Forbidden_VetDeletingOwnerRecord() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("Should return 403 Forbidden if Admin from DIFFERENT clinic tries to delete Owner's unsigned record")
-        void deleteUnsigned_Forbidden_AdminDifferentClinicDeletingOwnerRecord() throws Exception {
-            mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));
             assertThat(recordRepository.findById(unsignedOwnerRecordId)).isPresent();
         }
 
+
+        @Test
+        @DisplayName("[Signed] Should return 204 No Content when signing Vet deletes OWN signed but NOT IMMUTABLE record")
+        void deleteSigned_Success_SigningVet_NotImmutable() throws Exception {
+            mockMvc.perform(delete("/api/records/{recordId}", signedVetRecordId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
+                    .andExpect(status().isNoContent());
+            assertThat(recordRepository.findById(signedVetRecordId)).isEmpty();
+        }
+
+
+        @Test
+        @DisplayName("[Signed] Should return 409 Conflict when trying to delete SIGNED and IMMUTABLE record")
+        void deleteSigned_Conflict_RecordIsImmutable() throws Exception {
+            // Arrange
+            Record recordToDelete = recordRepository.findById(signedVetRecordId).orElseThrow();
+            recordToDelete.setImmutable(true);
+            recordRepository.saveAndFlush(recordToDelete);
+            entityManager.clear();
+
+            // Act & Assert
+            mockMvc.perform(delete("/api/records/{recordId}", signedVetRecordId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message", containsString("is immutable and cannot be modified or deleted")));
+
+            assertThat(recordRepository.findById(signedVetRecordId)).isPresent();
+        }
+
+
+        @Test
+        @DisplayName("[Signed] Should return 403 Forbidden when non-creator (Owner) tries to delete signed record")
+        void deleteSigned_Forbidden_OwnerDeletingSigned() throws Exception {
+            // Arrange
+            Record recordToDelete = recordRepository.findById(signedVetRecordId).orElseThrow();
+            recordToDelete.setImmutable(false);
+            recordRepository.saveAndFlush(recordToDelete);
+            entityManager.clear();
+
+            // Act & Assert
+            mockMvc.perform(delete("/api/records/{recordId}", signedVetRecordId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));
+
+            assertThat(recordRepository.findById(signedVetRecordId)).isPresent();
+        }
+
+        @Test
+        @DisplayName("[Signed] Should return 403 Forbidden when non-creator (Admin) tries to delete signed record")
+        void deleteSigned_Forbidden_AdminDeletingSigned() throws Exception {
+            // Arrange
+            Record recordToDelete = recordRepository.findById(signedVetRecordId).orElseThrow();
+            recordToDelete.setImmutable(false);
+            recordRepository.saveAndFlush(recordToDelete);
+            entityManager.clear();
+
+            // Act & Assert
+            mockMvc.perform(delete("/api/records/{recordId}", signedVetRecordId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("You do not have permission to perform this action or access this resource.")));
+
+            assertThat(recordRepository.findById(signedVetRecordId)).isPresent();
+        }
+
         @Test
         @DisplayName("Should return 404 Not Found if record ID does not exist")
-        void deleteUnsigned_NotFound_Record() throws Exception {
+        void delete_NotFound_Record() throws Exception {
             mockMvc.perform(delete("/api/records/{recordId}", 9999L)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
                     .andExpect(status().isNotFound());
@@ -841,10 +902,9 @@ class RecordControllerIntegrationTest {
 
         @Test
         @DisplayName("Should return 401 Unauthorized if no token provided")
-        void deleteUnsigned_Unauthorized() throws Exception {
+        void delete_Unauthorized() throws Exception {
             mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId))
                     .andExpect(status().isUnauthorized());
         }
-
     }
 }

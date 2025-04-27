@@ -79,7 +79,7 @@ public class RecordController implements RecordControllerApi {
             @PathVariable Long recordId) {
 
         Long requesterUserId = userHelper.getAuthenticatedUserId();
-        recordService.deleteUnsignedRecord(recordId, requesterUserId);
+        recordService.deleteRecord(recordId, requesterUserId);
         return ResponseEntity.noContent().build();
     }
 }

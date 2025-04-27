@@ -50,6 +50,15 @@ public class Record extends BaseEntity {
     @Column(name = "vet_signature", columnDefinition = "TEXT")
     private String vetSignature;
 
+    /**
+     * Flag indicating if this record is considered immutable, typically because
+     * it has been used as the basis for a generated Certificate.
+     * Defaults to false. Once set to true, deletion or modification might be prevented.
+     */
+    @NotNull
+    @Column(name = "is_immutable", nullable = false)
+    private boolean isImmutable = false;
+
     // --- Relationships ---
 
     /**

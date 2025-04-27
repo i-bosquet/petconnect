@@ -1,10 +1,14 @@
 package com.petconnect.backend.record.application.service;
 
+import com.petconnect.backend.exception.RecordImmutableException;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
 import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+
 
 /**
  * Service interface for managing medical records ({@link Record}) for pets.
@@ -75,16 +79,15 @@ public interface RecordService {
     RecordViewDto updateUnsignedRecord(Long recordId, RecordUpdateDto updateDto, Long requesterUserId);
 
     /**
-     * Deletes an *unsigned* medical record.
-     * Only the original creator (Owner or Staff) or potentially an Admin of the creator's clinic
-     * should be allowed to delete unsigned records they or their clinic created.
-     * Signed records cannot be deleted via this method (or potentially at all).
+     * Deletes a medical record based on its ID and the requester's authorization.
+     * - Unsigned records can be deleted by their creator or an authorized Admin.
+     * - Signed records can ONLY be deleted by the signing Vet IF the record is NOT immutable.
      *
-     * @param recordId        The ID of the unsigned record to delete.
+     * @param recordId        The ID of the record to delete.
      * @param requesterUserId The ID of the user attempting the deletion.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if the record is not found.
-     * @throws org.springframework.security.access.AccessDeniedException  if the requester is not authorized to delete this record.
-     * @throws IllegalStateException if the record is already signed.
+     * @throws EntityNotFoundException if the record or requester user is not found.
+     * @throws RecordImmutableException if attempting to delete a signed record linked to a certificate.
+     * @throws AccessDeniedException if the requester is not authorized to delete the record.
      */
-    void deleteUnsignedRecord(Long recordId, Long requesterUserId);
+    void deleteRecord(Long recordId, Long requesterUserId);
 }
