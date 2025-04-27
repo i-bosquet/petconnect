@@ -1,5 +1,7 @@
 package com.petconnect.backend.record.port.in.web;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petconnect.backend.pet.application.dto.PetActivationDto;
 import com.petconnect.backend.pet.application.dto.PetRegistrationDto;
@@ -29,11 +31,14 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.Optional;
 
 import static com.petconnect.backend.util.IntegrationTestUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -904,6 +909,105 @@ class RecordControllerIntegrationTest {
         @DisplayName("Should return 401 Unauthorized if no token provided")
         void delete_Unauthorized() throws Exception {
             mockMvc.perform(delete("/api/records/{recordId}", unsignedOwnerRecordId))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    /**
+     * --- Tests for POST /api/records/{petId}/temporary-access ---
+     */
+    @Nested
+    @DisplayName("POST /api/records/{petId}/temporary-access")
+    class GenerateTemporaryAccessTokenIntegrationTests{
+        private Long petIdForTokenTest;
+
+        /**
+         * Setup: Ensure the pet exists and belongs to the owner with ownerToken.
+         */
+        @BeforeEach
+        void setupTokenTest() {
+            petIdForTokenTest = petIdOwned;
+            assertThat(petRepository.findById(petIdForTokenTest)).isPresent();
+            Optional<Pet> petOpt = petRepository.findById(petIdForTokenTest);
+            assertThat(petOpt).as("Pet with ID " + petIdForTokenTest + " should exist for token test setup")
+                    .isPresent();
+            assertThat(petOpt.get().getOwner()).as("Owner of pet " + petIdForTokenTest + " should not be null")
+                    .isNotNull();
+            assertThat(petOpt.get().getOwner().getId()).as("Owner ID should match")
+                    .isEqualTo(ownerId);
+        }
+
+        @Test
+        @DisplayName("Should return 200 OK with token when called by Owner with valid duration")
+        void generateToken_Success_Owner() throws Exception {
+            TemporaryAccessRequestDto requestDto = new TemporaryAccessRequestDto("PT1H"); // 1 hour
+
+            MvcResult result = mockMvc.perform(post("/api/records/{petId}/temporary-access", petIdForTokenTest)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestDto)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token", is(notNullValue())))
+                    .andExpect(jsonPath("$.token", matchesRegex("^[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.?[A-Za-z0-9-_.+/=]*$")))
+                    .andReturn();
+
+            String token = objectMapper.readValue(result.getResponse().getContentAsString(), TemporaryAccessTokenDto.class).token();
+            DecodedJWT decodedJWT = JWT.decode(token);
+            assertThat(decodedJWT.getIssuer()).isEqualTo("PetConnectTestIssuer");
+
+            assertThat(decodedJWT.getClaim("petId").asLong()).isEqualTo(petIdForTokenTest);
+            assertThat(decodedJWT.getClaim("type").asString()).isEqualTo("TEMP_RECORD_ACCESS");
+            assertThat(decodedJWT.getExpiresAt()).isAfter(new Date());
+            assertThat(decodedJWT.getExpiresAt().getTime() - decodedJWT.getIssuedAt().getTime())
+                    .isCloseTo(Duration.ofHours(1).toMillis(), within(1000L)); // Check expiry ~1h later
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when called by non-Owner (Vet)")
+        void generateToken_Forbidden_NotOwner() throws Exception {
+            TemporaryAccessRequestDto requestDto = new TemporaryAccessRequestDto("PT1H");
+
+            mockMvc.perform(post("/api/records/{petId}/temporary-access", petIdForTokenTest)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestDto)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when Pet ID does not exist")
+        void generateToken_NotFound_Pet() throws Exception {
+            TemporaryAccessRequestDto requestDto = new TemporaryAccessRequestDto("PT1H");
+
+            mockMvc.perform(post("/api/records/{petId}/temporary-access", 9999L)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestDto)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when duration format is invalid")
+        void generateToken_BadRequest_InvalidDuration() throws Exception {
+            TemporaryAccessRequestDto requestDto = new TemporaryAccessRequestDto("1_hour_invalid");
+
+            mockMvc.perform(post("/api/records/{petId}/temporary-access", petIdForTokenTest)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestDto)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error", is("Bad Request")))
+                    .andExpect(jsonPath("$.message", containsString("Invalid duration format")));
+        }
+
+        @Test
+        @DisplayName("Should return 401 Unauthorized when no token provided")
+        void generateToken_Unauthorized() throws Exception {
+            TemporaryAccessRequestDto requestDto = new TemporaryAccessRequestDto("PT1H");
+
+            mockMvc.perform(post("/api/records/{petId}/temporary-access", petIdForTokenTest)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestDto)))
                     .andExpect(status().isUnauthorized());
         }
     }

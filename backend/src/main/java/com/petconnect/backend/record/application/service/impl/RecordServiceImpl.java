@@ -8,9 +8,7 @@ import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.exception.RecordSignedException;
 import com.petconnect.backend.exception.RecordUpdateVaccineException;
 import com.petconnect.backend.pet.domain.model.Pet;
-import com.petconnect.backend.record.application.dto.RecordCreateDto;
-import com.petconnect.backend.record.application.dto.RecordUpdateDto;
-import com.petconnect.backend.record.application.dto.RecordViewDto;
+import com.petconnect.backend.record.application.dto.*;
 import com.petconnect.backend.record.application.mapper.RecordMapper;
 import com.petconnect.backend.record.application.mapper.VaccineMapper;
 import com.petconnect.backend.record.application.service.RecordService;
@@ -18,15 +16,19 @@ import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.record.domain.model.RecordType;
 import com.petconnect.backend.record.domain.model.Vaccine;
 import com.petconnect.backend.record.domain.repository.RecordRepository;
+import com.petconnect.backend.security.JwtUtils;
 import com.petconnect.backend.user.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
+import java.time.format.DateTimeParseException;
 import java.util.Objects;
 
 /**
@@ -48,6 +50,7 @@ public class RecordServiceImpl implements RecordService {
     private final ValidateHelper validateHelper;
     private final RecordHelper recordHelper;
     private final SigningService signingService;
+    private final JwtUtils jwtUtils;
 
     /**
      * {@inheritDoc}
@@ -187,6 +190,44 @@ public class RecordServiceImpl implements RecordService {
 
         recordRepository.delete(recordToDelete);
         log.info("Record ID {} deleted successfully by User ID {}", recordId, requesterUserId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public TemporaryAccessTokenDto generateTemporaryAccessToken(Long petId, TemporaryAccessRequestDto requestDto, Long requesterUserId) {
+        log.info("Generating temporary access token for Pet ID {} requested by User ID {}", petId, requesterUserId);
+
+        // Verify Pet exists and requester is the Owner
+        Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
+        if (pet.getOwner() == null || !Objects.equals(requesterUserId, pet.getOwner().getId())) {
+            log.warn("Access denied: User {} is not the owner of Pet {}", requesterUserId, petId);
+            throw new AccessDeniedException("Only the pet owner can generate temporary access tokens.");
+        }
+
+        // Duration
+        Duration duration;
+        try {
+            duration = Duration.parse(requestDto.durationString());
+            if (duration.isNegative() || duration.isZero()) {
+                throw new IllegalArgumentException("Duration must be positive.");
+            }
+            // limit: Max 1 week
+            if (duration.compareTo(Duration.ofDays(7)) > 0) {
+                duration = Duration.ofDays(7); // Cap duration
+                log.warn("Requested duration too long for Pet ID {}. Capping at 7 days.", petId);
+            }
+        } catch (DateTimeParseException e) {
+            log.error("Invalid duration string provided: {}", requestDto.durationString(), e);
+            throw new IllegalArgumentException("Invalid duration format. Use ISO-8601 duration format (e.g., PT1H, P1D).");
+        }
+
+        // Generate Temporary Token using JwtUtils
+        String token = jwtUtils.createTemporaryRecordAccessToken(petId, duration);
+        log.info("Temporary access token generated successfully for Pet ID {} with duration {}", petId, duration);
+
+        return new TemporaryAccessTokenDto(token);
     }
 
 }

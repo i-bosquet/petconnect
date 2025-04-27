@@ -10,10 +10,7 @@ import com.petconnect.backend.exception.RecordImmutableException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Specie;
-import com.petconnect.backend.record.application.dto.RecordCreateDto;
-import com.petconnect.backend.record.application.dto.RecordUpdateDto;
-import com.petconnect.backend.record.application.dto.RecordViewDto;
-import com.petconnect.backend.record.application.dto.VaccineCreateDto;
+import com.petconnect.backend.record.application.dto.*;
 import com.petconnect.backend.record.application.mapper.RecordMapper;
 import com.petconnect.backend.record.application.mapper.VaccineMapper;
 import com.petconnect.backend.record.domain.model.Record;
@@ -23,6 +20,7 @@ import com.petconnect.backend.record.domain.repository.RecordRepository;
 import com.petconnect.backend.user.application.dto.UserProfileDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.domain.model.*;
+import com.petconnect.backend.security.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +37,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -70,6 +69,7 @@ class RecordServiceImplTest {
     @Mock private UserMapper userMapper;
     @Mock private RecordHelper recordHelper;
     @Mock private SigningService signingService;
+    @Mock private JwtUtils jwtUtils;
 
     @InjectMocks
     private RecordServiceImpl recordService;
@@ -1003,5 +1003,136 @@ class RecordServiceImplTest {
 
             then(recordRepository).should(never()).delete(any(Record.class));
         }
+    }
+
+    /**
+     * --- Tests for generateTemporaryAccessToken ---
+     */
+    @Nested
+    @DisplayName("generateTemporaryAccessToken Tests")
+    class GenerateTemporaryAccessTokenTests{
+
+        private TemporaryAccessRequestDto validRequestDtoShort;
+        private TemporaryAccessRequestDto validRequestDtoLong;
+        private TemporaryAccessRequestDto invalidDurationDto;
+        private final Long petIdForToken = petId;
+        private final Long requesterOwnerId = ownerId;
+        private final Long unauthorizedUserId = vetId;
+
+        @BeforeEach
+        void tempTokenSetup() {
+            validRequestDtoShort = new TemporaryAccessRequestDto("PT1H"); // 1 Hour
+            validRequestDtoLong = new TemporaryAccessRequestDto("P10D"); // 10 Days (will be capped)
+            invalidDurationDto = new TemporaryAccessRequestDto("INVALID");
+            // Ensure the pet has the correct owner set from the main setup
+            pet.setOwner(owner);
+        }
+
+        @Test
+        @DisplayName("should generate token successfully when requested by Owner with valid duration")
+        void generateToken_Success_ValidDuration() {
+            // Arrange
+            String expectedToken = "temp.jwt.token.1h";
+            Duration expectedDuration = Duration.ofHours(1);
+            given(entityFinderHelper.findPetByIdOrFail(petIdForToken)).willReturn(pet);
+            given(jwtUtils.createTemporaryRecordAccessToken(petIdForToken, expectedDuration)).willReturn(expectedToken);
+
+            // Act
+            TemporaryAccessTokenDto result = recordService.generateTemporaryAccessToken(petIdForToken, validRequestDtoShort, requesterOwnerId);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.token()).isEqualTo(expectedToken);
+            then(entityFinderHelper).should().findPetByIdOrFail(petIdForToken);
+            then(jwtUtils).should().createTemporaryRecordAccessToken(petIdForToken, expectedDuration);
+        }
+
+        @Test
+        @DisplayName("should cap duration at 7 days if requested duration is longer")
+        void generateToken_Success_DurationCapped() {
+            // Arrange
+            String expectedToken = "temp.jwt.token.7d";
+            Duration cappedDuration = Duration.ofDays(7); // Max duration
+            given(entityFinderHelper.findPetByIdOrFail(petIdForToken)).willReturn(pet);
+            given(jwtUtils.createTemporaryRecordAccessToken(petIdForToken, cappedDuration)).willReturn(expectedToken);
+
+            // Act
+            TemporaryAccessTokenDto result = recordService.generateTemporaryAccessToken(petIdForToken, validRequestDtoLong, requesterOwnerId);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.token()).isEqualTo(expectedToken);
+            then(entityFinderHelper).should().findPetByIdOrFail(petIdForToken);
+            // Verify it was called with the CAPPED duration
+            then(jwtUtils).should().createTemporaryRecordAccessToken(petIdForToken, cappedDuration);
+        }
+
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if requester is not the Owner")
+        void generateToken_Failure_NotOwner() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petIdForToken)).willReturn(pet);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.generateTemporaryAccessToken(petIdForToken, validRequestDtoShort, unauthorizedUserId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessage("Only the pet owner can generate temporary access tokens.");
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petIdForToken);
+            then(jwtUtils).should(never()).createTemporaryRecordAccessToken(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if pet not found")
+        void generateToken_Failure_PetNotFound() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(999L))
+                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.generateTemporaryAccessToken(999L, validRequestDtoShort, requesterOwnerId))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            then(jwtUtils).should(never()).createTemporaryRecordAccessToken(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("should throw IllegalArgumentException if duration string is invalid")
+        void generateToken_Failure_InvalidDuration() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petIdForToken)).willReturn(pet);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.generateTemporaryAccessToken(petIdForToken, invalidDurationDto, requesterOwnerId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid duration format");
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petIdForToken);
+            then(jwtUtils).should(never()).createTemporaryRecordAccessToken(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("should throw IllegalArgumentException if duration is zero or negative")
+        void generateToken_Failure_ZeroOrNegativeDuration() {
+            // Arrange
+            TemporaryAccessRequestDto zeroDurationDto = new TemporaryAccessRequestDto("PT0S");
+            TemporaryAccessRequestDto negativeDurationDto = new TemporaryAccessRequestDto("PT-1S");
+            given(entityFinderHelper.findPetByIdOrFail(petIdForToken)).willReturn(pet);
+
+            // Act & Assert for Zero
+            assertThatThrownBy(() -> recordService.generateTemporaryAccessToken(petIdForToken, zeroDurationDto, requesterOwnerId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Duration must be positive.");
+
+            // Act & Assert for Negative
+            assertThatThrownBy(() -> recordService.generateTemporaryAccessToken(petIdForToken, negativeDurationDto, requesterOwnerId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Duration must be positive.");
+
+            then(entityFinderHelper).should(times(2)).findPetByIdOrFail(petIdForToken);
+            then(jwtUtils).should(never()).createTemporaryRecordAccessToken(anyLong(), any());
+        }
+
     }
 }

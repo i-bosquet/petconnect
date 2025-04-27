@@ -3,6 +3,8 @@ package com.petconnect.backend.record.port.in.web;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
 import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
+import com.petconnect.backend.record.application.dto.TemporaryAccessRequestDto;
+import com.petconnect.backend.record.application.dto.TemporaryAccessTokenDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -141,4 +143,29 @@ public interface RecordControllerApi {
     @DeleteMapping("/{recordId}")
     ResponseEntity<Void> deleteUnsignedRecord(
             @Parameter(description = "ID of the record to delete", required = true) @PathVariable Long recordId);
+
+    /**
+     * Generates a short-lived JWT token that can grant temporary read-only access
+     * to a specific pet's signed medical records.
+     * Requires the requester to be the owner of the pet.
+     *
+     * @param petId     The ID of the pet for which access is requested.
+     * @param requestDto DTO containing the requested duration string (e.g., "PT1H", "P1D").
+     * @return ResponseEntity with a TemporaryAccessTokenDto containing the token and status 200 (OK).
+     */
+    @Operation(summary = "Generate Temporary Access Token (Owner)",
+            description = "Allows the Pet Owner to generate a short-lived token for sharing read-only access to signed records.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Temporary access token generated successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = TemporaryAccessTokenDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid duration format provided", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner of the pet)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Pet not found", content = @Content(schema = @Schema(implementation = Map.class)))
+    })
+    @PostMapping("/{petId}/temporary-access")
+    ResponseEntity<TemporaryAccessTokenDto> generateTemporaryAccessToken(
+            @Parameter(description = "ID of the pet", required = true) @PathVariable Long petId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Requested duration for the token.", required = true, content = @Content(schema = @Schema(implementation = TemporaryAccessRequestDto.class)))
+            @Valid @RequestBody TemporaryAccessRequestDto requestDto);
 }

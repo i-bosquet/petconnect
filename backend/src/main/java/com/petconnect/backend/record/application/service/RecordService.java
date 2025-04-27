@@ -1,9 +1,7 @@
 package com.petconnect.backend.record.application.service;
 
 import com.petconnect.backend.exception.RecordImmutableException;
-import com.petconnect.backend.record.application.dto.RecordCreateDto;
-import com.petconnect.backend.record.application.dto.RecordUpdateDto;
-import com.petconnect.backend.record.application.dto.RecordViewDto;
+import com.petconnect.backend.record.application.dto.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -90,4 +88,19 @@ public interface RecordService {
      * @throws AccessDeniedException if the requester is not authorized to delete the record.
      */
     void deleteRecord(Long recordId, Long requesterUserId);
+
+    /**
+     * Generates a temporary access token (JWT) allowing read-only access
+     * to a specific pet's signed medical records for a limited duration.
+     * Requires the requester to be the owner of the pet.
+     *
+     * @param petId           The ID of the pet whose records access is requested.
+     * @param requestDto      DTO containing the requested duration.
+     * @param requesterUserId The ID of the user making the request (must be the owner).
+     * @return A DTO containing the generated temporary access token.
+     * @throws EntityNotFoundException if the pet is not found.
+     * @throws AccessDeniedException  if the requester is not the owner of the pet.
+     * @throws IllegalArgumentException if the duration string in the DTO is invalid.
+     */
+    TemporaryAccessTokenDto generateTemporaryAccessToken(Long petId, TemporaryAccessRequestDto requestDto, Long requesterUserId);
 }

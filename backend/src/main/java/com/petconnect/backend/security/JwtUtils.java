@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,10 +26,14 @@ import java.util.stream.Collectors;
 public class JwtUtils {
 
     @Value("${jwt.secret.key}")
-    private String privatekey; // The secret key for signing JWT tokens
+    private String privateKey; // The secret key for signing JWT tokens
 
     @Value("${jwt.secret.generator}")
     public String userGenerator; // The issuer identifier for JWT tokens
+
+    private static final String PET_ID_CLAIM = "petId";
+    private static final String TOKEN_TYPE_CLAIM = "type";
+    private static final String TEMPORARY_ACCESS_TYPE = "TEMP_RECORD_ACCESS";
 
     /**
      * Creates a JWT token using the provided authentication details.
@@ -37,7 +42,7 @@ public class JwtUtils {
      * @return a JWT token as a String
      */
     public String createToken(Authentication authentication) {
-        Algorithm algorithm = Algorithm.HMAC256(this.privatekey);
+        Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
 
         String username = authentication.getPrincipal().toString();
 
@@ -62,6 +67,31 @@ public class JwtUtils {
     }
 
     /**
+     * Creates a temporary JWT token specifically for granting read-only access
+     * to a pet's signed medical records for a limited duration.
+     *
+     * @param petId    The ID of the pet whose records can be accessed.
+     * @param duration The duration for which the token should be valid.
+     * @return A temporary JWT token as a String.
+     */
+    public String createTemporaryRecordAccessToken(Long petId, Duration duration) {
+        Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + duration.toMillis());
+
+        return JWT.create()
+                .withIssuer(this.userGenerator)
+                .withSubject("PetRecordViewer_" + petId)
+                .withClaim(PET_ID_CLAIM, petId) // Specific claim for pet ID
+                .withClaim(TOKEN_TYPE_CLAIM, TEMPORARY_ACCESS_TYPE)
+                .withIssuedAt(now)
+                .withExpiresAt(expiryDate)
+                .withJWTId(UUID.randomUUID().toString())
+                .withNotBefore(now)
+                .sign(algorithm);
+    }
+
+    /**
      * Validates a JWT token and returns the decoded token.
      *
      * @param token the JWT token to validate
@@ -70,7 +100,7 @@ public class JwtUtils {
      */
     public DecodedJWT validateToken(String token) {
         try {
-            Algorithm algorithm = Algorithm.HMAC256(this.privatekey);
+            Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
             JWTVerifier verifier = JWT.require(algorithm)
                     // specify any specific claim validations
                     .withIssuer(this.userGenerator)

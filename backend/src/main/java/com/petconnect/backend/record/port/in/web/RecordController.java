@@ -4,6 +4,8 @@ import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
 import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
+import com.petconnect.backend.record.application.dto.TemporaryAccessRequestDto;
+import com.petconnect.backend.record.application.dto.TemporaryAccessTokenDto;
 import com.petconnect.backend.record.application.service.RecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -81,5 +83,20 @@ public class RecordController implements RecordControllerApi {
         Long requesterUserId = userHelper.getAuthenticatedUserId();
         recordService.deleteRecord(recordId, requesterUserId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @PostMapping("/{petId}/temporary-access")
+    public ResponseEntity<TemporaryAccessTokenDto> generateTemporaryAccessToken(
+            @PathVariable Long petId,
+            @Valid @RequestBody TemporaryAccessRequestDto requestDto) {
+        Long requesterUserId = userHelper.getAuthenticatedUserId();
+        log.info("Received request for temporary access token for Pet ID {} by User ID {}, duration: {}",
+                petId, requesterUserId, requestDto.durationString());
+        TemporaryAccessTokenDto tokenDto = recordService.generateTemporaryAccessToken(petId, requestDto, requesterUserId);
+        return ResponseEntity.ok(tokenDto);
     }
 }
