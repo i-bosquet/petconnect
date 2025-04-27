@@ -1,6 +1,7 @@
 package com.petconnect.backend.record.port.in.web;
 
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
+import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -96,6 +97,31 @@ public interface RecordControllerApi {
             @GetMapping("/{recordId}")
     ResponseEntity<RecordViewDto> findRecordById(
             @Parameter(description = "ID of the record", required = true) @PathVariable Long recordId);
+
+    /**
+     * Updates an existing unsigned medical record.
+     * Allows modification of the type (excluding VACCINE) and/or description.
+     * Requires the user to be the creator or an authorized Admin.
+     *
+     * @param recordId The ID of the unsigned record to update.
+     * @param updateDto DTO containing the optional new type and/or description.
+     * @return ResponseEntity with the updated RecordViewDto and status 200.
+     */
+    @Operation(summary = "Update Unsigned Record",
+            description = "Updates the type (non-vaccine) and/or description of an unsigned record. Requires creator or authorized Admin role.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Record updated successfully", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = RecordViewDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input data (e.g., invalid type)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden (User not authorized to update)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Record not found", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "409", description = "Conflict (e.g., trying to update a signed record, or change type to/from VACCINE)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(example = "{\"error\":\"Conflict\", \"message\":\"Cannot update record X because it has been signed...\"}", implementation = Map.class)))
+    })
+    @PutMapping("/{recordId}")
+    ResponseEntity<RecordViewDto> updateUnsignedRecord(
+            @Parameter(description = "ID of the record to update", required = true) @PathVariable Long recordId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Optional new type and/or description.", required = true, content = @Content(schema = @Schema(implementation = RecordUpdateDto.class)))
+            @Valid @RequestBody RecordUpdateDto updateDto);
 
     /**
      * Deletes an unsigned medical record.

@@ -1,6 +1,7 @@
 package com.petconnect.backend.record.application.service;
 
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
+import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -55,6 +56,23 @@ public interface RecordService {
      * @throws org.springframework.security.access.AccessDeniedException  if the requester is not authorized to view this record.
      */
     RecordViewDto findRecordById(Long recordId, Long requesterUserId);
+
+    /**
+     * Updates an existing *unsigned* medical record.
+     * Allows updating the type (excluding VACCINE) and/or description.
+     * Requires the requester to be the original creator (Owner/Staff) or an authorized Admin
+     * if the record was created by clinic staff.
+     *
+     * @param recordId        The ID of the unsigned record to update.
+     * @param updateDto       The DTO containing the fields to update (type, description).
+     * @param requesterUserId The ID of the user attempting the update.
+     * @return The DTO representation of the updated record.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if the record or requester is not found.
+     * @throws org.springframework.security.access.AccessDeniedException  if the requester is not authorized to update this record.
+     * @throws IllegalStateException if the record is signed or if attempting to change the type to/from VACCINE.
+     * @throws IllegalArgumentException if the new type is invalid.
+     */
+    RecordViewDto updateUnsignedRecord(Long recordId, RecordUpdateDto updateDto, Long requesterUserId);
 
     /**
      * Deletes an *unsigned* medical record.

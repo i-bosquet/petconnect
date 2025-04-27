@@ -81,6 +81,8 @@ public class GlobalExceptionHandler {
             MicrochipAlreadyExistsException.class,
             CertificateNumberAlreadyExistsException.class,
             CertificateAlreadyExistsForRecordException.class,
+            RecordSignedException.class,
+            RecordUpdateVaccineException.class
     })
     @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<Map<String, Object>> handleConflictExceptions(RuntimeException ex) {

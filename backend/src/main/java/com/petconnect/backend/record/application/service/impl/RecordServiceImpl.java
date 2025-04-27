@@ -4,9 +4,12 @@ import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
-import com.petconnect.backend.common.service.impl.SigningServiceImpl;
+import com.petconnect.backend.common.service.SigningService;
+import com.petconnect.backend.exception.RecordSignedException;
+import com.petconnect.backend.exception.RecordUpdateVaccineException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
+import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
 import com.petconnect.backend.record.application.mapper.RecordMapper;
 import com.petconnect.backend.record.application.mapper.VaccineMapper;
@@ -45,7 +48,7 @@ public class RecordServiceImpl implements RecordService {
     private final AuthorizationHelper authorizationHelper;
     private final ValidateHelper validateHelper;
     private final RecordHelper recordHelper;
-    private final SigningServiceImpl signingServiceImpl;
+    private final SigningService signingService;
 
     /**
      * {@inheritDoc}
@@ -73,7 +76,7 @@ public class RecordServiceImpl implements RecordService {
         if (creator instanceof Vet vetCreator) {
             log.info("Creator is Vet (ID: {}), proceeding with signature.", creatorUserId);
             String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
-            String signature = signingServiceImpl.generateVetSignature(vetCreator, dataToSign);
+            String signature = signingService.generateVetSignature(vetCreator, dataToSign);
             newRecord.setVetSignature(signature);
             log.info("Record for Pet {} created and signed by Vet {}", petId, creatorUserId);
         } else {
@@ -113,6 +116,91 @@ public class RecordServiceImpl implements RecordService {
         authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, associatedPet, "view record for");
 
         return recordMapper.toViewDto(recordEntity);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public RecordViewDto updateUnsignedRecord(Long recordId, RecordUpdateDto updateDto, Long requesterUserId) {
+        log.info("Attempting to update record ID: {} by User ID: {}", recordId, requesterUserId);
+        Record record = entityFinderHelper.findRecordByIdOrFail(recordId);
+        UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
+        UserEntity creator = record.getCreator();
+
+        // Check if Signed
+        if (StringUtils.hasText(record.getVetSignature())) {
+            log.warn("Update failed for Record ID {}: Record is signed.", recordId);
+            throw new RecordSignedException(recordId);
+        }
+
+        // Check if Record Type is VACCINE
+        if (record.getType() == RecordType.VACCINE) {
+            log.warn("Update failed for Record ID {}: Cannot update records of type VACCINE.", recordId);
+            throw new RecordUpdateVaccineException(recordId, "records of type VACCINE cannot be updated.");
+        }
+
+        boolean authorized = false;
+
+        if (requester instanceof Owner && creator instanceof Owner && Objects.equals(requesterUserId, creator.getId())) {
+            authorized = true;
+            log.debug("Authorization check: Owner {} updating their own record {}.", requesterUserId, recordId);
+        }
+
+        else if (requester instanceof ClinicStaff requesterStaff && creator instanceof ClinicStaff creatorStaff) {
+                if (requesterStaff.getClinic() != null &&
+                        creatorStaff.getClinic() != null &&
+                        Objects.equals(requesterStaff.getClinic().getId(), creatorStaff.getClinic().getId()))
+                {
+                    authorized = true;
+                    log.debug("Authorization check: Staff {} updating record {} created by admin {} in same clinic {}.",
+                            requesterUserId, recordId, creator.getId(), requesterStaff.getClinic().getId());
+                } else {
+                    log.warn("Authorization denied: Staff {} from clinic {} attempting to update record {} created by admin {} from clinic {}.",
+                            requesterUserId, (requesterStaff.getClinic() != null ? requesterStaff.getClinic().getId() : "null"),
+                            recordId, creator.getId(), (creatorStaff.getClinic() != null ? creatorStaff.getClinic().getId() : "null"));
+                }
+        }
+
+        if (!authorized) {
+            log.warn("Authorization failed: User {} cannot update Record ID {} created by User {} (Type: {}).",
+                    requesterUserId, recordId, creator.getId(), creator.getClass().getSimpleName());
+            throw new AccessDeniedException("User " + requesterUserId + " is not authorized to update record " + recordId + ".");
+        }
+
+        log.debug("Authorization successful for User {} updating Record ID {}", requesterUserId, recordId);
+
+        boolean changed = false;
+
+        if (updateDto.type() != null && updateDto.type() != record.getType()) {
+            if (updateDto.type() == RecordType.VACCINE) {
+                log.error("Update failed for Record ID {}: Attempted to change type TO VACCINE.", recordId);
+                throw new  RecordUpdateVaccineException(recordId, "cannot change record type to VACCINE.");
+            }
+            log.info("Updating Record ID {} type from {} to {}", recordId, record.getType(), updateDto.type());
+            record.setType(updateDto.type());
+            changed = true;
+        }
+
+        String newDescription = updateDto.description();
+        String currentDescription = record.getDescription();
+        String effectiveNewDescription = (newDescription != null && newDescription.isBlank()) ? null : newDescription;
+        if (newDescription != null && !Objects.equals(effectiveNewDescription, currentDescription)) {
+            log.info("Updating Record ID {} description.", recordId);
+            record.setDescription(effectiveNewDescription);
+            changed = true;
+        }
+
+        Record updatedRecord = record;
+        if (changed) {
+            updatedRecord = recordRepository.save(record);
+            log.info("Record ID {} updated successfully by User ID {}", recordId, requesterUserId);
+        } else {
+            log.info("No effective changes detected for Record ID {}, update skipped.", recordId);
+        }
+
+        return recordMapper.toViewDto(updatedRecord);
     }
 
     /**

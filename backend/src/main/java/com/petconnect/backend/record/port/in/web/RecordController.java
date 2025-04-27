@@ -2,6 +2,7 @@ package com.petconnect.backend.record.port.in.web;
 
 import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
+import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
 import com.petconnect.backend.record.application.service.RecordService;
 import jakarta.validation.Valid;
@@ -56,6 +57,20 @@ public class RecordController implements RecordControllerApi {
         Long requesterUserId = userHelper.getAuthenticatedUserId();
         RecordViewDto recordDto = recordService.findRecordById(recordId, requesterUserId);
         return ResponseEntity.ok(recordDto);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @PutMapping("/{recordId}")
+    public ResponseEntity<RecordViewDto> updateUnsignedRecord(
+            @PathVariable Long recordId,
+            @Valid @RequestBody RecordUpdateDto updateDto) {
+        Long requesterUserId = userHelper.getAuthenticatedUserId();
+        log.info("Received request to update record ID {} by User ID {}", recordId, requesterUserId);
+        RecordViewDto updatedRecord = recordService.updateUnsignedRecord(recordId, updateDto, requesterUserId);
+        return ResponseEntity.ok(updatedRecord);
     }
 
     @Override

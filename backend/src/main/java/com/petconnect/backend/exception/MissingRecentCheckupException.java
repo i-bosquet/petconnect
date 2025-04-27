@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 /**
  * Exception thrown when a required recent, signed health checkup record
- * (e.g., ANNUAL_CHECK or FIRST_VISIT) is not found for a pet when attempting
+ * (ANNUAL_CHECK) is not found for a pet when attempting
  * to generate a certificate.
  * Suggests an HTTP 400 Bad Request status.
  *

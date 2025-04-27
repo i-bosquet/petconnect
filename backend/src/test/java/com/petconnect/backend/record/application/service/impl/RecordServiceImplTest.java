@@ -4,12 +4,13 @@ import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
-import com.petconnect.backend.common.service.impl.SigningServiceImpl;
+import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.record.application.dto.RecordCreateDto;
+import com.petconnect.backend.record.application.dto.RecordUpdateDto;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
 import com.petconnect.backend.record.application.dto.VaccineCreateDto;
 import com.petconnect.backend.record.application.mapper.RecordMapper;
@@ -67,7 +68,7 @@ class RecordServiceImplTest {
     @Mock private ValidateHelper validateHelper;
     @Mock private UserMapper userMapper;
     @Mock private RecordHelper recordHelper;
-    @Mock private SigningServiceImpl signingServiceImpl;
+    @Mock private SigningService signingService;
 
     @InjectMocks
     private RecordServiceImpl recordService;
@@ -77,31 +78,33 @@ class RecordServiceImplTest {
     private Pet pet;
     private Owner owner;
     private Vet vet;
+    private ClinicStaff adminSameClinic;
     private Record record1, record2;
     private RecordViewDto recordDto1, recordDto2;
     private final Long petId = 1L;
     private final Long ownerId = 10L;
     private final Long vetId = 11L;
+    private final Long adminSameClinicId = 50L;
     private final Long recordId1 = 101L;
     private RoleEntity adminRole;
 
     @BeforeEach
     void setUp() {
 
+        Clinic clinic;
 
         Long recordId2 = 102L;
         adminRole = RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build(); adminRole.setId(3L);
+        owner = new Owner(); owner.setId(ownerId);owner.setUsername("testowner");
+        clinic = new Clinic(); clinic.setId(1L); clinic.setName("Clinic One");
+        vet = new Vet(); vet.setId(vetId);vet.setUsername("testvet"); vet.setClinic(clinic);
 
-        owner = new Owner(); owner.setId(ownerId);
-        owner.setUsername("testowner");
-        vet = new Vet(); vet.setId(vetId);
-        vet.setUsername("testvet");
         Breed breed = Breed.builder().id(5L).name("Siamese").specie(Specie.CAT).build();
 
-        pet = new Pet();
-        pet.setId(petId);
-        pet.setOwner(owner);
-        pet.setBreed(breed);
+        pet = new Pet();pet.setId(petId);pet.setOwner(owner);pet.setBreed(breed);
+
+        adminSameClinic = new ClinicStaff(); adminSameClinic.setId(adminSameClinicId); adminSameClinic.setClinic(clinic);
+        adminSameClinic.setRoles(Set.of(adminRole));
 
         record1 = new Record();
         record1.setId(recordId1);
@@ -125,6 +128,10 @@ class RecordServiceImplTest {
         recordDto1 = new RecordViewDto(recordId1, RecordType.OTHER, "Observation by owner", null, record1.getCreatedAt(), ownerDto, null);
         recordDto2 = new RecordViewDto(recordId2, RecordType.ANNUAL_CHECK, "Annual checkup results", "SIGNED_BY_VET_XYZ", record2.getCreatedAt(), vetDto, null);
 
+        adminSameClinic = new ClinicStaff();
+        adminSameClinic.setId(50L);
+        adminSameClinic.setClinic(clinic);
+        adminSameClinic.setRoles(Set.of(adminRole));
     }
 
     /**
@@ -212,7 +219,7 @@ class RecordServiceImplTest {
             doNothing().when(validateHelper).validateRecordCreationDto(vetVaccineDto);
             given(vaccineMapper.fromCreateDto(vaccineDetailsDto)).willReturn(newVaccineEntity);
             given(recordHelper.buildSignableData(pet, vet, vetVaccineDto)).willReturn(expectedDataToSign);
-            given(signingServiceImpl.generateVetSignature(vet, expectedDataToSign)).willReturn(expectedSignature);
+            given(signingService.generateVetSignature(vet, expectedDataToSign)).willReturn(expectedSignature);
 
             given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
                 Record recordEntity = inv.getArgument(0);
@@ -229,7 +236,8 @@ class RecordServiceImplTest {
 
 
             // Act
-            RecordViewDto result = recordService.createRecord( vetVaccineDto, vetId);
+            RecordViewDto result;
+            result = recordService.createRecord( vetVaccineDto, vetId);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedVetVaccineViewDto);
@@ -241,7 +249,7 @@ class RecordServiceImplTest {
             then(validateHelper).should().validateRecordCreationDto(vetVaccineDto);
             then(vaccineMapper).should().fromCreateDto(vaccineDetailsDto);
             then(recordHelper).should().buildSignableData(pet, vet, vetVaccineDto);
-            then(signingServiceImpl).should().generateVetSignature(vet, expectedDataToSign);
+            then(signingService).should().generateVetSignature(vet, expectedDataToSign);
             then(recordRepository).should().save(recordCaptor.capture());
             then(recordMapper).should().toViewDto(any(Record.class));
 
@@ -540,6 +548,204 @@ class RecordServiceImplTest {
             then(entityFinderHelper).should().findRecordByIdOrFail(targetRecordId);
             then(authorizationHelper).should().verifyUserAuthorizationForPet(unauthorizedUserId, pet, actionContext);
             then(recordMapper).should(never()).toViewDto(any());
+        }
+    }
+
+    /**
+     * --- Tests for updateUnsignedRecord ---
+     */
+    @Nested
+    @DisplayName("updateUnsignedRecord Tests")
+    class UpdateUnsignedRecordTests {
+
+        private Record recordToUpdateOwner;
+        private Record recordToUpdateStaff;
+        private ClinicStaff requesterStaffOtherClinic;
+        private RecordUpdateDto updateDtoDesc;
+        private RecordUpdateDto updateDtoBoth;
+
+        private final Long recordOwnerRecId = 301L;
+        private final Long recordStaffRecId = 302L;
+        private final Long ownerUserId = ownerId;
+        private final Long requesterAdminSameClinicId = adminSameClinicId;
+        private final Long requesterStaffOtherClinicId = 13L;
+
+        @BeforeEach
+        void updateSetup() {
+            ClinicStaff recordCreatorStaff = vet;
+            Record recordSigned;
+
+            requesterStaffOtherClinic = new ClinicStaff();
+            requesterStaffOtherClinic.setId(requesterStaffOtherClinicId);
+            Clinic clinic2 = new Clinic(); clinic2.setId(2L); clinic2.setName("Clinic Two");
+            requesterStaffOtherClinic.setClinic(clinic2);
+            requesterStaffOtherClinic.setRoles(Set.of(adminRole));
+
+            recordToUpdateOwner = new Record();
+            recordToUpdateOwner.setId(recordOwnerRecId);
+            recordToUpdateOwner.setPet(pet);
+            recordToUpdateOwner.setCreator(owner);
+            recordToUpdateOwner.setType(RecordType.OTHER);
+            recordToUpdateOwner.setDescription("Original Owner Desc");
+            recordToUpdateOwner.setVetSignature(null);
+
+            recordToUpdateStaff = new Record();
+            recordToUpdateStaff.setId(recordStaffRecId);
+            recordToUpdateStaff.setPet(pet);
+            recordToUpdateStaff.setCreator(recordCreatorStaff);
+            recordToUpdateStaff.setType(RecordType.ILLNESS);
+            recordToUpdateStaff.setDescription("Original Staff Desc");
+            recordToUpdateStaff.setVetSignature(null);
+
+            Long recordSignedRecId = 303L;
+            recordSigned = new Record();
+            recordSigned.setId(recordSignedRecId);
+            recordSigned.setPet(pet);
+            recordSigned.setCreator(recordCreatorStaff);
+            recordSigned.setType(RecordType.ANNUAL_CHECK);
+            recordSigned.setDescription("Signed record");
+            recordSigned.setVetSignature("SIGNATURE_PRESENT");
+
+            Long recordVaccineRecId = 304L;
+            Record recordVaccine = new Record();
+            recordVaccine.setId(recordVaccineRecId);
+            recordVaccine.setPet(pet);
+            recordVaccine.setCreator(recordCreatorStaff);
+            recordVaccine.setType(RecordType.VACCINE);
+            recordVaccine.setDescription("Vaccine Record");
+            recordVaccine.setVetSignature(null);
+            recordVaccine.setVaccine(new Vaccine());
+
+            new RecordUpdateDto(RecordType.ILLNESS, null);
+            updateDtoDesc = new RecordUpdateDto(null, "Updated Description");
+            updateDtoBoth = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Updated Description Both");
+            new RecordUpdateDto(recordToUpdateOwner.getType(), recordToUpdateOwner.getDescription());
+            new RecordUpdateDto(RecordType.VACCINE, "Trying to change to vaccine");
+        }
+
+        @Test
+        @DisplayName("should update record successfully when Owner updates own record")
+        void update_Success_OwnerUpdatesOwn() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
+            given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
+            given(recordRepository.save(any(Record.class))).willAnswer(inv -> inv.getArgument(0));
+            RecordViewDto expectedDto = new RecordViewDto(recordOwnerRecId, updateDtoBoth.type(), updateDtoBoth.description(), null, recordToUpdateOwner.getCreatedAt(),  null, null);
+            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
+
+            // Act
+            RecordViewDto result = recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoBoth, ownerUserId);
+
+            // Assert
+            assertThat(result).isEqualTo(expectedDto);
+            then(recordRepository).should().save(recordCaptor.capture());
+            Record saved = recordCaptor.getValue();
+            assertThat(saved.getType()).isEqualTo(updateDtoBoth.type());
+            assertThat(saved.getDescription()).isEqualTo(updateDtoBoth.description());
+            then(recordMapper).should().toViewDto(saved);
+            assertThat(saved.getCreator()).isEqualTo(owner);
+        }
+
+        @Test
+        @DisplayName("should update record successfully when Staff updates record from same clinic staff")
+        void update_Success_StaffUpdatesSameClinicStaff() {
+            // Arrange
+            RecordUpdateDto updateDtoWithChanges = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Updated Staff Description");
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
+            given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
+            given(recordRepository.save(any(Record.class))).willAnswer(inv -> inv.getArgument(0));
+
+            RecordViewDto expectedDto = new RecordViewDto(
+                    recordStaffRecId,
+                    updateDtoWithChanges.type(),
+                    updateDtoWithChanges.description(),
+                    null, recordToUpdateStaff.getCreatedAt(), null, null
+            );
+            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
+
+            // Act
+            RecordViewDto result = recordService.updateUnsignedRecord(recordStaffRecId, updateDtoWithChanges, requesterAdminSameClinicId);
+
+            // Assert
+            assertThat(result).isEqualTo(expectedDto);
+            then(recordRepository).should().save(recordCaptor.capture());
+            Record saved = recordCaptor.getValue();
+            assertThat(saved.getType()).isEqualTo(updateDtoWithChanges.type());
+            assertThat(saved.getDescription()).isEqualTo(updateDtoWithChanges.description());
+            then(recordMapper).should().toViewDto(saved);
+            assertThat(saved.getCreator()).isEqualTo(vet);
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if Owner tries to update Staff record")
+        void update_Failure_OwnerUpdatesStaffRecord() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
+            given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, ownerUserId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
+
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if Staff tries to update Owner record")
+        void update_Failure_StaffUpdatesOwnerRecord() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
+            given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoDesc, requesterAdminSameClinicId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to update record " + recordOwnerRecId);
+
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if Staff tries to update record from DIFFERENT clinic staff")
+        void update_Failure_StaffUpdatesDifferentClinicStaff() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
+            given(entityFinderHelper.findUserOrFail(requesterStaffOtherClinicId)).willReturn(requesterStaffOtherClinic);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, requesterStaffOtherClinicId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
+
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if record not found")
+        void update_Failure_RecordNotFound() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(999L)).willThrow(new EntityNotFoundException(Record.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(999L, updateDtoDesc, recordStaffRecId))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if requester not found")
+        void update_Failure_RequesterNotFound() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateOwner);
+            given(entityFinderHelper.findUserOrFail(999L)).willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, 999L))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            then(recordRepository).should(never()).save(any());
         }
     }
 
