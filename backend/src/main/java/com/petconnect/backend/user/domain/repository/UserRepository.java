@@ -2,6 +2,8 @@ package com.petconnect.backend.user.domain.repository;
 
 import com.petconnect.backend.user.domain.model.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
@@ -48,4 +50,25 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @return true if a user with the username exists, false otherwise.
      */
     boolean existsByUsername(String username);
+
+    /**
+     * Finds a UserEntity by username, eagerly fetching associated roles and their permissions.
+     * Use this method when authorities (roles + permissions) are needed immediately after loading the user.
+     *
+     * @param username The username to search for.
+     * @return An {@link Optional} containing the UserEntity with roles and permissions initialized, or empty if not found.
+     */
+    @Query("SELECT u FROM UserEntity u LEFT JOIN FETCH u.roles r LEFT JOIN FETCH r.permissionList WHERE u.username = :username")
+    Optional<UserEntity> findByUsernameWithRolesAndPermissions(@Param("username") String username);
+
+    /**
+     * Finds a UserEntity by email, eagerly fetching associated roles and their permissions.
+     * Use this method when authorities (roles + permissions) are needed immediately after loading the user.
+     *
+     * @param email The email to search for.
+     * @return An {@link Optional} containing the UserEntity with roles and permissions initialized, or empty if not found.
+     */
+    @Query("SELECT u FROM UserEntity u LEFT JOIN FETCH u.roles r LEFT JOIN FETCH r.permissionList WHERE u.email = :email")
+    Optional<UserEntity> findByEmailWithRolesAndPermissions(@Param("email") String email);
+
 }

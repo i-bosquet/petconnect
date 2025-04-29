@@ -1,9 +1,11 @@
 package com.petconnect.backend.pet.application.service;
 
+import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.pet.application.dto.*;
 import com.petconnect.backend.pet.domain.model.Specie;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 
@@ -170,4 +172,17 @@ public interface PetService {
      * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
      */
     List<PetProfileDto> findPendingActivationPetsByClinic(Long requesterUserId);
+
+    /**
+     * Handles the owner's request to generate a certificate for their pet,
+     * directed at a specific associated Veterinarian.
+     * Publishes a CertificateRequestedEvent.
+     *
+     * @param petId The ID of the Pet.
+     * @param vetId The ID of the target Veterinarian associated with the pet.
+     * @param ownerId The ID of the authenticated Owner making the request.
+     * @throws EntityNotFoundException if pet or vet not found.
+     * @throws AccessDeniedException if the user is not the owner or the vet is not associated with the pet.
+     */
+    void requestCertificateGeneration(Long petId, Long vetId, Long ownerId);
 }

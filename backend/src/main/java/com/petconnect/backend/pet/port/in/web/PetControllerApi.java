@@ -313,4 +313,27 @@ public interface PetControllerApi {
     ResponseEntity<List<BreedDto>> findBreedsBySpecie(
             @Parameter(description = "Species enum value (DOG, CAT, FERRET, RABBIT)", required = true, schema = @Schema(implementation = Specie.class))
             @PathVariable Specie specie);
+
+
+    /**
+     * Allows an Owner to request certificate generation for their pet from a specific associated Vet.
+     * This triggers an asynchronous notification/event for the Vet.
+     *
+     * @param petId ID of the pet.
+     * @param vetId ID of the target Veterinarian.
+     * @return ResponseEntity with status 204 (No Content) on the successful request.
+     */
+    @Operation(summary = "Request Certificate Generation (Owner)",
+            description = "Owner requests an associated Vet to generate a certificate for the specified pet.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Certificate request submitted successfully."),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden (User not owner or Vet not associated)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Pet or Vet not found", content = @Content(schema = @Schema(implementation = Map.class)))
+    })
+    @PostMapping("/{petId}/request-certificate/{vetId}")
+    ResponseEntity<Void> requestCertificateGeneration(
+            @Parameter(description = "ID of the pet", required = true) @PathVariable Long petId,
+            @Parameter(description = "ID of the target Vet", required = true) @PathVariable Long vetId);
 }
+

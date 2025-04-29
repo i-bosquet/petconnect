@@ -1,5 +1,5 @@
 services:
-  # PostgreSQL Database Service
+  # PostgresSQL Database Service
   db:
     image: postgres:17.4
     container_name: petconnect_db
@@ -83,11 +83,49 @@ services:
     depends_on:
       - db # needs the DB to be ready
 
+  # zookeeper Service
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.9.0
+    container_name: petconnect_zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - petconnect-network
+
+  # kafka Service
+  kafka:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: petconnect_kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # Listeners: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      # For dev environment single-broker
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - petconnect-network
+
 networks:
   petconnect-network:
     driver: bridge
 
-# Defines the named volume for PostgreSQL data persistence
+# Defines the named volume for PostgresSQL data persistence
 volumes:
   postgres_data:
     driver: local

@@ -50,22 +50,32 @@ public class UserServiceImpl implements UserService {
      * {@inheritDoc}
      */
     @Override
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException  {
-        UserEntity userEntity = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
+        log.debug("Attempting to load user by username or email: {}", username);
+
+        UserEntity userEntity = userRepository.findByUsernameWithRolesAndPermissions(username)
+                .or(() -> userRepository.findByEmailWithRolesAndPermissions(username))
+                .orElseThrow(() -> {
+                    log.warn("User not found with identifier: {}", username);
+                    return new UsernameNotFoundException("El usuario " + username + " no existe.");
+                });
+
+        log.debug("User found: {}. Roles loaded: {}", userEntity.getUsername(), userEntity.getRoles().size());
 
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
 
-        userEntity.getRoles()
-                .forEach(role -> authorityList.
-                        add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
+        userEntity.getRoles().forEach(role -> {
+            authorityList.add(new SimpleGrantedAuthority("ROLE_" + role.getRoleEnum().name()));
+            log.trace("Added role authority: ROLE_{}", role.getRoleEnum().name());
 
-        userEntity.getRoles()
-                .stream()
-                .flatMap(role -> role
-                        .getPermissionList()
-                        .stream())
-                .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
+            role.getPermissionList().forEach(permission -> {
+                authorityList.add(new SimpleGrantedAuthority(permission.getName()));
+                log.trace("Added permission authority: {}", permission.getName());
+            });
+        });
+
+        log.debug("Total authorities loaded for user {}: {}", userEntity.getUsername(), authorityList.size());
 
         return new User(userEntity.getUsername(),
                 userEntity.getPassword(),
@@ -73,7 +83,7 @@ public class UserServiceImpl implements UserService {
                 userEntity.isAccountNonExpired(),
                 userEntity.isCredentialsNonExpired(),
                 userEntity.isAccountNonLocked(),
-                authorityList) ;
+                authorityList);
     }
 
     /**

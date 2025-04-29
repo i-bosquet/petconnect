@@ -1,8 +1,12 @@
 package com.petconnect.backend.pet.application.service.impl;
 
+import com.petconnect.backend.pet.application.event.CertificateRequestedEvent;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.exception.MicrochipAlreadyExistsException;
+import com.petconnect.backend.pet.port.out.PetEventPublisherPort;
+import com.petconnect.backend.pet.application.event.PetActivationRequestedEvent;
+import com.petconnect.backend.pet.application.event.PetActivatedEvent;
 import com.petconnect.backend.pet.application.dto.*;
 import com.petconnect.backend.pet.application.mapper.BreedMapper;
 import com.petconnect.backend.pet.application.mapper.PetMapper;
@@ -25,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -49,6 +54,7 @@ public class PetServiceImpl implements PetService {
     private final BreedMapper breedMapper;
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
+    private final PetEventPublisherPort petEventPublisher;
 
     @Value("${app.default.pet.image.path:images/avatars/pets/}")
     private String defaultPetImagePathBase;
@@ -98,6 +104,20 @@ public class PetServiceImpl implements PetService {
         pet.setPendingActivationClinic(targetClinic);
         petRepository.save(pet);
         log.info("Owner {} associated PENDING pet {} with clinic {} for activation.", ownerId, petId, clinicId);
+
+        try {
+            PetActivationRequestedEvent event = new PetActivationRequestedEvent(
+                    petId,
+                    ownerId,
+                    clinicId,
+                    LocalDateTime.now()
+            );
+            petEventPublisher.publishPetActivationRequested(event);
+        } catch (Exception e) {
+            log.error("Failed to publish PetActivationRequestedEvent for petId {} after association.", petId, e);
+        }
+
+        log.info("Owner {} associated PENDING pet {} with clinic {}. Event published (attempted).", ownerId, petId, clinicId);
     }
 
     /**
@@ -126,8 +146,20 @@ public class PetServiceImpl implements PetService {
         Vet assignedVet = assignVetOnActivation(activatingStaff);
         petToActivate.addVet(assignedVet);
 
-        // Assign a Vet automatically
         Pet activatedPet = petRepository.save(petToActivate);
+
+        try {
+            PetActivatedEvent event = new PetActivatedEvent(
+                    petId,
+                    activatedPet.getOwner().getId(),
+                    staffId,
+                    LocalDateTime.now()
+            );
+            petEventPublisher.publishPetActivated(event);
+        } catch (Exception e) {
+            log.error("Failed to publish PetActivatedEvent for petId {} after activation.", petId, e);
+        }
+
         log.info("Vet {} activated Pet {}. Assigned Vet: {}", staffId, petId, assignedVet.getId());
         return petMapper.toProfileDto(activatedPet);
     }
@@ -189,7 +221,6 @@ public class PetServiceImpl implements PetService {
 
         boolean changed = applyPetUpdates(petToUpdate, null, updateDto);
 
-        // Save if changed and map response
         Pet updatedPet = petToUpdate;
         if (changed) {
             updatedPet = petRepository.save(petToUpdate);
@@ -254,7 +285,7 @@ public class PetServiceImpl implements PetService {
     public List<BreedDto> findBreedsBySpecie(Specie specie) {
         if (specie == null) {
             log.warn("findBreedsBySpecie called with null specie.");
-            return Collections.emptyList(); // Return an empty list for null input
+            return Collections.emptyList();
         }
         List<Breed> breeds = breedRepository.findBySpecieOrderByNameAsc(specie);
         return breedMapper.toDtoList(breeds);
@@ -309,6 +340,37 @@ public class PetServiceImpl implements PetService {
         petRepository.save(pet);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Transactional
+    public void requestCertificateGeneration(Long petId, Long vetId, Long ownerId) {
+        log.info("Processing certificate generation request for Pet ID {} to Vet ID {} by Owner ID {}", petId, vetId, ownerId);
+        // Find Pet and verify ownership
+        Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
+
+        // Find the target Vet
+        entityFinderHelper.findVetOrFail(vetId);
+
+        // Verify Vet is associated with the Pet
+        if (pet.getAssociatedVets() == null || pet.getAssociatedVets().stream().noneMatch(vet -> vet.getId().equals(vetId))) {
+            log.warn("Certificate request failed: Vet {} is not associated with Pet {}", vetId, petId);
+            throw new AccessDeniedException("Veterinarian with ID " + vetId + " is not associated with Pet " + petId + ".");
+        }
+
+        try {
+            CertificateRequestedEvent event = new CertificateRequestedEvent(
+                    petId,
+                    ownerId,
+                    vetId,
+                    LocalDateTime.now()
+            );
+            petEventPublisher.publishCertificateRequested(event);
+            log.info("CertificateRequestedEvent published successfully for Pet {}, target Vet {}", petId, vetId);
+        } catch (Exception e) {
+            log.error("Failed to publish CertificateRequestedEvent for petId {}: {}", petId, e.getMessage(), e);
+        }
+    }
 
     // --- PRIVATE HELPER METHODS ---
 

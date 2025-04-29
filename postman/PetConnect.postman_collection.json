@@ -696,6 +696,46 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "pets/{pet_id}/request-certificate/{vetId} - request certificate  to vet London Copy",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{URL_BASE}}/api/pets/{{petId-1}}/request-certificate/{{vetId-London}}",
+									"host": [
+										"{{URL_BASE}}"
+									],
+									"path": [
+										"api",
+										"pets",
+										"{{petId-1}}",
+										"request-certificate",
+										"{{vetId-London}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"description": "All private endpoints that only the owners can access"
@@ -1075,6 +1115,43 @@
 												"pets",
 												"{{petId-1}}",
 												"activate"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "certificates - generate certificate vet lon",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{vetTokenLondon}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"petId\": 13,\r\n    \"certificateNumber\":\"CERTIFICATE-NUM\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{URL_BASE}}/api/certificates",
+											"host": [
+												"{{URL_BASE}}"
+											],
+											"path": [
+												"api",
+												"certificates"
 											]
 										}
 									},
@@ -1474,7 +1551,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"petId\": {{petId-1}},\r\n  \"type\": \"VACCINE\",\r\n  \"description\": \"Administered annual Rabies vaccination (Brand: Rabivax-3). Well tolerated.\",\r\n  \"vaccine\": {\r\n    \"name\": \"Rabivax-3\",\r\n    \"validity\": 3, \r\n    \"laboratory\": \"VetPharm Global\",\r\n    \"batchNumber\": \"RV3-2025-LOT55B\"\r\n  }\r\n}",
+							"raw": "{\r\n  \"petId\": {{petId-1}},\r\n  \"type\": \"VACCINE\",\r\n  \"description\": \"Administered annual Rabies vaccination (Brand: Rabivax-3). Well tolerated.\",\r\n  \"vaccine\": {\r\n    \"name\": \"Rabivax-3\",\r\n    \"validity\": 3, \r\n    \"laboratory\": \"VetPharm Global\",\r\n    \"batchNumber\": \"RV3-2025-LOT55B\",\r\n    \"isRabiesVaccine\": true\r\n  }\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"

@@ -194,4 +194,17 @@ public class PetController implements PetControllerApi{
         List<BreedDto> breeds = petService.findBreedsBySpecie(specie);
         return ResponseEntity.ok(breeds);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @PostMapping("/{petId}/request-certificate/{vetId}")
+    public ResponseEntity<Void> requestCertificateGeneration(
+            @PathVariable Long petId,
+            @PathVariable Long vetId) {
+        Long ownerId = userServiceHelper.getAuthenticatedUserId();
+        petService.requestCertificateGeneration(petId, vetId, ownerId);
+        return ResponseEntity.noContent().build();
+    }
 }
