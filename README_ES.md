@@ -116,7 +116,8 @@ openssl rsa -pubout -in keys/clinic_private_key.pem -out keys/clinic_public_key.
 
 ## 4. Construir e iniciar el entorno de desarrollo completo
 
-Docker Compose se utiliza para orquestar todos los servicios necesarios (base de datos, backend, herramientas de análisis, etc.). Esta es la forma estándar de ejecutar la aplicación para desarrollo y pruebas.
+Docker Compose se utiliza para orquestar todos los servicios necesarios (base de datos, backend, herramientas de análisis, etc.). 
+Esta es la forma estándar de ejecutar la aplicación para desarrollo y pruebas.
 
 1.  **Asegúrate de Cumplir los Prerrequisitos:** Verifica que has completado los pasos 1-4 (Prerrequisitos, Clonar, Configuración `.env`, Generación de Claves si fue necesario).
 2.  **Construye e Inicia Todos los Servicios:** Desde el directorio raíz del proyecto (`petconnect/`), ejecuta el siguiente único comando:
@@ -125,23 +126,25 @@ Docker Compose se utiliza para orquestar todos los servicios necesarios (base de
     ```
 
 Este comando descargará las imágenes necesarias (si no las tienes) y creará e iniciará los siguientes contenedores en segundo plano (`-d`):
-- `petconnect_db`: Contenedor con la base de datos PostgreSQL 17.4.
-- `petconnect_adminer`: Interfaz web para gestionar la base de datos.
-- `petconnect_sonarqube`: Contenedor con el servidor SonarQube.
-- `petconnect_`backend``: Contenedor con el servidor Backend.
+-   `petconnect_db`: Contenedor con la base de datos PostgreSQL.
+-   `petconnect_adminer`: Interfaz web para gestionar la base de datos.
+-   `petconnect_backend`: Contenedor con la aplicación backend Spring Boot.
+-   `petconnect_sonarqube`: Contenedor con el servidor SonarQube.
+-   `petconnect_zookeeper`: Contenedor Zookeeper (para Kafka).
+-   `petconnect_kafka`: Contenedor con el broker Kafka (para eventos asíncronos).
 
 3.  **Verifica Todos los Contenedores:** Comprueba que todos los contenedores esperados están en ejecución:
     ```bash
     docker compose ps
     ```
-    Deberías ver `petconnect_db`, `petconnect_adminer`, `petconnect_backend` y `petconnect_sonarqube` listados como 'running' o 'up'.
+    Deberías ver `petconnect_db`, `petconnect_adminer`, `petconnect_backend`, `petconnect_sonarqube`, `petconnect_zookeeper` y `petconnect_kafka` listados como 'running' o 'up'.
 
-4.  **Revisa los Logs del Backend (Opcional):** Si es necesario, mira los logs del backend para confirmar un inicio correcto:
+4.  **Revisa los Logs del Backend:** Si es necesario, mira los logs del backend para confirmar un inicio correcto:
     ```bash
     docker compose logs -f backend
     ```
 
-Todos los servicios deberían estar ahora ejecutándose y accesibles en los puertos definidos en la Sección 9 (Acceder a las Herramientas y Aplicación). La API del backend está en `http://localhost:8080`.
+Todos los servicios deberían estar ahora ejecutándose y accesibles en los puertos definidos en la Sección 8 (Acceder a las Herramientas y Aplicación). La API del backend está en `http://localhost:8080`.
 
 > [!NOTE]
 > *   Para detener todos los servicios en ejecución: `docker compose down`
@@ -153,14 +156,14 @@ Todos los servicios deberían estar ahora ejecutándose y accesibles en los puer
 
 ## 5. Ejecutar backend localmente (Alternativa IDE/Debug)
 
-Aunque la Sección 4 describe cómo ejecutar el entorno completo vía Docker Compose, puede que prefieras ejecutar o depurar la aplicación backend directamente desde tu IDE (como IntelliJ o VS Code) o usando el plugin Maven de Spring Boot para obtener feedback más rápido durante el desarrollo, pero usando igualmente la base de datos contenerizada.
+Aunque la Sección 4 describe cómo ejecutar el entorno completo vía Docker Compose, puede que prefieras ejecutar o depurar la aplicación backend directamente desde tu IDE (como IntelliJ o VS Code) o usando el plugin Maven de Spring Boot para obtener feedback más rápido durante el desarrollo, pero usando igualmente la base de datos y herramientas de análisis contenerizadas.
 
 **Prerrequisitos para este método:**
 
-1.  **Contenedor de Base de Datos en Ejecución:** Es **obligatorio** que el contenedor de la base de datos PostgreSQL esté ejecutándose. Inicia *solo* el servicio de base de datos (y opcionalmente Adminer) si no está ya iniciado:
+1.  **Base de Datos y Otros Servicios en Ejecución:** Es **obligatorio** que los servicios externos necesarios estén ejecutándose en Docker. Inicia *al menos* la base de datos (y opcionalmente Adminer, SonarQube si pruebas localmente) si no están ya iniciados:
     ```bash
     # Asegúrate de estar en el directorio raíz del proyecto (petconnect/)
-    docker compose up -d db adminer
+    docker compose up -d db adminer sonarqube # Añade zookeeper kafka si es necesario para tests específicos, pero normalmente no para ejecutar el backend localmente
     ```
     Tu backend ejecutándose localmente se conectará a este contenedor vía `localhost:5432` (según se define en `backend/src/main/resources/application.properties`).
 
@@ -168,7 +171,7 @@ Aunque la Sección 4 describe cómo ejecutar el entorno completo vía Docker Com
     ```bash
     cd backend
     mvn clean package -DskipTests
-    # cd .. # Permanece en el directorio backend para el siguiente paso si usas Maven
+    # cd .. # Vuelve a la raíz del proyecto
     ```
 
 **Ejecutar el Backend Localmente:**
@@ -187,7 +190,10 @@ Aunque la Sección 4 describe cómo ejecutar el entorno completo vía Docker Com
 La API del backend estará disponible en `http://localhost:8080`, conectándose a la base de datos que se ejecuta en el contenedor Docker `petconnect_db`.
 
 > [!IMPORTANT]
-> Este método ejecuta la aplicación backend **fuera** de su propio contenedor Docker, directamente en tu máquina local. Depende de que tengas instaladas localmente las versiones correctas de Java y Maven (ver Sección 1). El método principal usando `docker compose up --build -d` (Sección 4) ejecuta el backend *dentro* de su contenedor, proporcionando una mayor consistencia de entorno.
+> Este método ejecuta la aplicación backend **fuera** de su propio contenedor Docker, directamente en tu máquina local. Depende de que tengas instaladas localmente las versiones correctas de Java y Maven (ver Sección 1).
+> 
+>**Nota:** Al ejecutarse localmente, el backend se conectará a la base de datos contenerizada vía `localhost:5432`. Sin embargo, **no podrá conectarse** al broker Kafka contenerizado usando el hostname interno `kafka:9092` especificado en `application.properties`. 
+> Para la funcionalidad completa incluyendo la publicación/consumo de eventos asíncronos, usa el entorno completo de Docker Compose (Sección 4).
 
 ## 6. Ejecutar pruebas (Tests)
 

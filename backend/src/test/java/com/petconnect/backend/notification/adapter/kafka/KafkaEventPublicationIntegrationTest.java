@@ -198,7 +198,6 @@ class KafkaEventPublicationIntegrationTest {
                 certificateRequestsTopicName,
                 certificateGeneratedTopicName
         ));
-        Thread.sleep(500);
         int maxMessagesToConsume = 100;
         KafkaTestUtils.getRecords(consumer, Duration.ofMillis(100), maxMessagesToConsume);
     }

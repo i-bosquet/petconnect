@@ -128,22 +128,26 @@ Docker Compose is used to orchestrate all the necessary services (database, back
     ```
 
 This command will download the necessary images (if not present) and create/start the following containers in detached mode (`-d`):
-- `petconnect_db`: PostgreSQL 17.4 database container.
-- `petconnect_adminer`: Web interface for database management.
-- `petconnect_sonarqube`: SonarQube server container.
+-   `petconnect_db`: PostgreSQL database container.
+-   `petconnect_adminer`: Web interface for database management.
+-   `petconnect_backend`: Spring Boot backend application container.
+-   `petconnect_sonarqube`: SonarQube server container.
+-   `petconnect_zookeeper`: Zookeeper container (for Kafka).
+-   `petconnect_kafka`: Kafka broker container (for asynchronous events).
 
 3.  **Verify All Containers:** Check that all expected containers are running:
     ```bash
     docker compose ps
     ```
-    You should see `petconnect_db`, `petconnect_adminer`, `petconnect_backend`, and `petconnect_sonarqube` listed as 'running' or 'up'.
+    You should see `petconnect_db`, `petconnect_adminer`, `petconnect_backend`, `petconnect_sonarqube`, `petconnect_zookeeper`, and `petconnect_kafka` listed as 'running' or 'up.'
 
-4.  **Check Backend Logs (Optional):** If needed, view the backend logs to confirm successful startup:
+
+4.  **Check Backend Logs:** If needed, view the backend logs to confirm a successful startup:
     ```bash
     docker compose logs -f backend
     ```
 
-All services should now be running and accessible at the ports defined in Section 9 (Accessing Tools & Applications). The backend API is at `http://localhost:8080`.
+All services should now be running and accessible at the ports defined in Section 8 (Accessing Tools & Applications). The backend API is at `http://localhost:8080`.
 
 > [!NOTE]
 > *   To stop all running services: `docker compose down`
@@ -154,22 +158,23 @@ All services should now be running and accessible at the ports defined in Sectio
 
 ## 5. Running backend locally (IDE/Debug Alternative)
 
-While Section 4 describes running the full environment via Docker Compose, you might prefer to run or debug the backend application directly from your IDE (like IntelliJ or VS Code) or using the Maven Spring Boot plugin for faster feedback loops during development, while still using the containerized database.
+While Section 4 describes running the full environment via Docker Compose, you might prefer to run or debug the backend application directly from your IDE (like IntelliJ or VS Code) or using the Maven Spring Boot plugin for faster feedback loops during development, while still using the containerized database and analysis tools
 
 **Prerequisites for this method:**
 
-1.  **Database Container Running:** You *must* have the PostgreSQL database container running. Start *only* the database service (and optionally Adminer) if it's not already running:
+1.  **Database & Other Services Running:** You *must* have the necessary external services running in Docker. Start *at least* the database (and optionally Adminer, SonarQube if testing locally) if they aren't already running:
     ```bash
-    # Ensure you are in the project root directory (petconnect/)
-    docker compose up -d db adminer
+     # Ensure you are in the project root directory (petconnect/)
+    docker compose up -d db adminer sonarqube # Add zookeeper kafka if needed for specific tests, but usually not for local backend run
     ```
     Your locally running backend will connect to this container via `localhost:5432` (as defined in `backend/src/main/resources/application.properties`).
+
 
 2.  **Backend Built (Optional but Recommended):** While `mvn spring-boot:run` can compile on the fly, ensuring the project is built cleanly beforehand can prevent issues:
     ```bash
     cd backend
     mvn clean package -DskipTests
-    # cd .. # Stay in backend directory for the next step if using Maven
+    # cd .. # Go back to project root
     ```
 
 **Running the Backend Locally:**
@@ -188,8 +193,11 @@ While Section 4 describes running the full environment via Docker Compose, you m
 The backend API will be available at `http://localhost:8080`, connecting to the database running in the `petconnect_db` Docker container.
 
 > [!IMPORTANT]
-> This method runs the backend application **outside** its own Docker container, directly on your host machine. It relies on having the correct Java and Maven versions installed locally (see Section 1). The primary method using the full `docker compose up --build -d` (Section 4) runs the backend *inside* its container, providing better environment consistency.
-This will compile the Java code, download dependencies, and package the application (usually as a JAR file in the `backend/target` directory).
+> 
+> This method runs the backend application **outside** its own Docker container, directly on your host machine. It relies on having the correct Java and Maven versions installed locally (see Section 1).
+> 
+>**Note:** When running locally, the backend will connect to the containerized database via `localhost:5432`. 
+> However, it **will not** be able to connect to the containerized Kafka broker using the internal hostname `kafka:9092` specified in `application.properties`. For full functionality including asynchronous event publishing/consumption testing, use the complete Docker Compose environment (Section 4).
 
 ## 6. Running tests
 
