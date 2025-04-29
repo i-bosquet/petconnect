@@ -51,6 +51,7 @@ public class SecurityConfig {
     public static final String ROLE_VET = "VET";
     public static final String ROLE_OWNER = "OWNER";
     public static final String MESSAGE = "message";
+    public static final String RECORD_ID_URL = "/api/records/{recordId}";
 
 
     /**
@@ -83,8 +84,9 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/pets/{petId}").authenticated(); // Get Pet details (Owner or associated Staff)
                     http.requestMatchers(HttpMethod.GET, "/api/records").authenticated(); // List records (requires petId param, checked in service)
                     http.requestMatchers(HttpMethod.POST, "/api/records").authenticated(); // Create a record (checked in service)
-                    http.requestMatchers(HttpMethod.GET, "/api/records/{recordId}").authenticated(); // Get record detail (checked in service)
-                    http.requestMatchers(HttpMethod.DELETE, "/api/records/{recordId}").authenticated(); // Delete record (checked in service)
+                    http.requestMatchers(HttpMethod.GET, RECORD_ID_URL).authenticated(); // Get record detail (checked in service)
+                    http.requestMatchers(HttpMethod.PUT, RECORD_ID_URL).authenticated(); // Update record
+                    http.requestMatchers(HttpMethod.DELETE, RECORD_ID_URL).authenticated(); // Delete record (checked in service)
                     http.requestMatchers(HttpMethod.GET, "/api/certificates").authenticated(); // List certificates (requires petId param, checked in service)
                     http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}").authenticated(); // Get certificate detail (checked in service)
                     http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}/qr-data").authenticated(); // Get QR data (checked in service)
@@ -101,6 +103,8 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-clinic/{clinicId}").hasRole(ROLE_OWNER); // Associate pet for activation
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Associate vet
                     http.requestMatchers(HttpMethod.DELETE, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Disassociate vet
+                    http.requestMatchers(HttpMethod.POST, "/api/records/pet/{petId}/temporary-access").hasRole(ROLE_OWNER); // Temp Access
+                    http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/request-certificate/{vetId}").hasRole(ROLE_OWNER); // Request Cert
 
                     // --- VET ---
                     http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/activate").hasAnyRole(ROLE_VET); // Activate pet
