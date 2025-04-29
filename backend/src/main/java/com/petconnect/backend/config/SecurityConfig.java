@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,9 +25,14 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Configures Spring Security settings including filter chain, authentication providers,
@@ -67,10 +73,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(http -> {
+                    http.requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll();
                     // --- 1. PUBLIC ENDPOINTS ---
                     http.requestMatchers("/api/auth/**").permitAll(); // Login/Register
                     http.requestMatchers(HttpMethod.GET, "/api/clinics").permitAll(); // Search clinics
@@ -91,9 +99,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}").authenticated(); // Get certificate detail (checked in service)
                     http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}/qr-data").authenticated(); // Get QR data (checked in service)
 
-
                     // --- 3. ENDPOINTS BY SPECIFIC ROLE ---
-
                     // --- OWNER ---
                     http.requestMatchers(HttpMethod.PUT, "/api/users/me").hasRole(ROLE_OWNER); // Update own profile
                     http.requestMatchers(HttpMethod.POST, "/api/pets").hasRole(ROLE_OWNER); // Register pet
@@ -137,6 +143,31 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler())
                 )
                 .build();
+    }
+
+    /**
+     * Defines the CORS configuration source.
+     * This bean provides the CORS settings (allowed origins, methods, headers)
+     * that Spring Security will use.
+     *
+     * @return CorsConfigurationSource
+     */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                HttpHeaders.AUTHORIZATION,
+                HttpHeaders.CONTENT_TYPE,
+                HttpHeaders.ACCEPT
+        ));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
     }
 
     /**
