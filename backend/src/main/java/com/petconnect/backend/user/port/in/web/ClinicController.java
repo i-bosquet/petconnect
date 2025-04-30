@@ -6,6 +6,7 @@ import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.application.service.ClinicService;
 import com.petconnect.backend.user.application.service.ClinicStaffService;
 import com.petconnect.backend.common.helper.UserHelper;
+import com.petconnect.backend.user.domain.model.Country;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -88,5 +89,15 @@ public class ClinicController implements ClinicControllerApi {
         Long requesterUserId = userServiceHelper.getAuthenticatedUserId();
         List<ClinicStaffProfileDto> staffList = clinicStaffService.findActiveStaffByClinic(clinicId, requesterUserId);
         return ResponseEntity.ok(staffList);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @GetMapping("/countries")
+    public ResponseEntity<List<Country>> getDistinctCountries() {
+        List<Country> countries = clinicService.getDistinctClinicCountries();
+        return ResponseEntity.ok(countries);
     }
 }

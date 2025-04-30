@@ -1,8 +1,12 @@
 package com.petconnect.backend.user.domain.repository;
 
 import com.petconnect.backend.user.domain.model.Clinic;
+import com.petconnect.backend.user.domain.model.Country;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
 
 /**
  * Spring Data JPA repository for {@link Clinic} entities.
@@ -17,4 +21,11 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
  * @author ibosquet
  */
 public interface ClinicRepository extends JpaRepository<Clinic, Long>, JpaSpecificationExecutor<Clinic> {
+    /**
+     * Finds all distinct countries where clinics are registered, ordered alphabetically.
+     *
+     * @return A List of distinct Country enum values present in the clinic table.
+     */
+    @Query("SELECT DISTINCT c.country FROM Clinic c ORDER BY c.country ASC") //
+    List<Country> findDistinctCountries();
 }

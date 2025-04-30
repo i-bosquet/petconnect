@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -313,6 +314,47 @@ class ClinicServiceImplTest {
             then(entityFinderHelper).should().findClinicOrFail(eq(clinicIdToUpdate));
             then(clinicRepository).should(never()).save(any());
             then(clinicMapper).should(never()).updateFromDto(any(), any());
+        }
+    }
+
+    /**
+     * --- Tests for getDistinctClinicCountries ---
+     */
+    @Nested
+    @DisplayName("getDistinctClinicCountries Tests")
+    class GetDistinctClinicCountriesTests {
+
+        @Test
+        @DisplayName("should return list of distinct countries from repository")
+        void shouldReturnDistinctCountries() {
+            // Arrange
+            List<Country> expectedCountries = List.of(Country.FRANCE, Country.SPAIN, Country.UNITED_KINGDOM);
+            given(clinicRepository.findDistinctCountries()).willReturn(expectedCountries);
+
+            // Act
+            List<Country> result = clinicService.getDistinctClinicCountries();
+
+            // Assert
+            assertThat(result)
+                    .isNotNull()
+                    .hasSize(3)
+                    .containsExactly(Country.FRANCE, Country.SPAIN, Country.UNITED_KINGDOM);
+
+            then(clinicRepository).should().findDistinctCountries();
+        }
+
+        @Test
+        @DisplayName("should return empty list when repository returns empty list")
+        void shouldReturnEmptyListWhenRepoIsEmpty() {
+            // Arrange
+            given(clinicRepository.findDistinctCountries()).willReturn(Collections.emptyList());
+
+            // Act
+            List<Country> result = clinicService.getDistinctClinicCountries();
+
+            // Assert
+            assertThat(result).isNotNull().isEmpty();
+            then(clinicRepository).should().findDistinctCountries();
         }
     }
 }

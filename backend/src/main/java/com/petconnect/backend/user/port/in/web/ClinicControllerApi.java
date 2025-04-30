@@ -3,9 +3,11 @@ package com.petconnect.backend.user.port.in.web;
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
+import com.petconnect.backend.user.domain.model.Country;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -178,4 +180,20 @@ public interface ClinicControllerApi {
     ResponseEntity<List<ClinicStaffProfileDto>> getActiveStaffByClinic(
             @Parameter(description = "ID of the clinic", required = true)
             @PathVariable Long clinicId);
+
+    /**
+     * Retrieves a distinct list of countries where clinics are registered.
+     * Useful for populating filter dropdowns. Publicly accessible.
+     *
+     * @return ResponseEntity with a List of Country enum string values and status 200.
+     */
+    @Operation(summary = "Get Distinct Clinic Countries",
+            description = "Retrieves a list of unique countries that have registered clinics.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of countries retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @ArraySchema(schema = @Schema(type = "string"))))
+    })
+    @GetMapping("/countries")
+    ResponseEntity<List<Country>> getDistinctCountries();
 }

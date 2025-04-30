@@ -6,10 +6,7 @@ import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.application.mapper.ClinicMapper;
 import com.petconnect.backend.user.application.service.ClinicService;
-import com.petconnect.backend.user.domain.model.Clinic;
-import com.petconnect.backend.user.domain.model.ClinicStaff;
-import com.petconnect.backend.user.domain.model.RoleEnum;
-import com.petconnect.backend.user.domain.model.UserEntity;
+import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -96,6 +93,15 @@ public class ClinicServiceImpl implements ClinicService {
 
         // Map the updated entity back to DTO
         return clinicMapper.toDto(clinicRepository.save(existingClinic));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<Country> getDistinctClinicCountries() {
+        return clinicRepository.findDistinctCountries();
     }
 
     /**

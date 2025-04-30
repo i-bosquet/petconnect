@@ -82,6 +82,7 @@ public class SecurityConfig {
                     // --- 1. PUBLIC ENDPOINTS ---
                     http.requestMatchers("/api/auth/**").permitAll(); // Login/Register
                     http.requestMatchers(HttpMethod.GET, "/api/clinics").permitAll(); // Search clinics
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/countries").permitAll(); // List countries
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/{id}").permitAll(); // Get clinic detail
                     http.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**").permitAll(); // API Docs
                     http.requestMatchers(HttpMethod.GET, "/images/**", "/uploaded-images/**").permitAll(); // Static Images

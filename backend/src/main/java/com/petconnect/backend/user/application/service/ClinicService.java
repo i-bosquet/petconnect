@@ -2,10 +2,13 @@ package com.petconnect.backend.user.application.service;
 
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
+import com.petconnect.backend.user.domain.model.Country;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+
+import java.util.List;
 
 /**
  * Service interface for managing Clinic entities.
@@ -48,4 +51,11 @@ public interface ClinicService {
      * @throws AccessDeniedException if the user is not an authorized Admin for this clinic. // ADDED EXCEPTION
      */
     ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, Long updatingAdminId);
+
+    /**
+     * Retrieves a distinct list of countries where clinics currently exist.
+     *
+     * @return A list of Country enum values, ordered alphabetically.
+     */
+    List<Country> getDistinctClinicCountries();
 }

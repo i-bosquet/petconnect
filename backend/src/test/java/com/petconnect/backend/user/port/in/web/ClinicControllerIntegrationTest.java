@@ -273,4 +273,26 @@ class ClinicControllerIntegrationTest {
                     .andExpect(jsonPath("$.error", is("Forbidden")));
         }
     }
+
+    /**
+     * --- Tests for GET /api/clinics/countries (Public Access) ---
+     */
+    @Nested
+    @DisplayName("GET /api/clinics/countries (Get Distinct Countries Tests)")
+    class GetDistinctCountriesTests {
+
+        @Test
+        @DisplayName("should return 200 OK with list of distinct country strings")
+        void getDistinctCountries_shouldSucceed() throws Exception {
+            // Act & Assert
+            mockMvc.perform(get("/api/clinics/countries"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(4))))
+                    .andExpect(jsonPath("$", hasItem(Country.UNITED_KINGDOM.name())))
+                    .andExpect(jsonPath("$", hasItem(Country.SPAIN.name())))
+                    .andExpect(jsonPath("$", hasItem(Country.FRANCE.name())))
+                    .andExpect(jsonPath("$", hasItem(Country.GERMANY.name())));
+        }
+    }
 }

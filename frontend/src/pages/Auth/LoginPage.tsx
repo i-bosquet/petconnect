@@ -29,6 +29,7 @@ const LoginPage = (): JSX.Element => {
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
@@ -67,8 +68,7 @@ const LoginPage = (): JSX.Element => {
                   jwt: token,
                   role: userRole,
                   id: userProfile.id, 
-                  email: userProfile.email, 
-                  avatar: userProfile.avatar 
+                  email: userProfile.email
               };
               sessionStorage.setItem('user', JSON.stringify(userDataToStore));
               console.log('User data and JWT stored in sessionStorage');
@@ -95,14 +95,14 @@ const LoginPage = (): JSX.Element => {
         setIsLoading(false);
       }
     };
-  
 
   // --- JSX Rendering ---
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#090D1A] p-4">
       <div className="w-full max-w-6xl flex flex-col lg:flex-row lg:items-center lg:justify-around">
+
         {/* Left Branding Section */}
-        <div className="text-center lg:text-left mb-8 lg:mb-0 lg:flex-1 lg:pr-12">
+        <div className="text-center mx-8 lg:text-left mb-8 lg:mb-0 lg:flex-1 lg:pr-12">
           <div className="flex justify-center lg:justify-start mb-3">
             <img src="/src/assets/images/SF-Logo1-D.png" alt="PetConnect" className="w-16 h-16 lg:w-24 lg:h-24"/>
           </div>
@@ -110,7 +110,20 @@ const LoginPage = (): JSX.Element => {
           <p className="text-gray-300 mt-2 lg:mt-4 lg:text-xl">Connect pets with the world</p>
            {/* Additional content for large screens */}
            <div className="hidden lg:block mt-8 space-y-4">
-             <p className="text-cyan-300">Welcome back!</p>
+           <p className="text-gray-300">
+              Welcome to PetConnect!
+            </p>
+            <ul className="text-gray-300 space-y-2">
+              <li className="flex items-center">
+                <span className="text-[#FFECAB] mr-2">✓</span> Access your personalized dashboard
+              </li>
+              <li className="flex items-center">
+                <span className="text-[#FFECAB] mr-2">✓</span> Use secure messaging and communication tools
+              </li>
+              <li className="flex items-center">
+                <span className="text-[#FFECAB] mr-2">✓</span> Manage records, appointments and certificates
+              </li>
+            </ul>
            </div>
         </div>
 
@@ -119,6 +132,7 @@ const LoginPage = (): JSX.Element => {
           <div className="bg-[#090D1A] rounded-2xl shadow-xl p-8 border-2 border-[#FFECAB] transform transition-all hover:scale-[1.01]">
             <h2 className="text-2xl font-semibold text-[#FFECAB] mb-6">Sign In</h2>
 
+            {/* Error message display */}
             {error && (
               <div className="mb-4 p-3 bg-red-900/30 text-red-300 rounded-lg text-sm">
                 {error}
@@ -144,7 +158,7 @@ const LoginPage = (): JSX.Element => {
                     value={username}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 border border-gray-700 rounded-xl shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-700 focus:border-cyan-500 text-white bg-gray-800 disabled:opacity-50"
-                    placeholder="your_username"
+                    placeholder="Your username"
                     disabled={isLoading}
                   />
                 </div>
@@ -185,6 +199,27 @@ const LoginPage = (): JSX.Element => {
                 </div>
               </div>
 
+              {/* Remember me checkbox option */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-cyan-700 focus:ring-cyan-600 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="remember-me"
+                    className="ml-2 block text-sm text-gray-300"
+                  >
+                    Remember me
+                  </label>
+                </div>
+              </div>
+
+
               {/* Submit Button */}
               <div>
                 <button type="submit" disabled={isLoading}
@@ -207,8 +242,10 @@ const LoginPage = (): JSX.Element => {
                 </Link>
               </p>
             </div>
+            
           </div>
         </div>
+
       </div>
     </div>
   );
