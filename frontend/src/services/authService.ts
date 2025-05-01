@@ -146,3 +146,39 @@ export const registerOwner = async (registrationData: OwnerRegistrationData): Pr
       }
   }
 };
+
+/**
+ * Sends a request to the backend to initiate the password reset process for the given email.
+ * The backend should handle validating the email and sending the reset link.
+ *
+ * @param {string} email - The email address for which to request a password reset.
+ * @returns {Promise<void>} A promise that resolves when the request is successfully sent (backend returns success).
+ * @throws {Error | AxiosError} Throws an error if the request fails (e.g., email not found, server error).
+ */
+export const requestPasswordReset = async (email: string): Promise<void> => {
+    try {
+        await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email }, { 
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        return; 
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error('API Forgot Password Error:', apiError);
+             let errorMessage = 'Failed to send password reset request.';
+             if (error.response.status === 404) {
+                 errorMessage = 'No account found with that email address.'; 
+             } else if (typeof apiError.message === 'string') {
+                 errorMessage = apiError.message;
+             } else if (apiError.error) {
+                errorMessage = apiError.error;
+             }
+            throw new Error(errorMessage);
+        } else {
+            console.error('Network or unexpected forgot password error:', error);
+            throw new Error('Password reset request failed due to network or unexpected error.');
+        }
+    }
+};
