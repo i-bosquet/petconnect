@@ -11,7 +11,6 @@ import { Country } from "../../types/enums";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "../../components/ui/tooltip";
 
@@ -151,7 +150,6 @@ const LandingPage = (): JSX.Element => {
   };
 
   return (
-    <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-[#070913] to-[#0c1225] flex flex-col relative">
         {/* Clinic Search Button */}
         <Tooltip>
@@ -370,7 +368,6 @@ const LandingPage = (): JSX.Element => {
           </div>
         )}
       </div>
-    </TooltipProvider>
   );
 };
 

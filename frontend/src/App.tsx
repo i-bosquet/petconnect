@@ -1,30 +1,19 @@
 import { JSX } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import LandingPage from './pages/Landing/LandingPage';
-import LoginPage from './pages/Auth/LoginPage';
-import SignupPage from './pages/Auth/SignupPage';
-import ResetPasswordPage from './pages/Auth/ResetPasswordPage';
-
-const OwnerDashboardPlaceholder = () => <div className="text-cyan-800 font-bold p-4">Owner Dashboard Placeholder</div>;
-const ClinicDashboardPlaceholder = () => <div className="text-cyan-800 font-bold p-4">Clinic Dashboard Placeholder</div>;
-const NotFoundPlaceholder = () => <div className="text-cyan-800 font-bold p-4">404 Not Found Placeholder</div>;
+import AppRouter from './routes/AppRouter'; 
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 
 /**
- * App - Configures the main application routes.
- * @returns {JSX.Element} The application component with routing setup.
+ * App - The root component of the application.
+ * Sets up global providers and renders the main router.
+ *
+ * @returns {JSX.Element} The main application structure.
  */
 function App(): JSX.Element {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/pet" element={<OwnerDashboardPlaceholder />} /> 
-      <Route path="/clinic" element={<ClinicDashboardPlaceholder />} /> 
-      <Route path="*" element={<NotFoundPlaceholder />} /> 
-    </Routes>
+   <TooltipProvider> 
+          <AppRouter />
+    </TooltipProvider>
   );
 }
 
