@@ -151,7 +151,8 @@ public class GlobalExceptionHandler {
             IllegalStateException.class,
             IllegalArgumentException.class,
             MissingRecentCheckupException.class,
-            MissingRabiesVaccineException.class
+            MissingRabiesVaccineException.class,
+            InvalidPasswordResetTokenException.class
     })
     public ResponseEntity<Map<String, Object>> handleBadLogicExceptions(RuntimeException ex) {
         log.warn("Bad Request due to illegal state or argument: {}", ex.getMessage());

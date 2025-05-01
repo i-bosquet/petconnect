@@ -57,6 +57,9 @@ services:
       - VET_KEY_PASSWORD=${VET_KEY_PASSWORD}
       - CLINIC_KEY_PATH=/app/keys/clinic_private_key.pem
       - CLINIC_KEY_PASSWORD=${CLINIC_KEY_PASSWORD}
+      # mail credentials
+      - SPRING_MAIL_USERNAME=${GMAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${GMAIL_APP_PASSWORD}
       # Image Path - Matches the container path for images
       - APP_EXTERNAL_IMAGES_PATH=/app/images # Matches MvcConfig target if serving uploaded images via container
     volumes:
@@ -103,6 +106,7 @@ services:
     hostname: kafka
     ports:
       - "9092:9092"
+      - "29092:29092"
     depends_on:
       - zookeeper
     environment:
@@ -110,7 +114,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       # Listeners: PLAINTEXT
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
       # For dev environment single-broker
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0

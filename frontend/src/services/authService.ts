@@ -44,6 +44,17 @@ interface OwnerProfile {
   phone: string;
 }
 
+interface ResetPasswordData {
+    token: string;
+    newPassword: string;
+    confirmPassword: string; 
+}
+
+interface ResetPasswordResponse {
+    message: string;
+}
+
+
 
 const API_BASE_URL = 'http://localhost:8080/api'; 
 
@@ -179,6 +190,51 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
         } else {
             console.error('Network or unexpected forgot password error:', error);
             throw new Error('Password reset request failed due to network or unexpected error.');
+        }
+    }
+};
+
+/**
+ * Resets the user's password using the provided token and new password.
+ * Calls the backend API endpoint for password reset.
+ *
+ * @param {ResetPasswordData} resetData - Includes token, newPassword, confirmPassword.
+ * @returns {Promise<ResetPasswordResponse>} A promise resolving with a success message.
+ * @throws {Error | AxiosError} Throws an error if reset fails (invalid token, passwords don't match, etc.).
+ */
+export const resetPassword = async (resetData: ResetPasswordData): Promise<ResetPasswordResponse> => {
+    if (!resetData.token) {
+        throw new Error("Reset token is missing.");
+    }
+    if (resetData.newPassword !== resetData.confirmPassword) {
+         throw new Error("Passwords do not match.");
+    }
+
+    try {
+         const response = await axios.post<ResetPasswordResponse>(`${API_BASE_URL}/auth/reset-password`, {
+             token: resetData.token,
+             newPassword: resetData.newPassword,
+             confirmPassword: resetData.confirmPassword 
+         }, {
+             headers: {
+                 'Content-Type': 'application/json',
+             }
+         });
+         return response.data; 
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error('API Reset Password Error:', apiError);
+             let errorMessage = 'Failed to reset password.';
+             if (typeof apiError.message === 'string') {
+                 errorMessage = apiError.message;
+             } else if (apiError.error) {
+                errorMessage = apiError.error;
+             }
+            throw new Error(errorMessage);
+        } else {
+            console.error('Network or unexpected reset password error:', error);
+            throw new Error('Password reset failed due to network or unexpected error.');
         }
     }
 };

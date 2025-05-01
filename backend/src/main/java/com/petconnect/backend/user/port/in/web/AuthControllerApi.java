@@ -1,9 +1,6 @@
 package com.petconnect.backend.user.port.in.web;
 
-import com.petconnect.backend.user.application.dto.AuthLoginRequestDto;
-import com.petconnect.backend.user.application.dto.AuthResponseDto;
-import com.petconnect.backend.user.application.dto.OwnerProfileDto;
-import com.petconnect.backend.user.application.dto.OwnerRegistrationDto;
+import com.petconnect.backend.user.application.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -99,4 +97,55 @@ public interface AuthControllerApi {
                     description = "User login : ", required = true,
                     content = @Content(schema = @Schema(implementation = AuthLoginRequestDto.class)))
             @Valid @org.springframework.web.bind.annotation.RequestBody AuthLoginRequestDto userRequest);
+
+    /**
+     * Initiates the password reset process by sending a reset link to the user's email.
+     * This endpoint is publicly accessible. It accepts the user's email address.
+     * For security reasons, it always returns a 200 OK response, regardless of
+     * whether the email exists in the system, to prevent email enumeration attacks.
+     * The actual email sending happens asynchronously if the user is found.
+     *
+     * @param requestDto DTO containing the email address.
+     * @return A {@link ResponseEntity} with HTTP status 200 (OK) and a generic success message.
+     */
+    @Operation(summary = "Request Password Reset Link",
+            description = "Sends a password reset link to the provided email address if it's associated with an account.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset request processed. If the email is registered, a reset link will be sent.",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = Map.class, example = "{\"message\": \"Password reset instructions sent if email is registered.\"}"))),
+            @ApiResponse(responseCode = "400", description = "Invalid Email Format",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = Map.class)))
+    })
+    @PostMapping("/forgot-password")
+    ResponseEntity<Map<String, String>> requestPasswordReset(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "User's email address.", required = true,
+                    content = @Content(schema = @Schema(implementation = PasswordResetRequestDto.class)))
+            @Valid @RequestBody PasswordResetRequestDto requestDto);
+
+
+    /**
+     * Resets the user's password using a valid token received via email.
+     * This endpoint is publicly accessible but requires a valid, non-expired token.
+     * It validates the token and the new password confirmation.
+     *
+     * @param resetDto DTO containing the reset token, new password, and confirmation.
+     * @return A {@link ResponseEntity} with HTTP status 200 (OK) and a success message upon successful password reset.
+     */
+    @Operation(summary = "Reset Password with Token",
+            description = "Sets a new password for the user associated with the provided valid reset token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully.",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = Map.class, example = "{\"message\": \"Password has been reset successfully.\"}"))),
+            @ApiResponse(responseCode = "400", description = "Invalid or Expired Token, Passwords Don't Match, or Invalid Input",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = Map.class)))
+    })
+    @PostMapping("/reset-password")
+    ResponseEntity<Map<String, String>> resetPassword(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Password reset token and new password details.", required = true,
+                    content = @Content(schema = @Schema(implementation = PasswordResetDto.class)))
+            @Valid @RequestBody PasswordResetDto resetDto);
 }
