@@ -10,9 +10,9 @@ import TopBar from '../components/layout/TopBar';
  */
 const OwnerLayout = (): JSX.Element => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#070913] to-[#0c1225] text-[#FFECAB] sm:px-60">
+    <div className="min-h-screen bg-gradient-to-br from-[#070913] to-[#0c1225] text-[#FFECAB] sm:px-40">
       <TopBar />
-      <main className="p-4 sm:p-6">
+      <main className="rounded-2xl shadow-xl p-8 border-2 border-[#FFECAB] transform transition-all hover:scale-[1.01]">
         {/* Owner-specific content */}
         <Outlet />
       </main>

@@ -24,10 +24,10 @@ const PetList = ({ pets, onSelectPet, onAddPet }: PetListProps): JSX.Element => 
         <Card className="border-2 border-[#FFECAB]/40 bg-[#0c1225]/50 shadow-lg"> 
             <CardHeader className="pb-4">
                 <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2 text-[#FFECAB] text-xl sm:text-2xl">
-                        <Dog size={24} className="text-cyan-400" /> 
+                    <CardTitle className="flex justify-center sm:justify-start items-center gap-2 text-[#FFECAB] text-xl sm:text-2xl flex-grow text-center sm:text-left">
+                        <Dog size={24} className="text-cyan-400 hidden sm:block flex-shrink-0" /> 
                         <span>My Pets</span>
-                        <Cat size={24} className="text-cyan-400" /> 
+                        <Cat size={24} className="text-cyan-400 hidden sm:block flex-shrink-0" /> 
                     </CardTitle>
                     <button
                         onClick={onAddPet}
@@ -35,13 +35,13 @@ const PetList = ({ pets, onSelectPet, onAddPet }: PetListProps): JSX.Element => 
                     >
                         <PlusCircle size={18} />
                         <span className="hidden sm:inline">Add Pet</span>
-                        <span className="sm:hidden">Add</span> 
+                        <span className="sm:hidden"></span> 
                     </button>
                 </div>
             </CardHeader>
             <CardContent>
                 {pets.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"> 
+                    <div className="flex flex-wrap justify-center gap-3"> 
                         {pets.map((pet) => (
                             <PetCard
                                 key={pet.id}
