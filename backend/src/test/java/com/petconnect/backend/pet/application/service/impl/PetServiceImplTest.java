@@ -1,6 +1,7 @@
 package com.petconnect.backend.pet.application.service.impl;
 
 import com.petconnect.backend.common.helper.AuthorizationHelper;
+import com.petconnect.backend.common.service.ImageService;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.exception.MicrochipAlreadyExistsException;
 import com.petconnect.backend.pet.application.dto.*;
@@ -29,9 +30,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -60,6 +64,7 @@ class PetServiceImplTest {
     @Mock private BreedMapper breedMapper;
     @Mock private EntityFinderHelper entityFinderHelper;
     @Mock private AuthorizationHelper authorizationHelper;
+    @Mock private ImageService imageService;
 
     @InjectMocks
     private PetServiceImpl petService;
@@ -81,7 +86,6 @@ class PetServiceImplTest {
     private final Long savedPetId = 101L;
     private final String defaultDogImagePath = "images/avatars/pets/dog.png";
     private final String specificDogImagePath = "images/avatars/pets/labrador.png";
-    private final String providedImagePath = "user/provided/dog.jpg";
 
 
     /**
@@ -103,6 +107,7 @@ class PetServiceImplTest {
                 null,
                 "Brown", Gender.MALE, "12345"
         );
+        String providedImagePath = "user/provided/dog.jpg";
         registrationDtoNoBreed = new PetRegistrationDto(
                 "Mixy", Specie.DOG, LocalDate.of(2022, 3, 10),
                 null,
@@ -119,8 +124,7 @@ class PetServiceImplTest {
                 savedPetId, "Buddy", Specie.DOG, "Brown", Gender.MALE,
                 LocalDate.of(2023, 1, 15), "12345", specificDogImagePath,
                 PetStatus.PENDING, ownerId, "testowner", specificBreedId, "Labrador",
-                null, Set.of(),
-                LocalDateTime.now(), LocalDateTime.now()
+                null, Set.of()
         );
     }
 
@@ -152,7 +156,7 @@ class PetServiceImplTest {
                     savedPet.getGender(), savedPet.getBirthDate(), savedPet.getMicrochip(),
                     savedPet.getImage(),
                     savedPet.getStatus(), ownerId, owner.getUsername(), specificBreedId, dogBreedSpecific.getName(),
-                    null, Set.of(), savedPet.getCreatedAt(), savedPet.getUpdatedAt()
+                    null, Set.of()
             );
 
             given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
@@ -162,7 +166,7 @@ class PetServiceImplTest {
             given(petMapper.toProfileDto(savedPet)).willReturn(expectedPetProfileDto);
 
             // Act
-            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId);
+            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId, null);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedPetProfileDto);
@@ -186,46 +190,48 @@ class PetServiceImplTest {
          */
         @Test
         @DisplayName("should register pet successfully with fallback breed and provided image")
-        void registerPet_Success_FallbackBreed_ProvidedImage() {
+        void registerPet_Success_FallbackBreed_ProvidedImage() throws IOException {
             // Arrange
             savedPet.setName(registrationDtoNoBreed.name());
             savedPet.setBreed(mixedDogBreed);
-            savedPet.setImage(registrationDtoNoBreed.image());
+            savedPet.setImage(defaultDogImagePath);
             savedPet.setBirthDate(registrationDtoNoBreed.birthDate());
             savedPet.setColor(registrationDtoNoBreed.color());
             savedPet.setGender(registrationDtoNoBreed.gender());
             savedPet.setMicrochip(registrationDtoNoBreed.microchip());
+            savedPet.setCreatedAt(LocalDateTime.now());
+            savedPet.setUpdatedAt(LocalDateTime.now());
 
             expectedPetProfileDto = new PetProfileDto(
                     savedPetId, savedPet.getName(), Specie.DOG, savedPet.getColor(), savedPet.getGender(),
-                    savedPet.getBirthDate(), savedPet.getMicrochip(), savedPet.getImage(),
+                    savedPet.getBirthDate(), savedPet.getMicrochip(), defaultDogImagePath,
                     PetStatus.PENDING, ownerId, owner.getUsername(), mixedBreedId, mixedDogBreed.getName(),
-                    null, Set.of(), savedPet.getCreatedAt(), savedPet.getUpdatedAt()
+                    null, Set.of()
             );
 
             given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
             given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.DOG)).willReturn(Optional.of(mixedDogBreed));
-
             given(petRepository.save(any(Pet.class))).willReturn(savedPet);
             given(petMapper.toProfileDto(savedPet)).willReturn(expectedPetProfileDto);
 
             // Act
-            PetProfileDto result = petService.registerPet(registrationDtoNoBreed, ownerId);
+            PetProfileDto result = petService.registerPet(registrationDtoNoBreed, ownerId, null);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedPetProfileDto);
-            assertThat(result.image()).isEqualTo(providedImagePath);
+            assertThat(result.image()).isEqualTo(defaultDogImagePath);
 
             then(entityFinderHelper).should().findOwnerOrFail(ownerId);
             then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
             then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.DOG);
+            then(imageService).should(never()).storeImage(any(), anyString());
 
             then(petRepository).should().save(petCaptor.capture());
             then(petMapper).should().toProfileDto(savedPet);
 
             Pet capturedPet = petCaptor.getValue();
             assertThat(capturedPet.getBreed()).isEqualTo(mixedDogBreed);
-            assertThat(capturedPet.getImage()).isEqualTo(providedImagePath);
+            assertThat(capturedPet.getImage()).isEqualTo(defaultDogImagePath);
         }
 
         /**
@@ -252,7 +258,7 @@ class PetServiceImplTest {
                     savedPetId, savedPet.getName(), Specie.DOG, null, null,
                     savedPet.getBirthDate(), null, defaultDogImagePath,
                     PetStatus.PENDING, ownerId, owner.getUsername(), mixedBreedId, mixedDogBreed.getName(),
-                    null, Set.of(), savedPet.getCreatedAt(), savedPet.getUpdatedAt()
+                    null, Set.of()
             );
 
             given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
@@ -262,7 +268,7 @@ class PetServiceImplTest {
             given(petMapper.toProfileDto(savedPet)).willReturn(expectedPetProfileDto);
 
             // Act
-            PetProfileDto result = petService.registerPet(dtoNoBreedNoImage, ownerId);
+            PetProfileDto result = petService.registerPet(dtoNoBreedNoImage, ownerId, null);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedPetProfileDto);
@@ -290,7 +296,7 @@ class PetServiceImplTest {
                     .willThrow(new EntityNotFoundException(Owner.class.getSimpleName(), nonExistentOwnerId));
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, 999L))
+            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, 999L, null))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Owner not found with id: 999");
 
@@ -314,7 +320,7 @@ class PetServiceImplTest {
                     .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.registerPet(dtoWithBadBreed, ownerId))
+            assertThatThrownBy(() -> petService.registerPet(dtoWithBadBreed, ownerId, null))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
 
@@ -337,13 +343,80 @@ class PetServiceImplTest {
             given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.CAT)).willReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.registerPet(dtoWithoutBreedId, ownerId))
+            assertThatThrownBy(() -> petService.registerPet(dtoWithoutBreedId, ownerId, null))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Default breed configuration error for species CAT");
 
             then(entityFinderHelper).should().findOwnerOrFail(ownerId);
             then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
             then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.CAT);
+            then(petRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should register pet successfully using stored image when file is provided")
+        void registerPet_Success_WithImageFile() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "test.jpg", MediaType.IMAGE_JPEG_VALUE, "test image content".getBytes());
+            String storedImagePath = "pets/avatars/some-uuid.jpg";
+
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
+            given(imageService.storeImage(imageFile, "pets/avatars")).willReturn(storedImagePath);
+
+            Pet savedPetWithImage = new Pet();
+            savedPetWithImage.setId(savedPetId);
+            savedPetWithImage.setName(registrationDtoSpecificBreed.name());
+            savedPetWithImage.setOwner(owner);
+            savedPetWithImage.setBreed(dogBreedSpecific);
+            savedPetWithImage.setImage(storedImagePath);
+            savedPetWithImage.setStatus(PetStatus.PENDING);
+            savedPetWithImage.setBirthDate(registrationDtoSpecificBreed.birthDate());
+            savedPetWithImage.setColor(registrationDtoSpecificBreed.color());
+            savedPetWithImage.setGender(registrationDtoSpecificBreed.gender());
+            savedPetWithImage.setMicrochip(registrationDtoSpecificBreed.microchip());
+            savedPetWithImage.setCreatedAt(LocalDateTime.now());
+            savedPetWithImage.setUpdatedAt(LocalDateTime.now());
+
+            given(petRepository.save(any(Pet.class))).willReturn(savedPetWithImage);
+
+            expectedPetProfileDto = new PetProfileDto(
+                    savedPetWithImage.getId(), savedPetWithImage.getName(), savedPetWithImage.getBreed().getSpecie(),
+                    savedPetWithImage.getColor(), savedPetWithImage.getGender(), savedPetWithImage.getBirthDate(),
+                    savedPetWithImage.getMicrochip(), savedPetWithImage.getImage(),
+                    savedPetWithImage.getStatus(), ownerId, owner.getUsername(),
+                    specificBreedId, dogBreedSpecific.getName(), null, Set.of()
+            );
+            given(petMapper.toProfileDto(any(Pet.class))).willReturn(expectedPetProfileDto);
+
+            // Act
+            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId, imageFile);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.image()).isEqualTo(storedImagePath);
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(petRepository).should().save(petCaptor.capture());
+            assertThat(petCaptor.getValue().getImage()).isEqualTo(storedImagePath);
+            then(petMapper).should().toProfileDto(savedPetWithImage);
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException if image storage fails")
+        void registerPet_Failure_ImageStorageError() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "bad.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
+            given(imageService.storeImage(imageFile, "pets/avatars")).willThrow(new IOException("Disk full"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, ownerId, imageFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to process uploaded image")
+                    .hasCauseInstanceOf(IOException.class);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
             then(petRepository).should(never()).save(any());
         }
     }
@@ -574,8 +647,7 @@ class PetServiceImplTest {
                     PetStatus.ACTIVE,
                     owner.getId(), owner.getUsername(), breedId, petBreed.getName(),
                     null,
-                    Set.of(new VetSummaryDto(activatingVet.getId(), activatingVet.getName(), activatingVet.getSurname())),
-                    LocalDateTime.now(), LocalDateTime.now()
+                    Set.of(new VetSummaryDto(activatingVet.getId(), activatingVet.getName(), activatingVet.getSurname()))
             );
         }
 
@@ -791,7 +863,7 @@ class PetServiceImplTest {
             // Arrange
             given(entityFinderHelper.findPetByIdOrFail(petToDeactivateId)).willReturn(petToDeactivate);
             given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
-            PetProfileDto inactiveDto = new PetProfileDto(petToDeactivateId, petToDeactivate.getName(), petToDeactivate.getBreed().getSpecie(), null,null,null,null,null, PetStatus.INACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), null, Set.of(), null, null);
+            PetProfileDto inactiveDto = new PetProfileDto(petToDeactivateId, petToDeactivate.getName(), petToDeactivate.getBreed().getSpecie(), null,null,null,null,null, PetStatus.INACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), null, Set.of());
             given(petMapper.toProfileDto(any(Pet.class))).willReturn(inactiveDto);
 
             // Act
@@ -911,8 +983,7 @@ class PetServiceImplTest {
                     existingPet.getBirthDate(),
                     updateDto.microchip(), updateDto.image(), existingPet.getStatus(), owner.getId(),
                     owner.getUsername(), newBreedId, newBreed.getName(),
-                    null, Set.of(),
-                    LocalDateTime.now(), LocalDateTime.now().plusMinutes(1)
+                    null, Set.of()
             );
         }
 
@@ -934,7 +1005,7 @@ class PetServiceImplTest {
 
 
             // Act
-            PetProfileDto result = petService.updatePetByOwner(petId, updateDto, ownerId);
+            PetProfileDto result = petService.updatePetByOwner(petId, updateDto, ownerId, null);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(expectedUpdatedDto);
@@ -969,14 +1040,13 @@ class PetServiceImplTest {
                             existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(), existingPet.getColor(),
                             existingPet.getGender(), existingPet.getBirthDate(), existingPet.getMicrochip(),
                             existingPet.getImage(), existingPet.getStatus(), owner.getId(), owner.getUsername(),
-                            existingPet.getBreed().getId(), existingPet.getBreed().getName(), null, Set.of(),
-                            existingPet.getCreatedAt(), existingPet.getUpdatedAt()
+                            existingPet.getBreed().getId(), existingPet.getBreed().getName(), null, Set.of()
                     );
 
             given(petMapper.toProfileDto(existingPet)).willReturn(originalDto);
 
             // Act
-            PetProfileDto result = petService.updatePetByOwner(petId, noChangeDto, ownerId);
+            PetProfileDto result = petService.updatePetByOwner(petId, noChangeDto, ownerId, null);
 
             // Assert
             assertThat(result).isNotNull().isEqualTo(originalDto);
@@ -1001,7 +1071,7 @@ class PetServiceImplTest {
                     .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.updatePetByOwner(999L, updateDto, ownerId))
+            assertThatThrownBy(() -> petService.updatePetByOwner(999L, updateDto, ownerId, null))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Pet not found with id: 999");
 
@@ -1020,7 +1090,7 @@ class PetServiceImplTest {
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, otherOwnerId))
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, otherOwnerId, null))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("User " + otherOwnerId + " is not the owner of pet " + petId);
 
@@ -1043,7 +1113,7 @@ class PetServiceImplTest {
                     .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.updatePetByOwner(petId, dtoWithBadBreed, ownerId))
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, dtoWithBadBreed, ownerId,null))
                     .isInstanceOf(EntityNotFoundException.class)
                     .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
 
@@ -1065,7 +1135,7 @@ class PetServiceImplTest {
             given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(true);
 
             // Act & Assert
-            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId))
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId,null))
                     .isInstanceOf(MicrochipAlreadyExistsException.class)
                     .hasMessageContaining(updateDto.microchip());
 
@@ -1075,6 +1145,75 @@ class PetServiceImplTest {
             then(petRepository).should(never()).save(any());
             then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
         }
+
+        @Test
+        @DisplayName("should update image and delete old one when image file is provided")
+        void updateByOwner_Success_WithImageChange() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "new.png", MediaType.IMAGE_PNG_VALUE, "new image".getBytes());
+            String oldImagePath = existingPet.getImage();
+            String newImagePath = "pets/avatars/new-uuid.png";
+
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            PetOwnerUpdateDto noOtherChangesDto = new PetOwnerUpdateDto(
+                    existingPet.getName(), null, existingPet.getColor(), existingPet.getGender(),
+                    existingPet.getBirthDate(), existingPet.getMicrochip(), existingPet.getBreed().getId()
+            );
+
+            when(petMapper.updateFromOwnerDto(noOtherChangesDto, existingPet, existingPet.getBreed())).thenReturn(false);
+
+            given(imageService.storeImage(imageFile, "pets/avatars")).willReturn(newImagePath);
+            doNothing().when(imageService).deleteImage(oldImagePath);
+            when(petRepository.save(any(Pet.class))).thenAnswer(inv -> {
+                Pet petToSave = inv.getArgument(0);
+                petToSave.setImage(newImagePath);
+                return petToSave;
+            });
+
+            expectedUpdatedDto = new PetProfileDto(
+                    existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(),
+                    existingPet.getColor(), existingPet.getGender(), existingPet.getBirthDate(),
+                    existingPet.getMicrochip(), newImagePath,
+                    existingPet.getStatus(), owner.getId(), owner.getUsername(),
+                    existingPet.getBreed().getId(), existingPet.getBreed().getName(), null,
+                    Set.of()
+            );
+            when(petMapper.toProfileDto(any(Pet.class))).thenReturn(expectedUpdatedDto);
+
+
+            // Act
+            PetProfileDto result = petService.updatePetByOwner(petId, noOtherChangesDto, ownerId, imageFile);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.image()).isEqualTo(newImagePath);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(imageService).should().deleteImage(oldImagePath);
+            then(petRepository).should().save(petCaptor.capture());
+            assertThat(petCaptor.getValue().getImage()).isEqualTo(newImagePath);
+            then(petMapper).should().toProfileDto(any(Pet.class));
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException if image update storage fails")
+        void updateByOwner_Failure_ImageStorageError() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "fail.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            given(imageService.storeImage(imageFile, "pets/avatars")).willThrow(new IOException("Disk full"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId, imageFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to process updated image")
+                    .hasCauseInstanceOf(IOException.class);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(imageService).should(never()).deleteImage(anyString());
+            then(petRepository).should(never()).save(any());
+        }
+
     }
 
     /**
@@ -1154,8 +1293,7 @@ class PetServiceImplTest {
                     updateDto.microchip(), petToUpdate.getImage(),
                     petToUpdate.getStatus(), ownerIdForPet, petOwner.getUsername(),
                     newBreedId, newBreed.getName(), null,
-                    Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname())),
-                    LocalDateTime.now(), LocalDateTime.now().plusMinutes(1)
+                    Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname()))
             );
         }
 
@@ -1209,8 +1347,7 @@ class PetServiceImplTest {
                     petToUpdate.getGender(), petToUpdate.getBirthDate(), petToUpdate.getMicrochip(),
                     petToUpdate.getImage(), petToUpdate.getStatus(), petOwner.getId(), petOwner.getUsername(),
                     petToUpdate.getBreed().getId(), petToUpdate.getBreed().getName(), null,
-                    Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname())),
-                    petToUpdate.getCreatedAt(), petToUpdate.getUpdatedAt()
+                    Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname()))
             );
             given(petMapper.toProfileDto(petToUpdate)).willReturn(originalDto);
 
@@ -1371,8 +1508,8 @@ class PetServiceImplTest {
             Pet petActiveWithVetFromOtherClinic = new Pet(); petActiveWithVetFromOtherClinic.setId(202L); petActiveWithVetFromOtherClinic.setStatus(PetStatus.ACTIVE); /* No association */ petActiveWithVetFromOtherClinic.setBreed(dogBreedSpecific); petActiveWithVetFromOtherClinic.setOwner(owner);
 
 
-            dtoPending = new PetProfileDto(200L, "Pending", Specie.DOG, null,null,null,null,null, PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), clinicId, Set.of(), null, null);
-            dtoActive = new PetProfileDto(201L, "Active", Specie.DOG, null,null,null,null,null, PetStatus.ACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), null, Set.of(new VetSummaryDto(staffId, staffFromClinic.getName(), staffFromClinic.getSurname())), null, null);
+            dtoPending = new PetProfileDto(200L, "Pending", Specie.DOG, null,null,null,null,null, PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), clinicId, Set.of());
+            dtoActive = new PetProfileDto(201L, "Active", Specie.DOG, null,null,null,null,null, PetStatus.ACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), null, Set.of(new VetSummaryDto(staffId, staffFromClinic.getName(), staffFromClinic.getSurname())));
         }
 
         /**
@@ -1471,7 +1608,7 @@ class PetServiceImplTest {
             petPendingAtClinic = new Pet(); petPendingAtClinic.setId(210L); petPendingAtClinic.setName("Pending"); petPendingAtClinic.setStatus(PetStatus.PENDING); petPendingAtClinic.setPendingActivationClinic(clinic); petPendingAtClinic.setBreed(dogBreedSpecific); petPendingAtClinic.setOwner(owner);
             petActiveAtClinic = new Pet(); petActiveAtClinic.setId(211L); petActiveAtClinic.setName("Active"); petActiveAtClinic.setStatus(PetStatus.ACTIVE); petActiveAtClinic.addVet((Vet) staffFromClinic); petActiveAtClinic.setBreed(dogBreedSpecific); petActiveAtClinic.setOwner(owner);
 
-            dtoPending = new PetProfileDto(210L, "Pending", Specie.DOG, null,null,null,null,null, PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), clinicId, Set.of(), null, null);
+            dtoPending = new PetProfileDto(210L, "Pending", Specie.DOG, null,null,null,null,null, PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), clinicId, Set.of());
         }
 
         /**
@@ -1614,9 +1751,7 @@ class PetServiceImplTest {
                     dogBreedSpecific.getId(),
                     dogBreedSpecific.getName(),
                     null,
-                    Set.of(new VetSummaryDto(vetId, associatedVet.getName(), associatedVet.getSurname())),
-                    null,
-                    null
+                    Set.of(new VetSummaryDto(vetId, associatedVet.getName(), associatedVet.getSurname()))
             );
             }
 
@@ -1772,10 +1907,11 @@ class PetServiceImplTest {
 
         @BeforeEach
         void findBreedsSetup() {
-            catBreed1 = Breed.builder().id(201L).name("Siamese").specie(Specie.CAT).build();
-            catBreed2 = Breed.builder().id(202L).name("Persian").specie(Specie.CAT).build();
-            catDto1 = new BreedDto(catBreed1.getId(), catBreed1.getName());
-            catDto2 = new BreedDto(catBreed2.getId(), catBreed2.getName());
+            catBreed1 = Breed.builder().id(201L).name("Siamese").specie(Specie.CAT).imageUrl(null).build();
+            catBreed2 = Breed.builder().id(202L).name("Persian").specie(Specie.CAT).imageUrl(null).build();
+
+            catDto1 = new BreedDto(catBreed1.getId(), catBreed1.getName(), catBreed1.getImageUrl());
+            catDto2 = new BreedDto(catBreed2.getId(), catBreed2.getName(), catBreed2.getImageUrl());
         }
 
         /**

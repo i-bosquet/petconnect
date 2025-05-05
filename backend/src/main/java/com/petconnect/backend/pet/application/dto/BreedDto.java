@@ -11,6 +11,7 @@ package com.petconnect.backend.pet.application.dto;
  */
 public record BreedDto(
         Long id,
-        String name
+        String name,
+        String imageUrl
 ) {
 }

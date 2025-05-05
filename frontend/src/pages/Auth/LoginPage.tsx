@@ -13,7 +13,7 @@ interface StoredUser {
   role: string;
   id?: number | string;
   email?: string;
-  avatar?: string;
+  avatar: string;
 }
 
 /**
@@ -74,7 +74,7 @@ const LoginPage = (): JSX.Element => {
             role: userRole,
             id: userProfile.id,
             email: userProfile.email,
-            // avatar: userProfile.avatar
+            avatar: userProfile.avatar,
           };
 
           // Choose storage based on the 'rememberMe' state

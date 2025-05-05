@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Country } from '../types/enums';
+import { Country } from '../types/enumTypes';
 
 /**
  * Interface representing the structure of the API error response.

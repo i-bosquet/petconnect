@@ -4,6 +4,9 @@ import com.petconnect.backend.user.application.dto.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.lang.Nullable;
+import java.io.IOException;
 
 import java.util.Optional;
 
@@ -71,7 +74,7 @@ public interface UserService {
      * @throws IllegalStateException if the current user is not an Owner or not authenticated.
      * @throws EntityNotFoundException if the user cannot be found.
      */
-    OwnerProfileDto updateCurrentOwnerProfile(OwnerProfileUpdateDto updateDTO);
+    OwnerProfileDto updateCurrentOwnerProfile(OwnerProfileUpdateDto updateDTO, @Nullable MultipartFile imageFile )throws IOException;
 
     /**
      * Updates the profile of the currently authenticated ClinicStaff user.
@@ -82,5 +85,5 @@ public interface UserService {
      * @throws IllegalStateException if the current user is not ClinicStaff or not authenticated.
      * @throws EntityNotFoundException if the user cannot be found.
      */
-    ClinicStaffProfileDto updateCurrentClinicStaffProfile(UserProfileUpdateDto updateDTO);
+    ClinicStaffProfileDto updateCurrentClinicStaffProfile(UserProfileUpdateDto updateDTO, @Nullable MultipartFile imageFile ) throws IOException;
 }

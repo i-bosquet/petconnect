@@ -85,7 +85,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/countries").permitAll(); // List countries
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/{id}").permitAll(); // Get clinic detail
                     http.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**").permitAll(); // API Docs
-                    http.requestMatchers(HttpMethod.GET, "/images/**", "/uploaded-images/**").permitAll(); // Static Images
+                    http.requestMatchers(HttpMethod.GET, "/images/**", "/storage/**").permitAll(); // Static Images
 
                     // --- 2. AUTHENTICATED (ANY ROLE - Fine-grained auth in service) ---
                     http.requestMatchers(HttpMethod.GET, "/api/users/me").authenticated(); // Get own profile (Covered by the specific role rules above, but safe to leave)

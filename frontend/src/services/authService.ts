@@ -25,7 +25,7 @@ interface UserProfile {
   username: string;
   email: string;
   roles: string[];
-  avatar?: string | null; 
+  avatar: string; 
 }
 
 interface OwnerRegistrationData {
@@ -40,7 +40,7 @@ interface OwnerProfile {
   username: string;
   email: string;
   roles: string[];
-  avatar?: string | null; 
+  avatar: string; 
   phone: string;
 }
 

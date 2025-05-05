@@ -2,6 +2,7 @@ package com.petconnect.backend.pet.port.in.web;
 
 import com.petconnect.backend.pet.application.dto.*;
 import com.petconnect.backend.pet.domain.model.Specie;
+import io.micrometer.common.lang.Nullable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -18,7 +19,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -38,23 +41,29 @@ public interface PetControllerApi {
 
     /**
      * Registers a new pet for the currently authenticated owner.
-     * The pet starts in PENDING status.
+     * Accepts pet details as JSON part ('dto') and an optional image file part ('imageFile').
+     * Requires 'multipart/form-data' content type.
      *
-     * @param registrationDTO DTO with initial pet details (name, specie, birthDate required).
+     * @param registrationDTO DTO with initial pet details.
+     * @param imageFile Optional uploaded image file.
      * @return ResponseEntity with the created PetProfileDto and status 201.
      */
-    @Operation(summary = "Register New Pet", description = "Allows an authenticated Owner to register a new pet.")
+    @Operation(summary = "Register New Pet (multipart)",
+            description = "Allows Owner to register a pet. Send DTO as 'dto' part (Content-Type: application/json) and image as 'imageFile' part (optional).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Pet registered successfully", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PetProfileDto.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input data or image processing failed", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not an Owner)", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "404", description = "Breed not found (if ID provided)", content = @Content(schema = @Schema(implementation = Map.class)))
+            @ApiResponse(responseCode = "404", description = "Breed specified in DTO not found", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PostMapping("")
+    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<PetProfileDto> registerPet(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Initial details for the new pet.", required = true, content = @Content(schema = @Schema(implementation = PetRegistrationDto.class)))
-            @Valid @RequestBody PetRegistrationDto registrationDTO);
+            @Parameter(description = "Pet details (JSON part)", schema = @Schema(implementation = PetRegistrationDto.class))
+            @RequestPart("dto") @Valid PetRegistrationDto registrationDTO,
+            @Parameter(description = "Optional image file")
+            @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    ) throws IOException;
 
     /**
      * Retrieves a paginated list of pets belonging to the currently authenticated owner.
@@ -75,25 +84,33 @@ public interface PetControllerApi {
             @Parameter(description = "Pagination details") @PageableDefault(sort = "name") Pageable pageable);
 
     /**
-     * Updates basic information (name, image) for a pet owned by the authenticated user.
+     * Updates information for a pet owned by the authenticated user.
+     * Accepts pet details update DTO as JSON part ('dto') and an optional new image file part ('imageFile').
+     * Requires 'multipart/form-data' content type.
      *
      * @param petId ID of the pet to update.
-     * @param updateDto DTO containing optional name and/or image updates.
+     * @param updateDto DTO containing fields to update.
+     * @param imageFile Optional new uploaded image file.
      * @return ResponseEntity with the updated PetProfileDto and status 200.
      */
-    @Operation(summary = "Update Pet (Owner)", description = "Allows an authenticated Owner to update their own pet's name and image.")
+    @Operation(summary = "Update Pet (Owner, multipart)",
+            description = "Allows Owner to update pet details and optionally upload new avatar. Send DTO as 'dto' part and image as 'imageFile' part.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Pet updated successfully", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PetProfileDto.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input data or image processing failed", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not the owner)", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "404", description = "Pet not found", content = @Content(schema = @Schema(implementation = Map.class)))
+            @ApiResponse(responseCode = "404", description = "Pet or Breed not found", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "409", description = "Conflict (e.g., Microchip already exists)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/{petId}/owner-update")
+    @PutMapping(value = "/{petId}/owner-update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<PetProfileDto> updatePetByOwner(
             @Parameter(description = "ID of the pet to update", required = true) @PathVariable Long petId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Fields to update (name, image).", required = true, content = @Content(schema = @Schema(implementation = PetOwnerUpdateDto.class)))
-            @Valid @RequestBody PetOwnerUpdateDto updateDto);
+            @Parameter(description = "Pet details to update (JSON part)", schema = @Schema(implementation = PetOwnerUpdateDto.class))
+            @RequestPart("dto") @Valid PetOwnerUpdateDto updateDto,
+            @Parameter(description = "Optional new image file")
+            @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    ) throws IOException;
 
     /**
      * Deactivates a pet owned by the authenticated user. Status changes to INACTIVE.

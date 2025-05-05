@@ -38,10 +38,10 @@ public record PetRegistrationDto(
 
         String image,
 
-        @Size(max = 30) String color,
+        @Size(max = 30, message = "Color description cannot exceed 30 characters") String color,
 
         Gender gender,
 
-        @Size(max = 50) String microchip
+        @Size(max = 50,  message = "Microchip number cannot exceed 50 characters") String microchip
 ) {
 }

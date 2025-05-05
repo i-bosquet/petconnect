@@ -28,7 +28,8 @@ public class BreedMapper {
         }
         return new BreedDto(
                 breed.getId(),
-                breed.getName()
+                breed.getName(),
+                breed.getImageUrl()
         );
     }
 

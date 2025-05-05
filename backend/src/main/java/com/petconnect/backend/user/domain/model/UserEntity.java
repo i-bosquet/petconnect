@@ -56,9 +56,10 @@ public class UserEntity extends BaseEntity{
 
     /**
      * URL pointing to the user's avatar image.
-     * Can be null if the user hasn't set one or uses a default.
+     * This field is always assigned a value upon user creation
      */
-    @Column(name = "avatar") // Nullable by default
+    @NotBlank(message = "Avatar URL cannot be blank")
+    @Column(name = "avatar", nullable = false)
     private String avatar; // URL to the image
 
     /**

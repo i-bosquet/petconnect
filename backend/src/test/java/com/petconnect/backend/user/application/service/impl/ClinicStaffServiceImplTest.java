@@ -27,8 +27,6 @@ import org.springframework.security.access.AccessDeniedException;
 import java.util.List;
 import java.util.Set;
 
-import static com.petconnect.backend.user.application.service.impl.ClinicStaffServiceImpl.DEFAULT_ADMIN_AVATAR;
-import static com.petconnect.backend.user.application.service.impl.ClinicStaffServiceImpl.DEFAULT_VET_AVATAR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -131,6 +129,7 @@ class ClinicStaffServiceImplTest {
 
         @BeforeEach
         void createDtoSetup() {
+            String defaultUserImagePathBase = "images/avatars/users/";
             vetCreationDto = new ClinicStaffCreationDto(
                     "newvet", "new.vet@test.com", "password123",
                     "New", "Vet", RoleEnum.VET,
@@ -155,7 +154,7 @@ class ClinicStaffServiceImplTest {
             savedVet.setClinic(clinic1);
             savedVet.setRoles(Set.of(vetRole));
             savedVet.setActive(true);
-            savedVet.setAvatar(DEFAULT_VET_AVATAR);
+            savedVet.setAvatar(defaultUserImagePathBase+ "vet.png");
 
             savedAdmin = new ClinicStaff();
             savedAdmin.setId(101L);
@@ -167,7 +166,7 @@ class ClinicStaffServiceImplTest {
             savedAdmin.setClinic(clinic1);
             savedAdmin.setRoles(Set.of(adminRole));
             savedAdmin.setActive(true);
-            savedAdmin.setAvatar(DEFAULT_ADMIN_AVATAR);
+            savedAdmin.setAvatar(defaultUserImagePathBase+ "admin.png");
 
             vetProfileDto = new ClinicStaffProfileDto(
                     100L, savedVet.getUsername(), savedVet.getEmail(),

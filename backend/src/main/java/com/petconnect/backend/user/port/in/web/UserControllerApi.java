@@ -5,6 +5,7 @@ import com.petconnect.backend.user.application.dto.OwnerProfileDto;
 import com.petconnect.backend.user.application.dto.OwnerProfileUpdateDto;
 import com.petconnect.backend.user.application.dto.UserProfileDto;
 import com.petconnect.backend.user.application.dto.UserProfileUpdateDto;
+import io.micrometer.common.lang.Nullable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,8 +18,12 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Map;
+
+import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 /**
  * API interface defining endpoints for general user operations,
@@ -133,11 +138,13 @@ public interface UserControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not an Owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "409", description = "Conflict (New username already exists)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/me")
+    @PutMapping(value = "/me", consumes = MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<OwnerProfileDto> updateCurrentOwnerProfile(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated profile details for the owner.", required = true,
-                    content = @Content(schema = @Schema(implementation = OwnerProfileUpdateDto.class)))
-            @Valid @RequestBody OwnerProfileUpdateDto updateDTO);
+            @Parameter(description = "Owner profile data (JSON part)", schema = @Schema(implementation = OwnerProfileUpdateDto.class))
+            @RequestPart("dto") @Valid OwnerProfileUpdateDto updateDTO,
+            @Parameter(description = "Optional new avatar image file")
+            @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    ) throws IOException;
 
 
     /**
@@ -162,9 +169,11 @@ public interface UserControllerApi {
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not Clinic Staff)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "409", description = "Conflict (New username already exists)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/me/staff")
+    @PutMapping(value = "/me/staff", consumes = MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ClinicStaffProfileDto> updateCurrentClinicStaffProfile(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated common profile details for staff.", required = true,
-                    content = @Content(schema = @Schema(implementation = UserProfileUpdateDto.class)))
-            @Valid @RequestBody UserProfileUpdateDto updateDTO);
+            @Parameter(description = "Staff common profile data (JSON part)", schema = @Schema(implementation = UserProfileUpdateDto.class))
+            @RequestPart("dto") @Valid UserProfileUpdateDto updateDTO,
+            @Parameter(description = "Optional new avatar image file")
+            @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    ) throws IOException;
 }

@@ -8,6 +8,7 @@ import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -30,8 +31,8 @@ public class ClinicStaffHelper {
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
 
-    static final String DEFAULT_VET_AVATAR = "images/avatars/users/vet.png";
-    static final String DEFAULT_ADMIN_AVATAR = "images/avatars/users/admin.png";
+    @Value("${app.default.user.image.path}")
+    private String defaultUserImagePathBase;
 
     /**
      * Builds a new {@link Vet} or {@link ClinicStaff} (for ADMIN role) entity based on the provided DTO and clinic.
@@ -47,6 +48,8 @@ public class ClinicStaffHelper {
      */
     public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto, Clinic targetClinic) {
         ClinicStaff newStaff;
+        String defaultAvatarPath;
+
         if (dto.role() == RoleEnum.VET) {
             // Validate VET-specific fields first
             validateHelper.validateVetLicenseNumber(dto.licenseNumber());
@@ -57,12 +60,14 @@ public class ClinicStaffHelper {
             // Set Vet specific fields
             newVet.setLicenseNumber(dto.licenseNumber());
             newVet.setVetPublicKey(dto.vetPublicKey());
-            newVet.setAvatar(DEFAULT_VET_AVATAR);
+            defaultAvatarPath = getDefaultAvatarPath("vet.png");
+            newVet.setAvatar(defaultAvatarPath);
             newStaff = newVet;
         } else { // ADMIN
             ClinicStaff newAdmin = new ClinicStaff();
             setCommonStaffFields(newAdmin, dto, targetClinic); // Populate common fields
-            newAdmin.setAvatar(DEFAULT_ADMIN_AVATAR);
+            defaultAvatarPath = getDefaultAvatarPath("admin.png"); 
+            newAdmin.setAvatar(defaultAvatarPath);
             newStaff = newAdmin;
         }
         return newStaff;
@@ -139,5 +144,10 @@ public class ClinicStaffHelper {
             }
         }
         return changed;
+    }
+
+    private String getDefaultAvatarPath(String filename) {
+        String basePath = defaultUserImagePathBase.endsWith("/") ? defaultUserImagePathBase : defaultUserImagePathBase + '/';
+        return basePath + filename;
     }
 }

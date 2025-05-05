@@ -40,10 +40,6 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     private final ValidateHelper validateHelper;
     private final ClinicStaffHelper clinicStaffHelper;
 
-    static final String DEFAULT_VET_AVATAR = "images/avatars/users/vet.png";
-    static final String DEFAULT_ADMIN_AVATAR = "images/avatars/users/admin.png";
-
-
     /**
      * {@inheritDoc}
      */

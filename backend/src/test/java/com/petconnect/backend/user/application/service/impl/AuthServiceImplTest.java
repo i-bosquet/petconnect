@@ -26,6 +26,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -79,13 +80,18 @@ class AuthServiceImplTest {
     private OwnerProfileDto expectedOwnerDto;
     private AuthLoginRequestDto loginRequestDto;
     private UserDetails userDetails;
-    private String defaultAvatar;
 
+    private String defaultUserImagePathBase = "images/avatars/users/";
+    private String expectedOwnerAvatarPath;
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(authService, "defaultUserImagePathBase", defaultUserImagePathBase);
+        expectedOwnerAvatarPath = defaultUserImagePathBase + "owner.png";
+
         registrationDto = new OwnerRegistrationDto("testuser", "test@example.com", "password123", "123456789");
         ownerRole = RoleEntity.builder().roleEnum(RoleEnum.OWNER).id(1L).build();
+
 
         savedOwner = new Owner();
         savedOwner.setId(1L);
@@ -94,7 +100,7 @@ class AuthServiceImplTest {
         savedOwner.setPhone(registrationDto.phone());
         savedOwner.setPassword("hashedPassword");
         savedOwner.setRoles(Set.of(ownerRole));
-        savedOwner.setAvatar("images/avatars/users/owner.png");
+        savedOwner.setAvatar(expectedOwnerAvatarPath);
         savedOwner.setEnabled(true);
         savedOwner.setAccountNonExpired(true);
         savedOwner.setAccountNonLocked(true);
@@ -106,7 +112,6 @@ class AuthServiceImplTest {
 
         userDetails = new User(savedOwner.getUsername(), savedOwner.getPassword(), true, true, true, true,
                 List.of(new SimpleGrantedAuthority("ROLE_OWNER")));
-        defaultAvatar = (String) ReflectionTestUtils.getField(AuthServiceImpl.class, "DEFAULT_OWNER_AVATAR");
 
     }
 
@@ -125,14 +130,14 @@ class AuthServiceImplTest {
             given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
             given(passwordEncoder.encode(registrationDto.password())).willReturn("hashedPassword");
             given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.of(ownerRole));
-            given(ownerRepository.save(any(Owner.class))).willReturn(savedOwner);
+             given(ownerRepository.save(any(Owner.class))).willReturn(savedOwner);
             given(userMapper.toOwnerProfileDto(savedOwner)).willReturn(expectedOwnerDto);
 
             // Act
             OwnerProfileDto result = authService.registerOwner(registrationDto);
 
             // Assert
-            assertThat(result).isEqualTo(expectedOwnerDto);
+            assertThat(result).isNotNull().isEqualTo(expectedOwnerDto);
 
             then(userRepository).should().existsByEmail(registrationDto.email());
             then(userRepository).should().existsByUsername(registrationDto.username());
@@ -141,13 +146,14 @@ class AuthServiceImplTest {
             then(ownerRepository).should().save(ownerCaptor.capture());
             then(userMapper).should().toOwnerProfileDto(savedOwner);
 
+            // Verificar la entidad capturada
             Owner ownerToSave = ownerCaptor.getValue();
             assertThat(ownerToSave.getUsername()).isEqualTo(registrationDto.username());
             assertThat(ownerToSave.getEmail()).isEqualTo(registrationDto.email());
             assertThat(ownerToSave.getPhone()).isEqualTo(registrationDto.phone());
             assertThat(ownerToSave.getPassword()).isEqualTo("hashedPassword");
             assertThat(ownerToSave.getRoles()).containsExactly(ownerRole);
-            assertThat(ownerToSave.getAvatar()).isEqualTo(defaultAvatar);
+            assertThat(ownerToSave.getAvatar()).isEqualTo(expectedOwnerAvatarPath);
             assertThat(ownerToSave.isEnabled()).isTrue();
             assertThat(ownerToSave.isAccountNonExpired()).isTrue();
             assertThat(ownerToSave.isAccountNonLocked()).isTrue();

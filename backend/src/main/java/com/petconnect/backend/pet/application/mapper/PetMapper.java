@@ -1,5 +1,6 @@
 package com.petconnect.backend.pet.application.mapper;
 
+import com.petconnect.backend.common.helper.Utils;
 import com.petconnect.backend.pet.application.dto.PetClinicUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetOwnerUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetProfileDto;
@@ -10,14 +11,13 @@ import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 
 /**
  * Mapper component for converting between {@link Pet} entities and related DTOs.
@@ -31,7 +31,6 @@ import java.util.function.Supplier;
 public class PetMapper {
 
     private static final String FIELD_NAME = "name";
-    private static final String FIELD_IMAGE = "image";
     private static final String FIELD_COLOR = "color";
     private static final String FIELD_GENDER = "gender";
     private static final String FIELD_BIRTH_DATE = "birthDate";
@@ -39,6 +38,16 @@ public class PetMapper {
     private static final String FIELD_BREED = "breed";
 
     private final UserMapper userMapper;
+
+    @Value("${app.backend.base-url:http://localhost:8080}")
+    private String backendBaseUrl;
+
+    // --- Default image prefix (from classpath) ---
+    private static final String DEFAULT_IMAGE_DB_PREFIX = "images/avatars/pets/";
+    // --- Default image URL prefix ---
+    private static final String DEFAULT_IMAGE_URL_PREFIX = "/images/avatars/pets/";
+    // --- Prefix for uploaded image URLs (from external storage) ---
+    private static final String UPLOADED_IMAGE_URL_PREFIX = "/storage/pets/avatars/";
 
     /**
      * Converts a {@link Pet} entity to a detailed {@link PetProfileDto}.
@@ -61,6 +70,28 @@ public class PetMapper {
         Long pendingClinicId = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getId() : null;
         Set<VetSummaryDto> vetSummaries = userMapper.toVetSummaryDtoSet(pet.getAssociatedVets());
 
+        String fullImageUrl = null;
+        if (StringUtils.hasText(pet.getImage())) {
+            String imagePathInDb = pet.getImage();
+            String baseUrl = backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/";
+            String relativePathForUrl;
+
+            // Decide which URL prefix to use based on how the saved path starts
+            if (imagePathInDb.startsWith(DEFAULT_IMAGE_DB_PREFIX)) {
+                // It is a default image, use prefix /images/
+                relativePathForUrl = DEFAULT_IMAGE_URL_PREFIX + imagePathInDb.substring(DEFAULT_IMAGE_DB_PREFIX.length());
+                log.trace("Mapping default image path '{}' to URL prefix '{}'", imagePathInDb, DEFAULT_IMAGE_URL_PREFIX);
+            } else {
+                // It is an uploaded image, use prefix /storage/
+                relativePathForUrl = UPLOADED_IMAGE_URL_PREFIX + imagePathInDb.substring("pets/avatars/".length());
+                log.trace("Mapping uploaded image path '{}' to URL prefix '{}'", imagePathInDb, UPLOADED_IMAGE_URL_PREFIX);
+            }
+            relativePathForUrl = relativePathForUrl.startsWith("/") ? relativePathForUrl.substring(1) : relativePathForUrl;
+            fullImageUrl = baseUrl + relativePathForUrl;
+        } else {
+            log.warn("Pet ID {} has null or empty image path in database.", pet.getId());
+        }
+
         return new PetProfileDto(
                 pet.getId(),
                 pet.getName(),
@@ -69,16 +100,14 @@ public class PetMapper {
                 pet.getGender(),
                 pet.getBirthDate(),
                 pet.getMicrochip(),
-                pet.getImage(),
+                fullImageUrl,
                 pet.getStatus(),
                 ownerId,
                 ownerUsername,
                 breedId,
                 breedName,
                 pendingClinicId,
-                vetSummaries,
-                pet.getCreatedAt(),
-                pet.getUpdatedAt()
+                vetSummaries
         );
     }
 
@@ -109,22 +138,20 @@ public class PetMapper {
          if (dto == null || pet == null) return false;
          boolean changed = false;
          log.debug("Mapper updateFromOwnerDto - Checking 'name': DTO='{}', Current='{}'", dto.name(), pet.getName());
-         changed |= updateStringFieldIfChanged(pet, dto.name(), pet::getName, Pet::setName, FIELD_NAME);
-         log.debug("Mapper updateFromOwnerDto - Checking 'image': DTO='{}', Current='{}'", dto.image(), pet.getImage());
-         changed |= updateStringFieldIfChanged(pet, dto.image(), pet::getImage, Pet::setImage, FIELD_IMAGE);
+         changed |= Utils.updateStringFieldIfChanged(pet, dto.name(), pet::getName, Pet::setName, FIELD_NAME);
          log.debug("Mapper updateFromOwnerDto - Checking 'color': DTO='{}', Current='{}'", dto.color(), pet.getColor());
-         changed |= updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor, FIELD_COLOR);
+         changed |= Utils.updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor, FIELD_COLOR);
          log.debug("Mapper updateFromOwnerDto - Checking 'microchip': DTO='{}', Current='{}'", dto.microchip(), pet.getMicrochip());
-         changed |= updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
+         changed |= Utils.updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
          log.debug("Mapper updateFromOwnerDto - Checking 'gender': DTO='{}', Current='{}'", dto.gender(), pet.getGender());
-         changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
+         changed |= Utils.updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
          log.debug("Mapper updateFromOwnerDto - Checking 'birthDate': DTO='{}', Current='{}'", dto.birthDate(), pet.getBirthDate());
-         changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
+         changed |= Utils.updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
 
          if (resolvedBreed != null) {
              log.debug("Mapper updateFromOwnerDto - Checking 'breed': ResolvedBreedId='{}', CurrentBreedId='{}'",
                      resolvedBreed.getId(), (pet.getBreed() != null ? pet.getBreed().getId() : null));
-             changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
+             changed |= Utils.updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
          }
          return changed;
      }
@@ -143,71 +170,11 @@ public class PetMapper {
     public boolean updateFromClinicDto(PetClinicUpdateDto dto, Pet pet, Breed resolvedBreed) {
         if (dto == null || pet == null) return false;
         boolean changed = false;
-        changed |= updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor, FIELD_COLOR);
-        changed |= updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
-        changed |= updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
-        changed |= updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
-        changed |= updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
+        changed |= Utils.updateStringFieldIfChanged(pet, dto.color(), pet::getColor, Pet::setColor, FIELD_COLOR);
+        changed |= Utils.updateStringFieldIfChanged(pet, dto.microchip(), pet::getMicrochip, Pet::setMicrochip, FIELD_MICROCHIP);
+        changed |= Utils.updateFieldIfChanged(pet, dto.gender(), pet::getGender, Pet::setGender, FIELD_GENDER);
+        changed |= Utils.updateFieldIfChanged(pet, dto.birthDate(), pet::getBirthDate, Pet::setBirthDate, FIELD_BIRTH_DATE);
+        changed |= Utils.updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
         return changed;
-    }
-
-    /**
-     * Updates a target field using a setter if the source value is not null
-     * and different from the current value obtained via a getter.
-     * Specifically for updating fields on a target object.
-     *
-     * @param target The target object (e.g., the Pet entity).
-     * @param sourceValue The new value from the DTO (can be null).
-     * @param getter Supplier function to get the current value from the entity.
-     * @param setter BiConsumer function to set the new value on the entity (accepts target and value).
-     * @param <E> The type of the target entity.
-     * @param <T> The type of the field being updated.
-     * @return true if the setter was called (value was updated), false otherwise.
-     */
-    public static <E, T> boolean updateFieldIfChanged(E target, T sourceValue, Supplier<T> getter, BiConsumer<E, T> setter, String fieldName) {
-        if (sourceValue == null) {
-            log.debug("Skipping field '{}': Source value is null.", fieldName);
-            return false;
-        }
-        T currentValue = getter.get();
-        if (!Objects.equals(sourceValue, currentValue)) {
-            log.debug("Updating field '{}': Current='{}', New='{}'", fieldName, currentValue, sourceValue);
-            setter.accept(target, sourceValue);
-            return true;
-        } else {
-            log.debug("Skipping field '{}': Value '{}' is the same as current.", fieldName, sourceValue);
-            return false;
-        }
-    }
-
-    /**
-     * Updates a target String field using a setter if the source value is not null or blank
-     * and different from the current value obtained via a getter.
-     * Handles blank strings by setting the target field to null.
-     *
-     * @param target The target object (e.g., the Pet entity).
-     * @param sourceValue The new String value from the DTO (can be null or blank).
-     * @param getter Supplier function to get the current String value from the entity.
-     * @param setter BiConsumer function to set the new String value on the entity.
-     * @param <E> The type of the target entity.
-     * @return true if the setter was called (value was updated), false otherwise.
-     */
-    public static <E> boolean updateStringFieldIfChanged(E target, String sourceValue, Supplier<String> getter, BiConsumer<E, String> setter, String fieldName) {
-        if (sourceValue == null) {
-            log.debug("Field '{}' not updated: Source value is null.", fieldName);
-            return false;
-        }
-
-        String effectiveSourceValue = sourceValue.isBlank() ? null : sourceValue;
-        String currentValue = getter.get();
-
-        if (!Objects.equals(effectiveSourceValue, currentValue)) {
-            log.debug("Updating field '{}': Current='{}', New='{}' (Effective='{}')", fieldName, currentValue, sourceValue, effectiveSourceValue);
-            setter.accept(target, effectiveSourceValue);
-            return true;
-        } else {
-            log.debug("Skipping field '{}': Effective value '{}' is the same as current '{}'.", fieldName, effectiveSourceValue, currentValue);
-            return false;
-        }
     }
 }

@@ -7,7 +7,7 @@ import {
   ClinicDto,
   Page,
 } from "../../services/clinicService";
-import { Country } from "../../types/enums";
+import { Country } from "../../types/enumTypes";
 import {
   Tooltip,
   TooltipContent,

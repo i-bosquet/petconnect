@@ -28,6 +28,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import com.petconnect.backend.common.service.ImageService;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.lang.Nullable;
+import java.io.IOException;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -55,6 +59,7 @@ public class PetServiceImpl implements PetService {
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
     private final PetEventPublisherPort petEventPublisher;
+    private final ImageService imageService;
 
     @Value("${app.default.pet.image.path:images/avatars/pets/}")
     private String defaultPetImagePathBase;
@@ -64,28 +69,45 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional
-    public PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId) {
+    public PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId, @Nullable MultipartFile imageFile) {
         Owner owner = entityFinderHelper.findOwnerOrFail(ownerId);
         Breed assignedBreed = resolveBreed(registrationDto.breedId(), registrationDto.specie());
-        String imagePath = determineInitialImagePath(registrationDto.image(), assignedBreed);
+
+        String imagePathToSave = null;
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            log.debug("Image file provided for new pet registration by owner {}", ownerId);
+            try {
+                imagePathToSave = imageService.storeImage(imageFile, "pets/avatars");
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store uploaded image for pet registration. Error: {}", e.getMessage());
+                throw new RuntimeException("Failed to process uploaded image: " + e.getMessage(), e);
+            }
+        } else {
+            log.debug("No image file provided for registration, will use default determined by mapper/entity.");
+        }
 
         Pet newPet = Pet.builder()
                 .name(registrationDto.name())
                 .owner(owner)
                 .breed(assignedBreed)
-                .image(imagePath)
+                .image(imagePathToSave)
                 .status(PetStatus.PENDING)
-
                 .birthDate(registrationDto.birthDate())
                 .color(registrationDto.color())
                 .gender(registrationDto.gender())
                 .microchip(registrationDto.microchip())
                 .build();
+        if (imagePathToSave == null) {
+            newPet.setImage(determineInitialImagePath(assignedBreed));
+            log.debug("Assigning default image path: {}", newPet.getImage());
+        }
 
         Pet savedPet = petRepository.save(newPet);
-        log.info("Owner {} registered new pet {} (ID: {}) with status PENDING", owner.getUsername(), savedPet.getName(), savedPet.getId());
+        log.info("Owner {} registered new pet {} (ID: {}) with image path '{}'", owner.getUsername(), savedPet.getName(), savedPet.getId(), savedPet.getImage());
         return petMapper.toProfileDto(savedPet);
     }
+
 
     /**
      * {@inheritDoc}
@@ -94,7 +116,7 @@ public class PetServiceImpl implements PetService {
     @Transactional
     public void associatePetToClinicForActivation(Long petId, Long clinicId, Long ownerId) {
         Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
-        ensurePetIsInStatus(pet, PetStatus.PENDING, "associate for activation");
+        ensurePetIsInStatus(pet, "associate for activation");
         if (pet.getPendingActivationClinic() != null) {
             throw new IllegalStateException("Pet ID " + petId + " is already pending activation at clinic " + pet.getPendingActivationClinic().getId());
         }
@@ -129,7 +151,7 @@ public class PetServiceImpl implements PetService {
         ClinicStaff activatingStaff = entityFinderHelper.findClinicStaffOrFail(staffId, "activate pet");
         Clinic staffClinic = activatingStaff.getClinic();
         Pet petToActivate = entityFinderHelper.findPetByIdOrFail(petId);
-        ensurePetIsInStatus(petToActivate, PetStatus.PENDING, "activate");
+        ensurePetIsInStatus(petToActivate, "activate");
         if (petToActivate.getPendingActivationClinic() == null || !petToActivate.getPendingActivationClinic().getId().equals(staffClinic.getId())) {
             throw new AccessDeniedException("Staff " + staffId + " from clinic " + staffClinic.getId() +
                     " is not authorized to activate pet " + petId + " (not pending at this clinic)");
@@ -171,7 +193,7 @@ public class PetServiceImpl implements PetService {
     @Transactional
     public PetProfileDto deactivatePet(Long petId, Long ownerId) {
         Pet petToDeactivate = findPetByIdAndOwnerOrFail(petId, ownerId);
-        ensurePetIsNotInStatus(petToDeactivate, PetStatus.INACTIVE, "deactivate");
+        ensurePetIsNotInStatus(petToDeactivate);
 
         petToDeactivate.setStatus(PetStatus.INACTIVE);
 
@@ -186,26 +208,42 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional
-    public PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto, Long ownerId) {
+    public PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto, Long ownerId,  @Nullable MultipartFile imageFile ) {
         Pet petToUpdate = findPetByIdAndOwnerOrFail(petId, ownerId);
+        String oldImagePath = petToUpdate.getImage();
+        boolean imageChanged = false;
 
-        log.info("Pet entity found (before update): ID={}, Name='{}', Color='{}', Image='{}', Microchip='{}', BreedId={}, OwnerId={}",
-                petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getColor(), petToUpdate.getImage(),
-                petToUpdate.getMicrochip(), (petToUpdate.getBreed() != null ? petToUpdate.getBreed().getId() : null), ownerId);
+        if (imageFile != null && !imageFile.isEmpty()) {
+            log.debug("New image file provided for pet update (Pet ID: {})", petId);
+            try {
+                String newImagePath = imageService.storeImage(imageFile, "pets/avatars");
+                log.info("New image stored for pet {}. New path: {}", petId, newImagePath);
+                petToUpdate.setImage(newImagePath);
+                imageChanged = true;
+                if (!Objects.equals(oldImagePath, newImagePath)) {
+                    imageService.deleteImage(oldImagePath);
+                }
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store updated image for pet {}. Update failed. Error: {}", petId, e.getMessage());
+                throw new RuntimeException("Failed to process updated image: " + e.getMessage(), e);
+            }
+        }
 
-        boolean changed = applyPetUpdates(petToUpdate, updateDto, null);
+        Breed resolvedBreed = petToUpdate.getBreed();
+        if (updateDto.breedId() != null && !Objects.equals(updateDto.breedId(), petToUpdate.getBreed().getId())) {
+            resolvedBreed = resolveBreed(updateDto.breedId(), petToUpdate.getBreed().getSpecie());
+        }
+        validateMicrochipUpdate(updateDto.microchip(), petToUpdate);
 
-        log.info("Pet entity state AFTER applying updates (before save): ID={}, Name='{}', Color='{}', Image='{}', Microchip='{}', BreedId={}, Changed={}",
-                petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getColor(), petToUpdate.getImage(),
-                petToUpdate.getMicrochip(), (petToUpdate.getBreed() != null ? petToUpdate.getBreed().getId() : null), changed);
+        boolean otherFieldsChanged = petMapper.updateFromOwnerDto(updateDto, petToUpdate, resolvedBreed);
 
         Pet updatedPet = petToUpdate;
-        if (changed) {
-            log.info("Changes detected, attempting to save Pet {}", petId);
+        if (imageChanged || otherFieldsChanged) {
+            log.info("Changes detected (image: {}, other: {}), saving Pet {}", imageChanged, otherFieldsChanged, petId);
             updatedPet = petRepository.save(petToUpdate);
             log.info("Owner {} successfully updated Pet {}", ownerId, petId);
         } else {
-            log.info("No changes detected for Pet {}, update by owner {} skipped.", petId, ownerId);
+            log.info("No effective changes detected for Pet {}, update by owner {} skipped.", petId, ownerId);
         }
         return petMapper.toProfileDto(updatedPet);
     }
@@ -219,8 +257,19 @@ public class PetServiceImpl implements PetService {
         Pet petToUpdate = entityFinderHelper.findPetByIdOrFail(petId);
         authorizationHelper.verifyUserAuthorizationForPet(staffId, petToUpdate, "update clinical info for");
 
-        boolean changed = applyPetUpdates(petToUpdate, null, updateDto);
+        // Resolve Breed if provided
+        Breed resolvedBreed = petToUpdate.getBreed();
+        if (updateDto.breedId() != null && !Objects.equals(updateDto.breedId(), petToUpdate.getBreed().getId())) {
+            resolvedBreed = resolveBreed(updateDto.breedId(), petToUpdate.getBreed().getSpecie());
+        }
 
+        // Validate Microchip if provided
+        validateMicrochipUpdate(updateDto.microchip(), petToUpdate);
+
+        // Apply DTO updates using PetMapper
+        boolean changed = petMapper.updateFromClinicDto(updateDto, petToUpdate, resolvedBreed);
+
+        // Save if needed and return mapped DTO
         Pet updatedPet = petToUpdate;
         if (changed) {
             updatedPet = petRepository.save(petToUpdate);
@@ -409,11 +458,8 @@ public class PetServiceImpl implements PetService {
     /**
      * Determines an initial image path using a provided path or breed's default.
      */
-    private String determineInitialImagePath(String providedImagePath, @NotNull Breed assignedBreed) {
-        if (StringUtils.hasText(providedImagePath)) {
-            log.debug("Using provided image path: {}", providedImagePath);
-            return providedImagePath;
-        }
+    private String determineInitialImagePath(@NotNull Breed assignedBreed) {
+        StringUtils.hasText(null);
 
         boolean isGenericBreed = "Mixed/Other".equals(assignedBreed.getName()) || "Standard/Other".equals(assignedBreed.getName());
         if (!isGenericBreed && StringUtils.hasText(assignedBreed.getImageUrl())) {
@@ -462,14 +508,13 @@ public class PetServiceImpl implements PetService {
      * Throws IllegalStateException if the status does not match.
      *
      * @param pet               The Pet entity to check.
-     * @param expectedStatus    The required PetStatus.
      * @param actionDescription Description of the action requiring this status (for an error message).
      * @throws IllegalStateException if the pet's status is not the expected one.
      */
-    private void ensurePetIsInStatus(Pet pet, PetStatus expectedStatus, String actionDescription) {
-        if (pet.getStatus() != expectedStatus) {
+    private void ensurePetIsInStatus(Pet pet, String actionDescription) {
+        if (pet.getStatus() != PetStatus.PENDING) {
             throw new IllegalStateException(String.format("Pet %d must be in %s status to %s, but was %s.",
-                    pet.getId(), expectedStatus, actionDescription, pet.getStatus()));
+                    pet.getId(), PetStatus.PENDING, actionDescription, pet.getStatus()));
         }
     }
 
@@ -477,15 +522,13 @@ public class PetServiceImpl implements PetService {
      * Checks if the given Pet is NOT in the specified status.
      * Throws IllegalStateException if the status matches the forbidden status.
      *
-     * @param pet               The Pet entity to check.
-     * @param forbiddenStatus   The PetStatus that the pet should NOT have.
-     * @param actionDescription Description of the action being attempted (for an error message).
+     * @param pet The Pet entity to check.
      * @throws IllegalStateException if the pet's status matches the forbidden one.
      */
-    private void ensurePetIsNotInStatus(Pet pet, PetStatus forbiddenStatus, String actionDescription) {
-        if (pet.getStatus() == forbiddenStatus) {
+    private void ensurePetIsNotInStatus(Pet pet) {
+        if (pet.getStatus() == PetStatus.INACTIVE) {
             throw new IllegalStateException(String.format("Cannot %s pet %d because it is already in %s status.",
-                    actionDescription, pet.getId(), forbiddenStatus));
+                    "deactivate", pet.getId(), PetStatus.INACTIVE));
         }
     }
 
@@ -512,55 +555,6 @@ public class PetServiceImpl implements PetService {
         if (exists) {
             throw new MicrochipAlreadyExistsException(microchip);
         }
-    }
-
-    /**
-     * Applies updates to a Pet entity from either an Owner or ClinicStaff DTO.
-     * Handles fetching original species, validating microchip uniqueness, resolving breed,
-     * and calling the appropriate mapper update method.
-     *
-     * @param petToUpdate     The Pet entity to modify.
-     * @param ownerUpdateDto  The DTO from the owner update (null if called by staff).
-     * @param clinicUpdateDto The DTO from staff update (null if called by an owner).
-     * @return true if any changes were applied, false otherwise.
-     */
-    private boolean applyPetUpdates(Pet petToUpdate, PetOwnerUpdateDto ownerUpdateDto, PetClinicUpdateDto clinicUpdateDto) {
-        Specie originalSpecie = petToUpdate.getBreed().getSpecie();
-
-        // Resolve Breed if ID is provided and different
-        Breed resolvedBreed = petToUpdate.getBreed();
-
-        // Determine which fields to potentially update based on which DTO is present
-        String newMicrochip;
-        if ((ownerUpdateDto != null)) newMicrochip = ownerUpdateDto.microchip();
-        else if (clinicUpdateDto != null) newMicrochip = clinicUpdateDto.microchip();
-        else newMicrochip = null;
-
-        Long newBreedId;
-        if ((ownerUpdateDto != null)) newBreedId = ownerUpdateDto.breedId();
-        else if (clinicUpdateDto != null) newBreedId = clinicUpdateDto.breedId();
-        else newBreedId = null;
-
-        if (newBreedId != null && !Objects.equals(newBreedId, petToUpdate.getBreed().getId())) {
-            resolvedBreed = resolveBreed(newBreedId, originalSpecie);
-        }
-
-        log.info("Calling mapper. DTO(Owner): {}, DTO(Clinic): {}, ResolvedBreedId: {}",
-                ownerUpdateDto, clinicUpdateDto, (resolvedBreed != null ? resolvedBreed.getId() : null));
-
-        validateMicrochipUpdate(newMicrochip, petToUpdate);
-
-        boolean changed;
-        if (ownerUpdateDto != null) {
-            changed = petMapper.updateFromOwnerDto(ownerUpdateDto, petToUpdate, resolvedBreed);
-        } else if (clinicUpdateDto != null) {
-            changed = petMapper.updateFromClinicDto(clinicUpdateDto, petToUpdate, resolvedBreed);
-        } else {
-            changed = false;
-        }
-
-        log.info("Mapper finished applying updates. Overall changed status: {}", changed);
-        return changed;
     }
 
     /**

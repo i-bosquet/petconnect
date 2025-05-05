@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Implementation of the EmailService using Spring Boot Mail.
- * Handles the construction and sending of emails, like password reset links.
+ * Handles the construction and sending of emails, like password-reset links.
  * Uses JavaMailSender configured via application properties.
  * Email sending is performed asynchronously.
  *

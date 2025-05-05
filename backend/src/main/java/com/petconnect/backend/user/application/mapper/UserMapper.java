@@ -1,8 +1,11 @@
 package com.petconnect.backend.user.application.mapper;
 
+import com.petconnect.backend.common.helper.Utils;
 import com.petconnect.backend.user.application.dto.*;
 import com.petconnect.backend.user.domain.model.*;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Set;
@@ -19,6 +22,9 @@ import java.util.stream.Collectors;
  */
 @Component
 public class UserMapper {
+
+    @Value("${app.backend.base-url:http://localhost:8080}")
+    private String backendBaseUrl;
 
     /**
      * Maps an Owner entity to an OwnerProfileDto.
@@ -88,12 +94,18 @@ public class UserMapper {
     public UserProfileDto mapToBaseProfileDTO(UserEntity user) {
         if (user == null) return null;
         Set<String> roleNames = extractRoleNames(user);
+        String fullAvatarUrl = null;
+        if (StringUtils.hasText(user.getAvatar())) {
+            String cleanBasePath = backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + '/';
+            String cleanAvatarPath = user.getAvatar().startsWith("/") ? user.getAvatar().substring(1) : user.getAvatar();
+            fullAvatarUrl = cleanBasePath + cleanAvatarPath;
+        }
         return new UserProfileDto(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 roleNames,
-                user.getAvatar()
+                fullAvatarUrl
         );
     }
 
@@ -104,15 +116,17 @@ public class UserMapper {
      *
      * @param dto The OwnerProfileUpdateDto. Cannot be null.
      * @param owner The Owner entity to update. Cannot be null.
+     * @return true if any field was changed, false otherwise.
      */
-    public void updateOwnerFromDto(OwnerProfileUpdateDto dto, Owner owner) {
-        if (dto == null || owner == null) return;
-        // Update common fields first using the DTO's fields
-        updateUserCommonFields(owner, dto.username(), dto.avatar());
+    public boolean  updateOwnerFromDto(OwnerProfileUpdateDto dto, Owner owner) {
+        if (dto == null || owner == null) return false;
+        boolean changed = false;
+        // Update common fields
+        changed |= Utils.updateStringFieldIfChanged(owner, dto.username(), owner::getUsername, Owner::setUsername, "username");
+
         // Update owner-specific fields
-        if (dto.phone() != null && !dto.phone().isBlank()) {
-            owner.setPhone(dto.phone());
-        }
+        changed |=  Utils.updateStringFieldIfChanged(owner, dto.phone(), owner::getPhone, Owner::setPhone, "phone");
+        return changed;
     }
 
     /**
@@ -122,12 +136,14 @@ public class UserMapper {
      *
      * @param dto The UserProfileUpdateDto. Cannot be null.
      * @param staff The ClinicStaff entity to update. Cannot be null.
+     * @return true if any field was changed, false otherwise. //
      */
-    public void updateClinicStaffCommonFromDto(UserProfileUpdateDto dto, ClinicStaff staff) {
-        if (dto == null || staff == null) return;
+    public boolean updateClinicStaffCommonFromDto(UserProfileUpdateDto dto, ClinicStaff staff) {
+        if (dto == null || staff == null) return false;
+        boolean changed;
         // Update common fields using the helper
-        updateUserCommonFields(staff, dto.username(), dto.avatar());
-        // No staff-specific fields updated here (name, surname, etc. updated by Admin via different DTO/method)
+        changed = Utils.updateStringFieldIfChanged(staff, dto.username(), staff::getUsername, ClinicStaff::setUsername, "username");
+        return changed;
     }
 
     /**
@@ -144,24 +160,6 @@ public class UserMapper {
                 .map(RoleEntity::getRoleEnum)
                 .map(RoleEnum::name)
                 .collect(Collectors.toSet());
-    }
-
-    /**
-     * Helper method to update common user fields (username, avatar) if new values are provided.
-     *
-     * @param user The UserEntity entity to update.
-     * @param newUsername The potential new username (can be null).
-     * @param newAvatar The potential new avatar URL (can be null).
-     */
-    private void updateUserCommonFields(UserEntity user, String newUsername, String newAvatar) {
-        // Update a username only if it's provided, not blank, AND different from the current
-        if (newUsername != null && !newUsername.isBlank() && !user.getUsername().equals(newUsername)) {
-            user.setUsername(newUsername);
-        }
-        // Update avatar if provided (handle null vs. empty string if necessary)
-        if (newAvatar != null) {
-            user.setAvatar(newAvatar);
-        }
     }
 
     /**

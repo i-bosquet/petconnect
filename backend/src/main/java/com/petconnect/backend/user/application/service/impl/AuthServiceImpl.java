@@ -16,6 +16,7 @@ import com.petconnect.backend.user.domain.repository.RoleRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -46,13 +47,15 @@ public class AuthServiceImpl implements AuthService{
     private final OwnerRepository ownerRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
-    private static final String DEFAULT_OWNER_AVATAR = "images/avatars/users/owner.png";
     private final RoleRepository roleRepository;
     private final UserService userService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
 
     private static final int EXPIRATION_HOURS = 1;
+
+    @Value("${app.default.user.image.path}")
+    private String defaultUserImagePathBase;
 
 
     /**
@@ -87,7 +90,7 @@ public class AuthServiceImpl implements AuthService{
         Set<RoleEntity> roles = new HashSet<>();
         roles.add(ownerRole);
         newOwner.setRoles(roles);
-        newOwner.setAvatar(DEFAULT_OWNER_AVATAR);
+        newOwner.setAvatar(getDefaultAvatarPath());
         newOwner.setEnabled(true);
         newOwner.setAccountNonExpired(true);
         newOwner.setAccountNonLocked(true);
@@ -199,5 +202,10 @@ public class AuthServiceImpl implements AuthService{
 
         passwordResetTokenRepository.delete(passwordResetToken);
         log.info("Password reset token {} invalidated after use.", resetDto.token());
+    }
+
+    private String getDefaultAvatarPath() {
+        String basePath = defaultUserImagePathBase.endsWith("/") ? defaultUserImagePathBase : defaultUserImagePathBase + '/';
+        return basePath + "owner.png";
     }
 }

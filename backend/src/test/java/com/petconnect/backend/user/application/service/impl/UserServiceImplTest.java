@@ -3,6 +3,8 @@ package com.petconnect.backend.user.application.service.impl;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.UserHelper;
+import com.petconnect.backend.common.helper.Utils;
+import com.petconnect.backend.common.service.ImageService;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.exception.UsernameAlreadyExistsException;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
@@ -26,14 +28,16 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.util.StringUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -61,6 +65,7 @@ class UserServiceImplTest {
     @Mock private UserHelper userServiceHelper;
     @Mock private EntityFinderHelper entityFinderHelper;
     @Mock private AuthorizationHelper authorizationHelper;
+    @Mock private ImageService imageService;
 
     // --- Class Under Test ---
     @InjectMocks
@@ -601,42 +606,34 @@ class UserServiceImplTest {
     @DisplayName("updateCurrentOwnerProfile Tests")
     class UpdateCurrentOwnerProfileTests {
         private OwnerProfileUpdateDto updateDto;
-        private OwnerProfileDto expectedResultDto;
 
         @BeforeEach
         void updateOwnerSetup() {
             updateDto = new OwnerProfileUpdateDto("newOwnerUsername", "new_avatar.png", "999-888-777");
-            expectedResultDto = new OwnerProfileDto(
-                    ownerUser.getId(),
-                    updateDto.username(),
-                    ownerUser.getEmail(),
-                    Set.of("OWNER"),
-                    updateDto.avatar(),
-                    updateDto.phone()
-            );
         }
 
         @Test
         @DisplayName("should update owner profile successfully")
-        void shouldUpdateOwnerProfile() {
+        void shouldUpdateOwnerProfile() throws IOException {
             // Arrange
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(ownerRepository.save(any(Owner.class))).willAnswer(inv -> inv.getArgument(0));
-            doAnswer(invocation -> {
-                OwnerProfileUpdateDto dtoArg = invocation.getArgument(0);
-                Owner ownerArg = invocation.getArgument(1);
-                if (StringUtils.hasText(dtoArg.username())) ownerArg.setUsername(dtoArg.username());
-                if (dtoArg.avatar() != null) ownerArg.setAvatar(dtoArg.avatar());
-                if (StringUtils.hasText(dtoArg.phone())) ownerArg.setPhone(dtoArg.phone());
-                return null;
-            }).when(userMapper).updateOwnerFromDto(updateDto, ownerUser);
-            given(userMapper.toOwnerProfileDto(any(Owner.class))).willReturn(expectedResultDto);
+            doNothing().when(authorizationHelper).validateUsernameUpdate(updateDto.username(), ownerUser);
+            when(userMapper.updateOwnerFromDto(updateDto, ownerUser)).thenReturn(true);
+            when(ownerRepository.save(any(Owner.class))).thenReturn(ownerUser);
 
             // Act
-            OwnerProfileDto result = userService.updateCurrentOwnerProfile(updateDto);
+            OwnerProfileDto expectedDto = new OwnerProfileDto(
+                    ownerUser.getId(), updateDto.username(), ownerUser.getEmail(), Set.of("OWNER"),
+                    ownerUser.getAvatar(), // Avatar original
+                    updateDto.phone()
+            );
+            when(userMapper.toOwnerProfileDto(any(Owner.class))).thenReturn(expectedDto);
+
+            // Act
+            OwnerProfileDto result = userService.updateCurrentOwnerProfile(updateDto, null);
 
             // Assert
-            assertThat(result).isEqualTo(expectedResultDto);
+            assertThat(result).isEqualTo(expectedDto);
             then(userServiceHelper).should().getAuthenticatedUserEntity();
             then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), ownerUser);
             then(userMapper).should().updateOwnerFromDto(updateDto, ownerUser);
@@ -654,7 +651,7 @@ class UserServiceImplTest {
                     .validateUsernameUpdate(updateDto.username(), ownerUser);
 
             // Act & Assert
-            assertThatThrownBy(() -> userService.updateCurrentOwnerProfile(updateDto))
+            assertThatThrownBy(() -> userService.updateCurrentOwnerProfile(updateDto, null))
                     .isInstanceOf(UsernameAlreadyExistsException.class)
                     .hasMessageContaining(updateDto.username());
 
@@ -665,33 +662,27 @@ class UserServiceImplTest {
         }
 
         @Test
-        @DisplayName("should NOT check uniqueness or throw if username is not changed")
-        void shouldNotCheckUniquenessIfUsernameNotChanged() {
+        @DisplayName("should NOT save if username not changed and no image file provided and phone not changed")
+        void shouldNotSaveIfNoChanges() throws IOException {
             // Arrange
+            OwnerProfileUpdateDto noChangeDto = new OwnerProfileUpdateDto(ownerUser.getUsername(),null,  ownerUser.getPhone());
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            OwnerProfileUpdateDto noUsernameChangeDto = new OwnerProfileUpdateDto(ownerUser.getUsername(), "new_avatar.png", "999");
-            OwnerProfileDto expectedDto = new OwnerProfileDto(
-                    ownerUser.getId(), ownerUser.getUsername(), ownerUser.getEmail(),
-                    Set.of("OWNER"), noUsernameChangeDto.avatar(), noUsernameChangeDto.phone()
-            );
-            given(ownerRepository.save(any(Owner.class))).willAnswer(i -> i.getArgument(0));
-            given(userMapper.toOwnerProfileDto(any(Owner.class))).willReturn(expectedDto);
-            doAnswer(invocation -> {
-                Owner ownerArg = invocation.getArgument(1);
-                ownerArg.setAvatar(noUsernameChangeDto.avatar());
-                ownerArg.setPhone(noUsernameChangeDto.phone());
-                return null;
-            }).when(userMapper).updateOwnerFromDto(noUsernameChangeDto, ownerUser);
+            doNothing().when(authorizationHelper).validateUsernameUpdate(ownerUser.getUsername(), ownerUser);
+            when(userMapper.updateOwnerFromDto(noChangeDto, ownerUser)).thenReturn(false);
+            OwnerProfileDto originalDto = ownerProfileDto;
+            when(userMapper.toOwnerProfileDto(ownerUser)).thenReturn(originalDto);
 
             // Act
-            userService.updateCurrentOwnerProfile(noUsernameChangeDto);
+            OwnerProfileDto result = userService.updateCurrentOwnerProfile(noChangeDto, null);
 
             // Assert
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should(never()).existsByUsername(anyString());
-            then(userMapper).should().updateOwnerFromDto(noUsernameChangeDto, ownerUser);
-            then(ownerRepository).should().save(any(Owner.class));
-            then(userMapper).should(times(1)).toOwnerProfileDto(any(Owner.class));
+            assertThat(result).isEqualTo(originalDto);
+            then(authorizationHelper).should().validateUsernameUpdate(ownerUser.getUsername(), ownerUser);
+            then(userMapper).should().updateOwnerFromDto(noChangeDto, ownerUser);
+            then(ownerRepository).should(never()).save(any(Owner.class));
+            then(userMapper).should().toOwnerProfileDto(ownerUser);
+            then(imageService).should(never()).storeImage(any(), anyString());
+            then(imageService).should(never()).deleteImage(anyString());
         }
 
         @Test
@@ -701,10 +692,9 @@ class UserServiceImplTest {
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
 
             // Act & Assert
-            assertThatThrownBy(() -> userService.updateCurrentOwnerProfile(updateDto))
-                    .isInstanceOf(ClassCastException.class);
+            assertThatThrownBy(() -> userService.updateCurrentOwnerProfile(updateDto, null))
+                    .isInstanceOf(AccessDeniedException.class);
 
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
             then(ownerRepository).should(never()).save(any());
         }
     }
@@ -715,64 +705,57 @@ class UserServiceImplTest {
     @Nested
     @DisplayName("updateCurrentClinicStaffProfile Tests")
     class UpdateCurrentClinicStaffProfileTests {
-        private UserProfileUpdateDto updateDto;
-        private ClinicStaffProfileDto expectedResultDto;
+        private UserProfileUpdateDto baseUpdateDto;
 
         @BeforeEach
         void updateStaffSetup() {
-            updateDto = new UserProfileUpdateDto("newStaffUsername", "new_staff_avatar.png");
+            baseUpdateDto = new UserProfileUpdateDto("newStaffUsername", null);
+            ReflectionTestUtils.setField(userService, "defaultUserImagePathBase", "images/avatars/users/");
+        }
 
-            expectedResultDto = new ClinicStaffProfileDto(
+        @Test
+        @DisplayName("should update staff profile successfully")
+        void shouldUpdateStaffProfile() throws IOException {
+            // Arrange
+            UserProfileUpdateDto updateDtoWithUsernameChange = new UserProfileUpdateDto("newStaffUsername", null);
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+            doNothing().when(authorizationHelper).validateUsernameUpdate(updateDtoWithUsernameChange.username(), adminUser);
+            when(userMapper.updateClinicStaffCommonFromDto(updateDtoWithUsernameChange, adminUser)).thenReturn(true);
+            when(clinicStaffRepository.save(any(ClinicStaff.class))).thenReturn(adminUser);
+            ClinicStaffProfileDto expectedDto = new ClinicStaffProfileDto(
                     adminUser.getId(),
-                    updateDto.username(),
+                    updateDtoWithUsernameChange.username(),
                     adminUser.getEmail(),
                     Set.of("ADMIN"),
-                    updateDto.avatar(),
+                    adminUser.getAvatar(),
                     adminUser.getName(),
                     adminUser.getSurname(),
                     adminUser.isActive(),
                     adminUser.getClinic().getId(),
                     adminUser.getClinic().getName(),
-                    null, // Vet field
-                    null  // Vet field
+                    null, null
             );
-        }
-
-        @Test
-        @DisplayName("should update staff profile successfully")
-        void shouldUpdateStaffProfile() {
-            // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            doNothing().when(authorizationHelper).validateUsernameUpdate(updateDto.username(), adminUser);
-            doAnswer(invocation -> {
-                UserProfileUpdateDto dtoArg = invocation.getArgument(0);
-                ClinicStaff staffArg = invocation.getArgument(1);
-                if (StringUtils.hasText(dtoArg.username()) && !Objects.equals(dtoArg.username(), staffArg.getUsername())) {
-                    staffArg.setUsername(dtoArg.username());
-                }
-                if (dtoArg.avatar() != null && !Objects.equals(dtoArg.avatar(), staffArg.getAvatar())) {
-                    staffArg.setAvatar(dtoArg.avatar());
-                }
-                return null;
-            }).when(userMapper).updateClinicStaffCommonFromDto(updateDto, adminUser);
-            given(clinicStaffRepository.save(adminUser)).willReturn(adminUser);
-            given(userMapper.toClinicStaffProfileDto(adminUser)).willReturn(expectedResultDto);
+            when(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).thenReturn(expectedDto);
 
             // Act
-            ClinicStaffProfileDto result = userService.updateCurrentClinicStaffProfile(updateDto);
+            ClinicStaffProfileDto result = userService.updateCurrentClinicStaffProfile(updateDtoWithUsernameChange, null);
 
             // Assert
-            assertThat(result).isEqualTo(expectedResultDto);
+            assertThat(result).isNotNull();
+            assertThat(result.username()).isEqualTo(updateDtoWithUsernameChange.username());
+            assertThat(result.avatar()).isEqualTo(adminUser.getAvatar());
+            assertThat(result).isEqualTo(expectedDto);
+
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), adminUser);
-            then(userMapper).should().updateClinicStaffCommonFromDto(updateDto, adminUser);
+            then(authorizationHelper).should().validateUsernameUpdate(updateDtoWithUsernameChange.username(), adminUser);
+            then(userMapper).should().updateClinicStaffCommonFromDto(updateDtoWithUsernameChange, adminUser);
             then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
-            then(userMapper).should().toClinicStaffProfileDto(adminUser);
+            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
+            then(imageService).should(never()).storeImage(any(), anyString());
+            then(imageService).should(never()).deleteImage(anyString());
 
             ClinicStaff saved = clinicStaffCaptor.getValue();
-            assertThat(saved.getUsername()).isEqualTo(updateDto.username());
-            assertThat(saved.getAvatar()).isEqualTo(updateDto.avatar());
-            assertThat(saved.getEmail()).isEqualTo(adminUser.getEmail());
+            assertThat(saved).isNotNull();
         }
 
         @Test
@@ -780,63 +763,148 @@ class UserServiceImplTest {
         void shouldThrowUsernameExistsWhenUpdating() {
             // Arrange
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            doThrow(new UsernameAlreadyExistsException(updateDto.username()))
-                    .when(authorizationHelper).validateUsernameUpdate(updateDto.username(), adminUser);
+            doThrow(new UsernameAlreadyExistsException(baseUpdateDto.username()))
+                    .when(authorizationHelper).validateUsernameUpdate(baseUpdateDto.username(), adminUser);
 
             // Act & Assert
-            assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(updateDto))
+            assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(baseUpdateDto, null))
                     .isInstanceOf(UsernameAlreadyExistsException.class)
-                    .hasMessageContaining(updateDto.username());
+                    .hasMessageContaining(baseUpdateDto.username());
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(authorizationHelper).should().validateUsernameUpdate(updateDto.username(), adminUser);
+            then(authorizationHelper).should().validateUsernameUpdate(baseUpdateDto.username(), adminUser);
             then(clinicStaffRepository).should(never()).save(any());
             then(userMapper).should(never()).updateClinicStaffCommonFromDto(any(), any());
         }
 
         @Test
         @DisplayName("should NOT check uniqueness or throw if username is not changed")
-        void shouldNotCheckUniquenessIfUsernameNotChanged() {
+        void shouldNotCheckUniquenessIfUsernameNotChanged() throws IOException {
             // Arrange
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
             UserProfileUpdateDto noUsernameChangeDto = new UserProfileUpdateDto(adminUser.getUsername(), "new_avatar.png");
-            ClinicStaffProfileDto expectedDto = new ClinicStaffProfileDto(
+            when(userMapper.updateClinicStaffCommonFromDto(noUsernameChangeDto, adminUser)).thenReturn(false);
+
+            ClinicStaffProfileDto originalDto = new ClinicStaffProfileDto(
                     adminUser.getId(), adminUser.getUsername(), adminUser.getEmail(),
-                    Set.of("ADMIN"), noUsernameChangeDto.avatar(), adminUser.getName(), adminUser.getSurname(),
-                    adminUser.isActive(), adminUser.getClinic().getId(), adminUser.getClinic().getName(),
+                    Set.of("ADMIN"), adminUser.getAvatar(),
+                    adminUser.getName(), adminUser.getSurname(), adminUser.isActive(),
+                    adminUser.getClinic().getId(), adminUser.getClinic().getName(),
                     null, null
             );
-            given(clinicStaffRepository.save(any(ClinicStaff.class))).willAnswer(i -> i.getArgument(0));
-            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(expectedDto);
-            doAnswer(invocation -> {
-                ClinicStaff staffArg = invocation.getArgument(1);
-                staffArg.setAvatar(noUsernameChangeDto.avatar());
-                return null;
-            }).when(userMapper).updateClinicStaffCommonFromDto(noUsernameChangeDto, adminUser);
+            when(userMapper.toClinicStaffProfileDto(adminUser)).thenReturn(originalDto);
 
             // Act
-            userService.updateCurrentClinicStaffProfile(noUsernameChangeDto);
+            ClinicStaffProfileDto result = userService.updateCurrentClinicStaffProfile(noUsernameChangeDto, null);
 
             // Assert
+            assertThat(result).isEqualTo(originalDto);
+
             then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should(never()).existsByUsername(anyString());
+            then(authorizationHelper).should().validateUsernameUpdate(adminUser.getUsername(), adminUser);
             then(userMapper).should().updateClinicStaffCommonFromDto(noUsernameChangeDto, adminUser);
-            then(clinicStaffRepository).should().save(any(ClinicStaff.class));
-            then(userMapper).should(times(1)).toClinicStaffProfileDto(any(ClinicStaff.class));
+            then(clinicStaffRepository).should(never()).save(any(ClinicStaff.class));
+            then(userMapper).should().toClinicStaffProfileDto(adminUser);
+            then(imageService).should(never()).storeImage(any(), anyString());
+            then(imageService).should(never()).deleteImage(anyString());
         }
 
         @Test
         @DisplayName("should throw ClassCastException if authenticated user is not ClinicStaff")
-        void shouldThrowExceptionIfNotStaff() {
+        void shouldThrowExceptionIfNotStaff() throws IOException {
             // Arrange
+            UserProfileUpdateDto dummyUpdateDto = new UserProfileUpdateDto("anyUser", null);
             given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
 
             // Act & Assert
-            assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(updateDto))
-                    .isInstanceOf(ClassCastException.class);
+            assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(dummyUpdateDto, null))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("User is not Clinic Staff");
 
             then(userServiceHelper).should().getAuthenticatedUserEntity();
+            then(authorizationHelper).should(never()).validateUsernameUpdate(any(), any());
             then(clinicStaffRepository).should(never()).save(any());
+            then(imageService).should(never()).storeImage(any(), anyString());
+        }
+
+        @Test
+        @DisplayName("should update staff image and username, and delete old image")
+        void shouldUpdateStaffImageAndUsername() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("avatar", "new_staff.png", MediaType.IMAGE_PNG_VALUE, "staff_img".getBytes());
+            String oldAvatar = adminUser.getAvatar();
+            String newAvatarPath = "users/avatars/staff_uuid.png";
+            UserProfileUpdateDto dtoWithUsernameChange = new UserProfileUpdateDto("updatedStaffUser", null);
+
+            // Mocks setup
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+            doNothing().when(authorizationHelper).validateUsernameUpdate(dtoWithUsernameChange.username(), adminUser);
+            given(imageService.storeImage(imageFile, "users/avatars")).willReturn(newAvatarPath);
+            assertThat(oldAvatar).isNotEqualTo("images/avatars/users/admin.png");
+            doNothing().when(imageService).deleteImage(oldAvatar);
+
+            when(userMapper.updateClinicStaffCommonFromDto(dtoWithUsernameChange, adminUser))
+                    .thenAnswer(invocation -> {
+                        ClinicStaff staffArg = invocation.getArgument(1);
+                        UserProfileUpdateDto dtoArg = invocation.getArgument(0);
+                        boolean changed;
+
+                        changed = Utils.updateStringFieldIfChanged(staffArg, dtoArg.username(), staffArg::getUsername, ClinicStaff::setUsername, "username");
+                          return changed;
+                    });
+
+            when(clinicStaffRepository.save(any(ClinicStaff.class))).thenAnswer(i -> i.getArgument(0));
+
+            String expectedFullAvatarUrl = "http://localhost:8080/" + newAvatarPath;
+            ClinicStaffProfileDto expectedDto = new ClinicStaffProfileDto(
+                    adminUser.getId(), dtoWithUsernameChange.username(), adminUser.getEmail(), Set.of("ADMIN"),
+                    expectedFullAvatarUrl, adminUser.getName(), adminUser.getSurname(), adminUser.isActive(),
+                    adminUser.getClinic().getId(), adminUser.getClinic().getName(), null, null );
+            when(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).thenReturn(expectedDto);
+
+            // Act
+            ClinicStaffProfileDto result = userService.updateCurrentClinicStaffProfile(dtoWithUsernameChange, imageFile);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.avatar()).isEqualTo(expectedFullAvatarUrl);
+            assertThat(result.username()).isEqualTo(dtoWithUsernameChange.username());
+            assertThat(result).isEqualTo(expectedDto);
+
+            // Verify interactions
+            then(userServiceHelper).should().getAuthenticatedUserEntity();
+            then(authorizationHelper).should().validateUsernameUpdate(dtoWithUsernameChange.username(), adminUser);
+            then(imageService).should().storeImage(imageFile, "users/avatars");
+            then(userMapper).should().updateClinicStaffCommonFromDto(dtoWithUsernameChange, adminUser);
+            then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
+            then(imageService).should().deleteImage(oldAvatar);
+            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
+
+            ClinicStaff capturedStaff = clinicStaffCaptor.getValue();
+            assertThat(capturedStaff.getAvatar()).isEqualTo(newAvatarPath);
+            assertThat(capturedStaff.getUsername()).isEqualTo(dtoWithUsernameChange.username());
+        }
+
+        @Test
+        @DisplayName("should throw IOException if image update storage fails")
+        void shouldThrowIOExceptionWhenImageStorageFails() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("avatar", "fail.jpg", MediaType.IMAGE_JPEG_VALUE, "img".getBytes());
+            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+
+            given(imageService.storeImage(imageFile, "users/avatars")).willThrow(new IOException("Disk full"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(baseUpdateDto, imageFile))
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("Failed to process avatar image");
+
+            then(userServiceHelper).should().getAuthenticatedUserEntity();
+            then(authorizationHelper).should().validateUsernameUpdate(baseUpdateDto.username(), adminUser);
+            then(imageService).should().storeImage(imageFile, "users/avatars");
+            then(userMapper).should(never()).updateClinicStaffCommonFromDto(any(), any());
+            then(clinicStaffRepository).should(never()).save(any());
+            then(imageService).should(never()).deleteImage(anyString());
         }
     }
 }

@@ -28,9 +28,7 @@ import java.util.Set;
  * @param breedId Optional ID of the breed.
  * @param breedName Optional name of the breed.
  * @param pendingActivationClinicId Optional ID of the clinic where activation is pending.
- * @param associatedVets A set containing summary information of veterinarians associated with the pet. // NUEVO
- * @param createdAt Timestamp of creation (from BaseEntity).
- * @param updatedAt Timestamp of last update (from BaseEntity).
+ * @param associatedVets A set containing summary information of veterinarians associated with the pet.
  *
  * @author ibosquet
  */
@@ -49,9 +47,7 @@ public record PetProfileDto(
         Long breedId,
         String breedName,
         Long pendingActivationClinicId,
-        Set<VetSummaryDto> associatedVets,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Set<VetSummaryDto> associatedVets
 ) {
 }
 

@@ -125,16 +125,16 @@ class UserControllerIntegrationTest {
         @DisplayName("should return 403 Forbidden when Owner requests any user ID")
         void getUserById_whenOwnerRequestsAnyId_shouldReturnForbidden() throws Exception {
             // Arrange
-                UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
-                Long ownerId = owner.getId();
+            UserEntity owner = userRepository.findByUsername(ownerRegisteredUsername).orElseThrow();
+            Long ownerId = owner.getId();
 
-                mockMvc.perform(get("/api/users/{id}", ownerId)
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                        .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/users/{id}", ownerId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isForbidden());
 
-                mockMvc.perform(get("/api/users/{id}", adminLondonId)
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                        .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/users/{id}", adminLondonId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                    .andExpect(status().isForbidden());
         }
 
         @Test

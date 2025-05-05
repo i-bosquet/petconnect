@@ -1,0 +1,50 @@
+import { JSX } from 'react';
+import { PetProfileDto } from '../../types/apiTypes'; 
+import { PawPrint } from 'lucide-react'; 
+
+interface PetCardProps {
+    pet: PetProfileDto;
+    onSelect: () => void;
+}
+
+/**
+ * PetCard - A clickable component displaying basic pet information (image, name, species).
+ * Used within the PetList component.
+ *
+ * @param {PetCardProps} props - Component properties.
+ * @returns {JSX.Element} A button styled as a pet profile card.
+ */
+const PetCard = ({ pet, onSelect }: PetCardProps): JSX.Element => {
+
+    const avatarUrl = pet.image
+
+    return (
+        <button
+            onClick={onSelect}
+            className="flex flex-col items-center p-3 rounded-lg transition-all bg-[#0c1225] border border-[#FFECAB]/30 hover:border-[#FFECAB]/60 hover:bg-cyan-900/20 w-32 text-center cursor-pointer group"
+        >
+            {/* Pet avatar image or placeholder */}
+            <div className="relative mb-2">
+                <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-gray-600 group-hover:border-cyan-600 transition-colors">
+                     {avatarUrl ? (
+                         <img
+                             src={avatarUrl}
+                             alt={pet.name}
+                             className="w-full h-full object-cover"
+                         />
+                     ) : (
+                         <PawPrint size={32} className="text-gray-500" /> 
+                     )}
+                </div>
+            </div>
+            {/* Pet name */}
+            <span className="font-medium mt-1 text-sm text-[#FFECAB] truncate w-full">{pet.name}</span> 
+            {/* Pet species */}
+            <span className="text-xs text-gray-400 capitalize">
+                {pet.specie?.toLowerCase() || 'Unknown'} 
+            </span>
+        </button>
+    );
+};
+
+export default PetCard;

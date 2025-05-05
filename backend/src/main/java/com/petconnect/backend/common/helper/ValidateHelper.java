@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,6 +36,11 @@ public class ValidateHelper {
     private final VetRepository vetRepository;
     private final RecordRepository recordRepository;
     private final CertificateRepository certificateRepository;
+    private static final List<String> ALLOWED_MIME_TYPES = List.of(
+            "image/jpeg",
+            "image/png",
+            "image/gif"
+    );
 
 
     /**
@@ -203,6 +209,32 @@ public class ValidateHelper {
         }
         if (certificateRepository.findByCertificateNumber(certificateNumber).isPresent()) {
             throw new CertificateNumberAlreadyExistsException(certificateNumber);
+        }
+    }
+
+    /**
+     * Validates the file size of an uploaded image against a predefined maximum.
+     *
+     * @param file The MultipartFile representing the uploaded image.
+     * @throws IllegalArgumentException if the file size exceeds the maximum allowed limit.
+     */
+    public void validateFileSize(MultipartFile file) {
+        final long MAX_FILE_SIZE_BYTES = (long) 1024 * 1024; // 1 MB
+        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
+            throw new IllegalArgumentException("Image file size exceeds the limit of " + (MAX_FILE_SIZE_BYTES / 1024 / 1024) + " MB.");
+        }
+    }
+
+    /**
+     * Validates the MIME type of the uploaded image against a predefined list of allowed types.
+     *
+     * @param file The MultipartFile representing the uploaded image.
+     * @throws IllegalArgumentException if the file's content type is null or not in the allowed list.
+     */
+    public void validateFileType(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("Invalid image file type: " + contentType + ". Allowed types: " + ALLOWED_MIME_TYPES);
         }
     }
 }

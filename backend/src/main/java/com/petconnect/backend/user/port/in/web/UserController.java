@@ -2,10 +2,16 @@ package com.petconnect.backend.user.port.in.web;
 
 import com.petconnect.backend.user.application.dto.*;
 import com.petconnect.backend.user.application.service.UserService;
+import io.micrometer.common.lang.Nullable;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+
+import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 /**
  * Implementation of {@link UserControllerApi}.
@@ -56,9 +62,12 @@ public class UserController implements UserControllerApi {
      * {@inheritDoc}
      */
     @Override
-    @PutMapping("/me")
-    public ResponseEntity<OwnerProfileDto> updateCurrentOwnerProfile(@Valid @RequestBody OwnerProfileUpdateDto updateDTO) {
-        OwnerProfileDto updatedProfile = userService.updateCurrentOwnerProfile(updateDTO);
+    @PutMapping(value = "/me", consumes = MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<OwnerProfileDto> updateCurrentOwnerProfile(
+            @RequestPart("dto") @Valid OwnerProfileUpdateDto updateDTO,
+            @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    ) throws IOException {
+        OwnerProfileDto updatedProfile = userService.updateCurrentOwnerProfile(updateDTO, imageFile);
         return ResponseEntity.ok(updatedProfile);
     }
 
@@ -66,9 +75,11 @@ public class UserController implements UserControllerApi {
      * {@inheritDoc}
      */
     @Override
-    @PutMapping("/me/staff")
-    public ResponseEntity<ClinicStaffProfileDto> updateCurrentClinicStaffProfile(@Valid @RequestBody UserProfileUpdateDto updateDTO) {
-        ClinicStaffProfileDto updatedProfile = userService.updateCurrentClinicStaffProfile(updateDTO);
+    @PutMapping(value = "/me/staff", consumes = MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ClinicStaffProfileDto> updateCurrentClinicStaffProfile( @RequestPart("dto") @Valid UserProfileUpdateDto updateDTO,
+                                                                                  @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    ) throws IOException {
+        ClinicStaffProfileDto updatedProfile = userService.updateCurrentClinicStaffProfile(updateDTO, imageFile);
         return ResponseEntity.ok(updatedProfile);
     }
 }

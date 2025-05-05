@@ -6,7 +6,10 @@ import com.petconnect.backend.pet.domain.model.Specie;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.lang.Nullable;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -20,14 +23,16 @@ import java.util.List;
 public interface PetService {
     /**
      * Registers a new pet for the currently authenticated owner.
-     * Sets the initial status to PENDING and assigns a default image if none is provided.
+     * Handles image storage if provided.
      *
-     * @param registrationDto DTO containing initial pet details (name, specie, optional image/breedId).
-     * @param ownerId The ID of the currently authenticated owner performing the registration.
+     * @param registrationDto DTO containing initial pet details.
+     * @param ownerId The ID of the owner performing the registration.
+     * @param imageFile Optional uploaded image file for the pet's avatar.
      * @return The profile DTO of the newly registered pet.
+     * @throws IOException if image storage fails.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if the specified breedId (if any) does not exist.
      */
-    PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId);
+    PetProfileDto registerPet(PetRegistrationDto registrationDto, Long ownerId, MultipartFile imageFile) throws IOException;
 
     /**
      * Activates a PENDING pet and updates its details.
@@ -44,28 +49,25 @@ public interface PetService {
     PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long vetId);
 
     /**
-     * Updates basic pet information editable by the owner (e.g., name, image).
+     * Updates pet information editable by the owner. Handles optional image update.
      *
      * @param petId The ID of the pet to update.
      * @param updateDto DTO containing the fields to update.
+     * @param imageFile Optional new image file to replace the existing one.
      * @param ownerId The ID of the currently authenticated owner.
      * @return The updated profile DTO of the pet.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if the pet is not found.
      * @throws org.springframework.security.access.AccessDeniedException if the user is not the owner of the pet.
      */
-    PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto, Long ownerId);
+    PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto,  Long ownerId, @Nullable MultipartFile imageFile) throws IOException;
 
     /**
-     * Updates clinical pet information editable by authorized clinic staff (e.g., microchip, birthDate, breed).
-     * Includes validation for microchip uniqueness if changed.
+     * Updates clinical pet information editable by authorized clinic staff. Handles optional image update.
      *
      * @param petId The ID of the pet to update.
      * @param updateDto DTO containing the fields to update.
      * @param staffId The ID of the ClinicStaff performing the update.
      * @return The updated profile DTO of the pet.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if pet, staff, or specified breedId not found.
-     * @throws org.springframework.security.access.AccessDeniedException if the staff is not authorized for this pet.
-     * @throws com.petconnect.backend.exception.MicrochipAlreadyExistsException if the updated microchip conflicts.
      */
     PetProfileDto updatePetByClinicStaff(Long petId, PetClinicUpdateDto updateDto, Long staffId);
 
