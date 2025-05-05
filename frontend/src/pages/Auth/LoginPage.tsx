@@ -1,7 +1,8 @@
-import React, { useState, JSX, FormEvent, ChangeEvent } from "react";
+import React, { useState, JSX, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, X, EyeOff, User, Lock, LogIn, Mail } from "lucide-react";
-import { loginUser, getCurrentUserProfile, requestPasswordReset} from "../../services/authService";
+import { Eye, EyeOff, User, Lock, LogIn } from "lucide-react";
+import { loginUser, getCurrentUserProfile} from "../../services/authService";
+import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal"; 
 
 /**
  * Represents the user data stored in session/local storage after successful login.
@@ -32,10 +33,6 @@ const LoginPage = (): JSX.Element => {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState<boolean>(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
-  const [forgotPasswordMessage, setForgotPasswordMessage] = useState<string>("");
-  const [forgotPasswordError, setForgotPasswordError] = useState<string>('');
-  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -122,9 +119,6 @@ const LoginPage = (): JSX.Element => {
    */
   const openForgotPasswordModal = () => {
     setIsForgotPasswordModalOpen(true);
-    setForgotPasswordEmail("");
-    setForgotPasswordMessage("");
-    setForgotPasswordError('');
     setError("");
   };
 
@@ -133,28 +127,6 @@ const LoginPage = (): JSX.Element => {
    */
   const closeForgotPasswordModal = () => {
     setIsForgotPasswordModalOpen(false);
-  };
-
-  /**
-   * Handles the submission of the forgot password email form.
-   * Calls the backend API to request a password reset link.
-   *
-   * @param {FormEvent<HTMLFormElement>} e - The form submit event.
-   */
-  const handleForgotPasswordSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setForgotPasswordError('');
-    setForgotPasswordMessage('');
-    setIsForgotPasswordLoading(true);
-
-    try {
-      await requestPasswordReset(forgotPasswordEmail);
-      setForgotPasswordMessage("If an account exists for this email, a password reset link has been sent.");
-  } catch (err) {
-      setForgotPasswordError(err instanceof Error ? err.message : 'An unknown error occurred.');
-  } finally {
-      setIsForgotPasswordLoading(false);
-  }
   };
 
   // --- JSX Rendering ---
@@ -351,80 +323,10 @@ const LoginPage = (): JSX.Element => {
 
       {/* Forgot Password Modal */}
       {isForgotPasswordModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
-          <div className="bg-[#0c1225] rounded-xl shadow-xl w-full max-w-md p-6 sm:p-8 border border-[#FFECAB]/40">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-[#FFECAB]">
-                Reset Password
-              </h3>
-              <button
-                onClick={closeForgotPasswordModal}
-                className="text-gray-400 hover:text-[#FFECAB] p-1 rounded-full hover:bg-cyan-900/50"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body - Form */}
-            <form onSubmit={handleForgotPasswordSubmit}>
-              <p className="text-sm text-gray-300 mb-4">
-                Enter the email address associated with your account, and we'll
-                send you a link to reset your password.
-              </p>
-
-              {/* Menssage success/error in Modal */}
-              {forgotPasswordMessage &&
-                !error && (
-                  <div className="mb-4 p-3 bg-green-900/30 text-green-300 rounded-lg text-sm">
-                    {forgotPasswordMessage}
-                  </div>
-                )}
-              {forgotPasswordError && (
-                <div className="mb-4 p-3 bg-red-900/30 text-red-300 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-
-              {/* Email Input */}
-              <div className="space-y-2 mb-6">
-                <label
-                  htmlFor="forgot-email"
-                  className="block text-sm font-medium text-gray-300"
-                >
-                  Email Address
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail size={18} className="text-gray-400" />
-                  </div>
-                  <input
-                    id="forgot-email"
-                    name="forgot-email"
-                    type="email"
-                    required
-                    value={forgotPasswordEmail}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                      setForgotPasswordEmail(e.target.value)
-                    }
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-700 rounded-xl shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-700 focus:border-cyan-500 text-white bg-gray-800 disabled:opacity-50"
-                    placeholder="your.email@example.com"
-                    disabled={isForgotPasswordLoading}
-                  />
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isForgotPasswordLoading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-[#FFECAB] bg-cyan-800 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isForgotPasswordLoading ? "Sending..." : "Send Reset Link"}
-              </button>
-            </form>
-          </div>
-        </div>
+        <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={closeForgotPasswordModal}
+      />
       )}
     </div>
   );

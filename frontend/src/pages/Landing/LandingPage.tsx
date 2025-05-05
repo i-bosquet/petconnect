@@ -3,10 +3,9 @@ import { Link } from "react-router-dom";
 import { Search, X, Hospital, MapPin, PhoneCall, Globe } from "lucide-react";
 import {
   findClinics,
-  getClinicCountries,
-  ClinicDto,
-  Page,
+  getClinicCountries
 } from "../../services/clinicService";
+import { ClinicDto, Page } from "../../types/apiTypes";
 import { Country } from "../../types/enumTypes";
 import {
   Tooltip,
