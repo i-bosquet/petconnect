@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"; 
 import ClinicSearchModal from "@/components/clinic/ClinicSearchModal"; 
+import Footer from "@/components/layout/Footer";
 
 /**
  * LandingPage - The main entry point and public face of the PetConnect application
@@ -81,9 +82,7 @@ const LandingPage = (): JSX.Element => {
       </div>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-gray-500">
-        <p>© 2025 PetConnect. All rights reserved.</p>
-      </footer>
+      <Footer />
 
       {/* Clicincs Modal */}
       <ClinicSearchModal isOpen={isModalOpen} onClose={closeModal} />

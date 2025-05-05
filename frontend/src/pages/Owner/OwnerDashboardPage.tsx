@@ -84,7 +84,7 @@ const OwnerDashboardPage = (): JSX.Element => {
         setSelectedPetId(petId);
     };
 
-    // --- Renderizado ---
+    // --- Render ---
     return (
         <div className="space-y-6"> 
             {isLoading && (
@@ -106,7 +106,7 @@ const OwnerDashboardPage = (): JSX.Element => {
                  <PetDetailPlaceholder petId={selectedPetId} onBack={() => handleSelectPet(null)} />
             )}
 
-            {/* Renderizar Modal para Añadir Pet */}
+            {/* Pet Modal */}
             {showAddModal && (
                 <AddPetModal
                     onClose={() => setShowAddModal(false)}

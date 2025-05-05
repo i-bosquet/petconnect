@@ -10,10 +10,7 @@ import SignupPage from '../pages/Auth/SignupPage';
 import ResetPasswordPage from '../pages/Auth/ResetPasswordPage';
 import OwnerDashboardPage from '../pages/Owner/OwnerDashboardPage';
 import ClinicDashboardPage from '../pages/Clinic/ClinicDashboardPage';
-// import NotFoundPage from '../pages/NotFound/NotFoundPage';
-
-
-const NotFoundPlaceholder = () => <div className="text-cyan-800 font-bold p-4">404 Not Found Placeholder</div>;
+import NotFoundPage from '../pages/NotFound/NotFoundPage';
 
 
 /**
@@ -43,7 +40,7 @@ const AppRouter = (): JSX.Element => {
       </Route>
 
       {/* Catch-all Not Found Route */}
-      <Route path="*" element={<NotFoundPlaceholder />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };
