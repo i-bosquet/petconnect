@@ -87,25 +87,25 @@ mkdir keys
 
 ```bash
 # Reemplaza '1234' si cambiaste VET_KEY_PASSWORD en .env
-openssl genpkey -algorithm RSA -out keys/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -spi keys/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extrae la clave pública del Veterinario:
   (Se te pedirá la contraseña de la clave privada)
 ```bash
 # Reemplaza '1234' si cambiaste VET_KEY_PASSWORD en .env
-openssl rsa -pubout -in keys/vet_private_key.pem -out keys/vet_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys/vet_private_key.pem -spi keys/vet_public_key.pem -passin pass:1234
 ```
 - Genera la clave privada de la Clínica (encriptada):
   (Se te pedirá la contraseña definida en CLINIC_KEY_PASSWORD en tu archivo .env - por defecto '1234')
 ```bash
 #  Reemplaza '1234' si cambiaste CLINIC_KEY_PASSWORD en .env
-openssl genpkey -algorithm RSA -out keys/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -spi keys/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extrae la clave pública de la Clínica:
   (Se te pedirá la contraseña de la clave privada)
 ```bash
 #  Reemplaza '1234' si cambiaste CLINIC_KEY_PASSWORD en .env
-openssl rsa -pubout -in keys/clinic_private_key.pem -out keys/clinic_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys/clinic_private_key.pem -spi keys/clinic_public_key.pem -passin pass:1234
 ```
 > [!NOTE]
 > En Windows usando Git Bash, podrías necesitar prefijar los comandos openssl con winpty.

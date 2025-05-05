@@ -6,7 +6,7 @@ import com.petconnect.backend.certificate.application.event.CertificateGenerated
 import com.petconnect.backend.certificate.application.mapper.CertificateMapper;
 import com.petconnect.backend.certificate.domain.model.Certificate;
 import com.petconnect.backend.certificate.domain.repository.CertificateRepository;
-import com.petconnect.backend.certificate.port.out.CertificateEventPublisherPort;
+import com.petconnect.backend.certificate.port.spi.CertificateEventPublisherPort;
 import com.petconnect.backend.common.helper.*;
 import com.petconnect.backend.common.service.QrCodeService;
 import com.petconnect.backend.exception.*;

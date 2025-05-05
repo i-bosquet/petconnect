@@ -207,7 +207,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                             <select id="breedId" name="breedId" value={petData.breedId ?? MIXED_OTHER_VALUE} onChange={handleChange} disabled={isLoading || breedsLoading}
                                 className="block appearance-none w-full pl-3 pr-10 py-2.5 border border-gray-700 rounded-xl shadow-sm focus:outline-none focus:ring-1 focus:ring-cyan-600 focus:border-cyan-600 text-white bg-[#070913] disabled:opacity-50" >
                                 <option value={MIXED_OTHER_VALUE} >Mixed / Other</option> {/* Explicit default/mixed option */}
-                                {breeds.filter(b => b.id !== MIXED_OTHER_VALUE).map(breed => ( // Filter out our placeholder
+                                {breeds.filter(b => b.id !== MIXED_OTHER_VALUE).map(breed => ( // Filter spi our placeholder
                                      <option key={breed.id.toString()} value={breed.id.toString()}>{breed.name}</option>
                                  ))}
                             </select>

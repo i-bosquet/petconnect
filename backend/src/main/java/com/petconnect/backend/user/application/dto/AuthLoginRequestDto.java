@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotBlank;
  * @param username the username of the user
  * @param password the password of the user
  *
- * author: ibosquet
+ * @author ibosquet
  */
 public record AuthLoginRequestDto(
         @NotBlank String username,

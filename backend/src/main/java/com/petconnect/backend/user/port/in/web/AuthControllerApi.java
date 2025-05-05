@@ -101,7 +101,7 @@ public interface AuthControllerApi {
     /**
      * Initiates the password reset process by sending a reset link to the user's email.
      * This endpoint is publicly accessible. It accepts the user's email address.
-     * For security reasons, it always returns a 200 OK response, regardless of
+     * For security reasons, it always returns a 200-OK response, regardless of
      * whether the email exists in the system, to prevent email enumeration attacks.
      * The actual email sending happens asynchronously if the user is found.
      *

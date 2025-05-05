@@ -22,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -51,7 +52,7 @@ public class UserServiceImpl implements UserService {
     private final AuthorizationHelper authorizationHelper;
     private final ImageService imageService;
 
-    @Value("${app.default.user.image.path:images/avatars/users/}")
+    @Value("${app.default.user.image.path}")
     private String defaultUserImagePathBase;
 
 
@@ -274,7 +275,7 @@ public class UserServiceImpl implements UserService {
 
             // Delete OLD image only if a NEW one was successfully stored AND the old one wasn't a default
             if (imageChanged && oldAvatarPath != null && isDefaultUserAvatar(oldAvatarPath)) {
-                imageService.deleteImage(oldAvatarPath); // Delete after successful save
+                imageService.deleteImage(oldAvatarPath); // Delete it after a successful save
             }
             log.info("Owner {} profile updated successfully.", owner.getId());
         } else {
@@ -347,15 +348,22 @@ public class UserServiceImpl implements UserService {
 
     /**
      * Helper method to check if an avatar path corresponds to one of the known defaults.
-     * Uses the configured base path.
-     * @param path The avatar path to check.
-     * @return true if the path starts with the default user image base path, false otherwise.
+     * Uses the configured base path. Default paths are configured to start with 'images/avatars/'.
+     * Stored paths might or might not have the base URL prefix depending on how they were saved/retrieved.
+     *
+     * @param path The avatar path to check (can be null or a relative path like 'images/avatars/users/owner.png' or a full path).
+     * @return true if the path represents a default user image path, false otherwise.
      */
     private boolean isDefaultUserAvatar(String path) {
-        if (path == null) return true;
-        String basePath = defaultUserImagePathBase.endsWith("/")
-                ? defaultUserImagePathBase
-                : defaultUserImagePathBase + '/';
-        return !path.startsWith(basePath);
+        if (!StringUtils.hasText(path)) {
+            log.trace("Path is null or empty, considered default.");
+            return true;
+        }
+        // Define known prefixes/patterns for default avatars
+        String prefix = this.defaultUserImagePathBase;
+        // Use the path as stored
+        boolean isDefault = path.startsWith(prefix);
+        log.trace("Comparing path '{}' against default prefix '{}'. Is default? {}", path, prefix, isDefault);
+        return isDefault;
     }
 }

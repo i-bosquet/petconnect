@@ -6,10 +6,21 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
+/**
+ * General utility methods for common tasks.
+ * Provides helpers for conditional updates of entity fields.
+ * This class cannot be instantiated.
+ *
+ * @author ibosquet
+ */
 @Slf4j
 public class Utils {
 
+    /**
+     * Private constructor to prevent instantiation.
+     */
     private Utils() {
+        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
     /**
@@ -59,6 +70,7 @@ public class Utils {
             return false;
         }
 
+        // Treat blank source string as null for comparison and setting
         String effectiveSourceValue = sourceValue.isBlank() ? null : sourceValue;
         String currentValue = getter.get();
 

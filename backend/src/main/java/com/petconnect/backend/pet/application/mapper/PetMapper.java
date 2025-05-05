@@ -39,11 +39,12 @@ public class PetMapper {
 
     private final UserMapper userMapper;
 
-    @Value("${app.backend.base-url:http://localhost:8080}")
+    @Value("${app.backend.base-url}")
     private String backendBaseUrl;
 
-    // --- Default image prefix (from classpath) ---
-    private static final String DEFAULT_IMAGE_DB_PREFIX = "images/avatars/pets/";
+    @Value("${app.default.pet.image.path}")
+    private String defaultImageDbPrefix;
+
     // --- Default image URL prefix ---
     private static final String DEFAULT_IMAGE_URL_PREFIX = "/images/avatars/pets/";
     // --- Prefix for uploaded image URLs (from external storage) ---
@@ -77,9 +78,9 @@ public class PetMapper {
             String relativePathForUrl;
 
             // Decide which URL prefix to use based on how the saved path starts
-            if (imagePathInDb.startsWith(DEFAULT_IMAGE_DB_PREFIX)) {
+            if (imagePathInDb.startsWith(defaultImageDbPrefix)) {
                 // It is a default image, use prefix /images/
-                relativePathForUrl = DEFAULT_IMAGE_URL_PREFIX + imagePathInDb.substring(DEFAULT_IMAGE_DB_PREFIX.length());
+                relativePathForUrl = DEFAULT_IMAGE_URL_PREFIX + imagePathInDb.substring(defaultImageDbPrefix.length());
                 log.trace("Mapping default image path '{}' to URL prefix '{}'", imagePathInDb, DEFAULT_IMAGE_URL_PREFIX);
             } else {
                 // It is an uploaded image, use prefix /storage/

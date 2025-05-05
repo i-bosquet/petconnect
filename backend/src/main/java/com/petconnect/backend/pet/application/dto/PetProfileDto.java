@@ -6,7 +6,6 @@ import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.user.application.dto.VetSummaryDto;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Set;
 
 /**

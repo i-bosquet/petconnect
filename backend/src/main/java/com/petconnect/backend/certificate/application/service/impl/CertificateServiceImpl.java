@@ -1,6 +1,6 @@
 package com.petconnect.backend.certificate.application.service.impl;
 
-import com.petconnect.backend.certificate.port.out.CertificateEventPublisherPort;
+import com.petconnect.backend.certificate.port.spi.CertificateEventPublisherPort;
 import com.petconnect.backend.certificate.application.event.CertificateGeneratedEvent;
 import com.petconnect.backend.certificate.application.dto.CertificateGenerationRequestDto;
 import com.petconnect.backend.certificate.application.dto.CertificateViewDto;

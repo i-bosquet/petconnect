@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
  * @param jwt the JSON Web Token issued upon successful authentication
  * @param status the status indicating the success (true) or failure (false) of the authentication
  *
- * author: ibosquet
+ * @author ibosquet
  */
 @JsonPropertyOrder({"username", "message", "jwt", "status"})
 public record AuthResponseDto(

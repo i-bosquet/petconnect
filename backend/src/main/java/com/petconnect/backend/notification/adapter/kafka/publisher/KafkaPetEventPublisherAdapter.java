@@ -3,7 +3,7 @@ package com.petconnect.backend.notification.adapter.kafka.publisher;
 import com.petconnect.backend.pet.application.event.CertificateRequestedEvent;
 import com.petconnect.backend.pet.application.event.PetActivationRequestedEvent;
 import com.petconnect.backend.pet.application.event.PetActivatedEvent;
-import com.petconnect.backend.pet.port.out.PetEventPublisherPort;
+import com.petconnect.backend.pet.port.spi.PetEventPublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

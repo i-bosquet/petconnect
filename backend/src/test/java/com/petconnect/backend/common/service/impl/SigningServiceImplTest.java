@@ -69,8 +69,8 @@ class SigningServiceImplTest {
             if (!Files.exists(privPath) || !Files.exists(pubPath)) {
                 System.err.println("WARNING: Test keys not found at " + privateKeyPath + " / " + publicKeyPath);
                 System.err.println("Please generate test keys using OpenSSL:");
-                System.err.println("openssl genpkey -algorithm RSA -out " + privateKeyPath + " -aes256 -pass pass:" + password + " -pkeyopt rsa_keygen_bits:2048");
-                System.err.println("openssl rsa -pubout -in " + privateKeyPath + " -out " + publicKeyPath + " -passin pass:" + password);
+                System.err.println("openssl genpkey -algorithm RSA -spi " + privateKeyPath + " -aes256 -pass pass:" + password + " -pkeyopt rsa_keygen_bits:2048");
+                System.err.println("openssl rsa -pubout -in " + privateKeyPath + " -spi " + publicKeyPath + " -passin pass:" + password);
                 return null;
             } else {
                 String publicKeyPemContent = Files.readString(pubPath);

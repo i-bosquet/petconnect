@@ -4,7 +4,7 @@ import com.petconnect.backend.pet.application.event.CertificateRequestedEvent;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.exception.MicrochipAlreadyExistsException;
-import com.petconnect.backend.pet.port.out.PetEventPublisherPort;
+import com.petconnect.backend.pet.port.spi.PetEventPublisherPort;
 import com.petconnect.backend.pet.application.event.PetActivationRequestedEvent;
 import com.petconnect.backend.pet.application.event.PetActivatedEvent;
 import com.petconnect.backend.pet.application.dto.*;

@@ -17,7 +17,7 @@ interface UserData {
 /**
  * TopBar Component - Provides consistent top navigation for authenticated users.
  * Displays branding, notification/chat icons, and a user profile dropdown menu
- * with options for editing profile and logging out.
+ * with options for editing profile and logging spi.
  *
  * @returns {JSX.Element} The top navigation bar component.
  */
@@ -28,7 +28,7 @@ const TopBar = (): JSX.Element => {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const handleLogoutCallback = useCallback((): void => {
-        console.log("TopBar: Logging out user.");
+        console.log("TopBar: Logging spi user.");
         sessionStorage.removeItem('user');
         localStorage.removeItem('user');
         setUser(null);
