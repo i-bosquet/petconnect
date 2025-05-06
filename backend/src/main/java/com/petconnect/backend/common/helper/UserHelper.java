@@ -24,59 +24,53 @@ public class UserHelper {
 
     /**
      * Retrieves the UserEntity corresponding to the currently authenticated user.
-     * Fetches user details from the database based on the identifier obtained
-     * from the validated security context.
+     * Fetches user details from the database based on the ID obtained
+     * from the validated security context's principal.
      *
      * @return The authenticated UserEntity.
      * @throws IllegalStateException if no valid authenticated user is found in the security context.
-     * @throws EntityNotFoundException if the authenticated user identifier does not match any user in the database.
+     * @throws EntityNotFoundException if the authenticated user ID does not match any user in the database.
      */
     public UserEntity getAuthenticatedUserEntity() {
-        // Get the identifier (username/email) from the authenticated principal
-        String currentUserIdentifier = getAuthenticatedUserIdentifier();
-
-        // Find the user entity in the repository using the identifier
-        return userRepository.findByEmail(currentUserIdentifier)
-                .or(() -> userRepository.findByUsername(currentUserIdentifier))
-                .orElseThrow(() -> new EntityNotFoundException("Authenticated user '" + currentUserIdentifier + "' not found in database."));
+        Long currentUserId = getAuthenticatedUserId();
+        return userRepository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("Authenticated user with ID '" + currentUserId + "' not found in database."));
     }
 
     /**
-     * Retrieves the ID of the currently authenticated user.
-     * Convenience method using getAuthenticatedUserEntity().
+     * Retrieves the ID (Long) of the currently authenticated user
+     * from the Spring Security context's principal.
      *
-     * @return The ID of the authenticated user.
-     * @throws IllegalStateException or EntityNotFoundException if the user cannot be retrieved.
+     * @return The ID Long of the authenticated user.
+     * @throws IllegalStateException if the security context does not contain a valid,
+     *         authenticated principal, that can be parsed as a Long user ID.
      */
     public Long getAuthenticatedUserId() {
-        return getAuthenticatedUserEntity().getId();
+        Object principal = getObject();
+
+        try {
+            return switch (principal) {
+                case Long l -> l;
+                case String s -> Long.parseLong(s);
+                case Number number -> number.longValue();
+                default ->
+                        throw new IllegalStateException("Authenticated principal is not a recognizable User ID type: " + principal.getClass());
+            };
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("Authenticated principal cannot be parsed into a User ID (Long): " + principal);
+        }
     }
 
-
-    /**
-     * Retrieves the identifier (username or email) of the currently authenticated, non-anonymous user
-     * from the Spring Security context.
-     *
-     * @return The identifier String (username/email).
-     * @throws IllegalStateException if the security context does not contain a valid,
-     *         authenticated, non-anonymous principal name.
-     */
-    private String getAuthenticatedUserIdentifier() {
+    private static Object getObject() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // Check for a valid, authenticated, non-anonymous user
         if (authentication == null ||
                 !authentication.isAuthenticated() ||
-                authentication instanceof AnonymousAuthenticationToken) {
-            throw new IllegalStateException("Authentication required. No authenticated user found in security context.");
+                authentication instanceof AnonymousAuthenticationToken ||
+                authentication.getPrincipal() == null) {
+            throw new IllegalStateException("Authentication required. No authenticated user principal found in security context.");
         }
 
-        // Get principal's name
-        String currentUserIdentifier = authentication.getName();
-        if (currentUserIdentifier == null) {
-            throw new IllegalStateException("Authenticated principal name is null.");
-        }
-
-        return currentUserIdentifier;
+        return authentication.getPrincipal();
     }
 }

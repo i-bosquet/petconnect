@@ -44,26 +44,22 @@ public class JwtUtils {
     public String createToken(Authentication authentication) {
         Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
 
-        String username = authentication.getPrincipal().toString();
+        String userId = authentication.getPrincipal().toString();
 
         String authorities = authentication.getAuthorities()
                 .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        String jwtToken;
-        jwtToken = JWT.create()
+        return JWT.create()
                 .withIssuer(this.userGenerator)
-                .withSubject(username)
+                .withSubject(userId)
                 .withClaim("authorities", authorities)
                 .withIssuedAt(new Date())
-                // expires in 30 min -> 1.800.000ms
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1800000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + 1800000)) // 30 min
                 .withJWTId(UUID.randomUUID().toString())
                 .withNotBefore(new Date(System.currentTimeMillis()))
                 .sign(algorithm);
-
-        return jwtToken;
     }
 
     /**
@@ -82,7 +78,7 @@ public class JwtUtils {
         return JWT.create()
                 .withIssuer(this.userGenerator)
                 .withSubject("PetRecordViewer_" + petId)
-                .withClaim(PET_ID_CLAIM, petId) // Specific claim for pet ID
+                .withClaim(PET_ID_CLAIM, petId)
                 .withClaim(TOKEN_TYPE_CLAIM, TEMPORARY_ACCESS_TYPE)
                 .withIssuedAt(now)
                 .withExpiresAt(expiryDate)
@@ -115,16 +111,6 @@ public class JwtUtils {
     }
 
     /**
-     * Extracts the username from the decoded JWT token.
-     *
-     * @param decodedJWT the decoded JWT token
-     * @return the username contained in the token's subject
-     */
-    public String extractUsername(DecodedJWT decodedJWT) {
-        return decodedJWT.getSubject();
-    }
-
-    /**
      * Retrieves a specific claim from the decoded JWT token.
      *
      * @param decodedJWT the decoded JWT token
@@ -133,6 +119,16 @@ public class JwtUtils {
      */
     public Claim getSpecificClaim (DecodedJWT decodedJWT, String claimName) {
         return decodedJWT.getClaim(claimName);
+    }
+
+    /**
+     * Extracts the User ID (as a String) from the decoded JWT token's subject.
+     *
+     * @param decodedJWT the decoded JWT token
+     * @return the User ID contained in the token's subject
+     */
+    public String extractUserId(DecodedJWT decodedJWT) {
+        return decodedJWT.getSubject();
     }
 
 }

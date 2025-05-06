@@ -3,9 +3,11 @@ package com.petconnect.backend.user.application.mapper;
 import com.petconnect.backend.common.helper.Utils;
 import com.petconnect.backend.user.application.dto.*;
 import com.petconnect.backend.user.domain.model.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.util.StringUtils;
+import com.petconnect.backend.common.helper.ImageUrlHelper;
 
 import java.util.List;
 import java.util.Set;
@@ -21,10 +23,22 @@ import java.util.stream.Collectors;
  * @author ibosquet
  */
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class UserMapper {
 
-    @Value("${app.backend.base-url:http://localhost:8080}")
+    private final ImageUrlHelper imageUrlHelper;
+
+    @Value("${app.backend.base-url}")
     private String backendBaseUrl;
+
+    @Value("${app.default.user.image.path}")
+    private String defaultUserImageDbPrefix;
+
+    private static final String USER_AVATAR_UPLOAD_SUBDIRECTORY = "users/avatars";
+    private static final String DEFAULT_USER_AVATAR_URL_PREFIX = "/images/avatars/users/";
+    private static final String UPLOADED_USER_AVATAR_URL_PREFIX = "/storage/users/avatars/";
+    private static final String SYSTEM_DEFAULT_USER_AVATAR_FILENAME = "default_avatar.png";
 
     /**
      * Maps an Owner entity to an OwnerProfileDto.
@@ -94,12 +108,23 @@ public class UserMapper {
     public UserProfileDto mapToBaseProfileDTO(UserEntity user) {
         if (user == null) return null;
         Set<String> roleNames = extractRoleNames(user);
-        String fullAvatarUrl = null;
-        if (StringUtils.hasText(user.getAvatar())) {
-            String cleanBasePath = backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + '/';
-            String cleanAvatarPath = user.getAvatar().startsWith("/") ? user.getAvatar().substring(1) : user.getAvatar();
-            fullAvatarUrl = cleanBasePath + cleanAvatarPath;
-        }
+
+        String fallbackAvatarUrl = (backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/") +
+                DEFAULT_USER_AVATAR_URL_PREFIX.substring(1) +
+                SYSTEM_DEFAULT_USER_AVATAR_FILENAME;
+
+
+        String fullAvatarUrl = imageUrlHelper.buildFullImageUrl(
+                user.getAvatar(),
+                defaultUserImageDbPrefix,
+                DEFAULT_USER_AVATAR_URL_PREFIX,
+                USER_AVATAR_UPLOAD_SUBDIRECTORY,
+                UPLOADED_USER_AVATAR_URL_PREFIX,
+                "USER",
+                user.getId(),
+                fallbackAvatarUrl
+        );
+
         return new UserProfileDto(
                 user.getId(),
                 user.getUsername(),

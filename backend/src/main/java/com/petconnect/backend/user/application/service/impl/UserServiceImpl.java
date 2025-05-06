@@ -5,6 +5,7 @@ import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.common.service.ImageService;
+import com.petconnect.backend.security.JwtUtils;
 import com.petconnect.backend.user.application.dto.*;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.application.service.UserService;
@@ -16,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -51,6 +54,7 @@ public class UserServiceImpl implements UserService {
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
     private final ImageService imageService;
+    private final JwtUtils jwtUtils;
 
     @Value("${app.default.user.image.path}")
     private String defaultUserImagePathBase;
@@ -231,31 +235,27 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('OWNER')")
-    public OwnerProfileDto updateCurrentOwnerProfile(
+    public OwnerProfileUpdateResponseDto  updateCurrentOwnerProfile(
             OwnerProfileUpdateDto updateDTO,
             @Nullable MultipartFile imageFile) throws IOException {
 
-        // Get authenticated user and cast safely
         UserEntity currentUser = userServiceHelper.getAuthenticatedUserEntity();
         if (!(currentUser instanceof Owner owner)) {
-            // This theoretically shouldn't be reached if @PreAuthorize works, but good defense
             log.error("Security Mismatch: User {} attempted to update owner profile but is not an Owner.", currentUser.getId());
-            throw new AccessDeniedException("User is not an Owner."); // Use AccessDenied or specific exception
+            throw new AccessDeniedException("User is not an Owner.");
         }
         log.info("Attempting to update profile for Owner ID: {}", owner.getId());
 
-        // Validate username uniqueness BEFORE making changes
+        String oldUsername = owner.getUsername();
         authorizationHelper.validateUsernameUpdate(updateDTO.username(), owner);
 
         String oldAvatarPath = owner.getAvatar();
         boolean imageChanged = false;
 
-        // Process Image Upload (if provided)
         if (imageFile != null && !imageFile.isEmpty()) {
-            log.debug("Processing new avatar file for owner {}", owner.getId());
             try {
                 String newAvatarPath = imageService.storeImage(imageFile, "users/avatars");
-                owner.setAvatar(newAvatarPath); // Update entity field
+                owner.setAvatar(newAvatarPath);
                 imageChanged = true;
                 log.info("New avatar stored for owner {}: {}", owner.getId(), newAvatarPath);
             } catch (IOException | IllegalArgumentException e) {
@@ -264,26 +264,39 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        // Apply other DTO changes using the mapper and get the result
         boolean otherFieldsChanged = userMapper.updateOwnerFromDto(updateDTO, owner);
 
-        // Save if EITHER image changed OR other fields changed
         Owner updatedOwner = owner;
+        String newJwtToken = null;
+
         if (imageChanged || otherFieldsChanged) {
             log.info("Changes detected (image: {}, other fields: {}), saving Owner {}", imageChanged, otherFieldsChanged, owner.getId());
-            updatedOwner = ownerRepository.save(owner); // Persist changes
+            updatedOwner = ownerRepository.save(owner);
 
-            // Delete OLD image only if a NEW one was successfully stored AND the old one wasn't a default
-            if (imageChanged && oldAvatarPath != null && isDefaultUserAvatar(oldAvatarPath)) {
-                imageService.deleteImage(oldAvatarPath); // Delete it after a successful save
+            if (imageChanged && oldAvatarPath != null && !isDefaultUserAvatar(oldAvatarPath) && !oldAvatarPath.equals(updatedOwner.getAvatar()) ) {
+                imageService.deleteImage(oldAvatarPath);
             }
             log.info("Owner {} profile updated successfully.", owner.getId());
+
+            if (updateDTO.username() != null && !oldUsername.equals(updatedOwner.getUsername())) {
+                log.info("Username changed for Owner ID {}. Generating new JWT.", updatedOwner.getId());
+
+                UserDetails userDetailsForToken = loadUserByUsername(updatedOwner.getUsername());
+
+                Authentication newAuthentication = new UsernamePasswordAuthenticationToken(
+                        updatedOwner.getId(),
+                        null,
+                        userDetailsForToken.getAuthorities()
+                );
+                newJwtToken = jwtUtils.createToken(newAuthentication);
+                log.debug("New JWT generated: {}", newJwtToken != null ? "Yes" : "No");
+            }
         } else {
             log.info("No effective changes detected for Owner {}, update skipped.", owner.getId());
         }
 
-        // Return DTO mapping from the potentially updated entity
-        return userMapper.toOwnerProfileDto(updatedOwner);
+        OwnerProfileDto profileDto = userMapper.toOwnerProfileDto(updatedOwner);
+        return new OwnerProfileUpdateResponseDto(profileDto, newJwtToken);
     }
 
     /**
@@ -292,58 +305,67 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'VET')")
-    public ClinicStaffProfileDto updateCurrentClinicStaffProfile(
-            UserProfileUpdateDto updateDTO,
+    public ClinicStaffProfileUpdateResponseDto  updateCurrentClinicStaffProfile(
+            UserProfileUpdateDto updateDTO, // Este DTO solo tiene username para staff
             @Nullable MultipartFile imageFile) throws IOException {
-              // Get authenticated user and cast safely
-            UserEntity currentUser = userServiceHelper.getAuthenticatedUserEntity();
-            if (!(currentUser instanceof ClinicStaff staff)) {
-                log.error("Security Mismatch: User {} attempted to update staff profile but is not ClinicStaff.", currentUser.getId());
-                throw new AccessDeniedException("User is not Clinic Staff.");
+        UserEntity currentUser = userServiceHelper.getAuthenticatedUserEntity();
+        if (!(currentUser instanceof ClinicStaff staff)) {
+            log.error("Security Mismatch: User {} attempted to update staff profile but is not ClinicStaff.", currentUser.getId());
+            throw new AccessDeniedException("User is not Clinic Staff.");
+        }
+        log.info("Attempting to update profile for Staff ID: {}", staff.getId());
+
+        String oldUsername = staff.getUsername();
+        authorizationHelper.validateUsernameUpdate(updateDTO.username(), staff); // Valida si se proporciona un nuevo username
+
+        String oldAvatarPath = staff.getAvatar();
+        boolean imageChanged = false;
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            try {
+                String newAvatarPath = imageService.storeImage(imageFile, "users/avatars");
+                staff.setAvatar(newAvatarPath);
+                imageChanged = true;
+                log.info("New avatar stored for staff {}: {}", staff.getId(), newAvatarPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store uploaded avatar for staff {}: {}", staff.getId(), e.getMessage());
+                throw new IOException("Failed to process avatar image: " + e.getMessage(), e);
             }
-            log.info("Attempting to update profile for Staff ID: {}", staff.getId());
+        }
 
-            // Validate username uniqueness BEFORE making changes
-            authorizationHelper.validateUsernameUpdate(updateDTO.username(), staff);
+        boolean otherFieldsChanged = userMapper.updateClinicStaffCommonFromDto(updateDTO, staff);
 
-            String oldAvatarPath = staff.getAvatar();
-            boolean imageChanged = false;
-            boolean otherFieldsChanged;
+        ClinicStaff updatedStaff = staff;
+        String newJwtToken = null;
 
-            // Process Image Upload
-            if (imageFile != null && !imageFile.isEmpty()) {
-                log.debug("Processing new avatar file for staff {}", staff.getId());
-                try {
-                    String newAvatarPath = imageService.storeImage(imageFile, "users/avatars");
-                    staff.setAvatar(newAvatarPath);
-                    imageChanged = true;
-                    log.info("New avatar stored for staff {}: {}", staff.getId(), newAvatarPath);
-                } catch (IOException | IllegalArgumentException e) {
-                    log.error("Failed to store uploaded avatar for staff {}: {}", staff.getId(), e.getMessage());
-                    throw new IOException("Failed to process avatar image: " + e.getMessage(), e);
-                }
+        if (imageChanged || otherFieldsChanged) {
+            log.info("Changes detected (image: {}, other fields: {}), saving Staff {}", imageChanged, otherFieldsChanged, staff.getId());
+            updatedStaff = clinicStaffRepository.save(staff);
+
+            if (imageChanged && oldAvatarPath != null && !isDefaultUserAvatar(oldAvatarPath) && !oldAvatarPath.equals(updatedStaff.getAvatar())) {
+                imageService.deleteImage(oldAvatarPath);
             }
+            log.info("Staff {} profile updated successfully.", staff.getId());
 
-            // Apply other DTO changes (username only for this DTO)
-            otherFieldsChanged = userMapper.updateClinicStaffCommonFromDto(updateDTO, staff);
+            if (updateDTO.username() != null && !oldUsername.equals(updatedStaff.getUsername())) {
+                log.info("Username changed for ClinicStaff ID {}. Generating new JWT.", updatedStaff.getId());
 
-            // Save if changes occurred
-            ClinicStaff updatedStaff = staff;
-            if (imageChanged || otherFieldsChanged) {
-                log.info("Changes detected (image: {}, other fields: {}), saving Staff {}", imageChanged, otherFieldsChanged, staff.getId());
-                updatedStaff = clinicStaffRepository.save(staff);
+                UserDetails userDetailsForToken = loadUserByUsername(updatedStaff.getUsername());
 
-                // Delete old image if needed
-                if (imageChanged && oldAvatarPath != null && isDefaultUserAvatar(oldAvatarPath)) {
-                    imageService.deleteImage(oldAvatarPath);
-                }
-                log.info("Staff {} profile updated successfully.", staff.getId());
-            } else {
-                log.info("No effective changes detected for Staff {}, update skipped.", staff.getId());
+                Authentication newAuthentication = new UsernamePasswordAuthenticationToken(
+                        updatedStaff.getId(),
+                        null,
+                        userDetailsForToken.getAuthorities()
+                );
+                newJwtToken = jwtUtils.createToken(newAuthentication);
+                log.debug("New JWT generated: {}", newJwtToken != null ? "Yes" : "No");
             }
+        } else {
+            log.info("No effective changes detected for Staff {}, update skipped.", staff.getId());
+        }
 
-            // Return mapped DTO
-            return userMapper.toClinicStaffProfileDto(updatedStaff);
+        ClinicStaffProfileDto profileDto = userMapper.toClinicStaffProfileDto(updatedStaff);
+        return new ClinicStaffProfileUpdateResponseDto(profileDto, newJwtToken);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.petconnect.backend.pet.application.mapper;
 
+import com.petconnect.backend.common.helper.ImageUrlHelper;
 import com.petconnect.backend.common.helper.Utils;
 import com.petconnect.backend.pet.application.dto.PetClinicUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetOwnerUpdateDto;
@@ -13,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -38,17 +37,17 @@ public class PetMapper {
     private static final String FIELD_BREED = "breed";
 
     private final UserMapper userMapper;
+    private final ImageUrlHelper imageUrlHelper;
 
     @Value("${app.backend.base-url}")
     private String backendBaseUrl;
 
     @Value("${app.default.pet.image.path}")
-    private String defaultImageDbPrefix;
+    private String defaultPetImageDbPrefix;
 
-    // --- Default image URL prefix ---
-    private static final String DEFAULT_IMAGE_URL_PREFIX = "/images/avatars/pets/";
-    // --- Prefix for uploaded image URLs (from external storage) ---
-    private static final String UPLOADED_IMAGE_URL_PREFIX = "/storage/pets/avatars/";
+    private static final String PET_AVATAR_UPLOAD_SUBDIRECTORY = "pets/avatars";
+    private static final String DEFAULT_PET_AVATAR_URL_PREFIX = "/images/avatars/pets/";
+    private static final String UPLOADED_PET_AVATAR_URL_PREFIX = "/storage/pets/avatars/";
 
     /**
      * Converts a {@link Pet} entity to a detailed {@link PetProfileDto}.
@@ -71,27 +70,21 @@ public class PetMapper {
         Long pendingClinicId = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getId() : null;
         Set<VetSummaryDto> vetSummaries = userMapper.toVetSummaryDtoSet(pet.getAssociatedVets());
 
-        String fullImageUrl = null;
-        if (StringUtils.hasText(pet.getImage())) {
-            String imagePathInDb = pet.getImage();
-            String baseUrl = backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/";
-            String relativePathForUrl;
+        String fallbackPetAvatarUrl = (backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/") +
+                DEFAULT_PET_AVATAR_URL_PREFIX.substring(1) + // quitar barra inicial
+                (pet.getBreed() != null ? pet.getBreed().getSpecie().name().toLowerCase() + ".png" : "default_pet.png");
 
-            // Decide which URL prefix to use based on how the saved path starts
-            if (imagePathInDb.startsWith(defaultImageDbPrefix)) {
-                // It is a default image, use prefix /images/
-                relativePathForUrl = DEFAULT_IMAGE_URL_PREFIX + imagePathInDb.substring(defaultImageDbPrefix.length());
-                log.trace("Mapping default image path '{}' to URL prefix '{}'", imagePathInDb, DEFAULT_IMAGE_URL_PREFIX);
-            } else {
-                // It is an uploaded image, use prefix /storage/
-                relativePathForUrl = UPLOADED_IMAGE_URL_PREFIX + imagePathInDb.substring("pets/avatars/".length());
-                log.trace("Mapping uploaded image path '{}' to URL prefix '{}'", imagePathInDb, UPLOADED_IMAGE_URL_PREFIX);
-            }
-            relativePathForUrl = relativePathForUrl.startsWith("/") ? relativePathForUrl.substring(1) : relativePathForUrl;
-            fullImageUrl = baseUrl + relativePathForUrl;
-        } else {
-            log.warn("Pet ID {} has null or empty image path in database.", pet.getId());
-        }
+
+        String fullImageUrl = imageUrlHelper.buildFullImageUrl(
+                pet.getImage(),
+                defaultPetImageDbPrefix,
+                DEFAULT_PET_AVATAR_URL_PREFIX,
+                PET_AVATAR_UPLOAD_SUBDIRECTORY,
+                UPLOADED_PET_AVATAR_URL_PREFIX,
+                "PET",
+                pet.getId(),
+                fallbackPetAvatarUrl
+        );
 
         return new PetProfileDto(
                 pet.getId(),

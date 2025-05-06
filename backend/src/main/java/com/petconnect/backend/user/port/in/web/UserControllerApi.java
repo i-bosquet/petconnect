@@ -1,10 +1,6 @@
 package com.petconnect.backend.user.port.in.web;
 
-import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
-import com.petconnect.backend.user.application.dto.OwnerProfileDto;
-import com.petconnect.backend.user.application.dto.OwnerProfileUpdateDto;
-import com.petconnect.backend.user.application.dto.UserProfileDto;
-import com.petconnect.backend.user.application.dto.UserProfileUpdateDto;
+import com.petconnect.backend.user.application.dto.*;
 import io.micrometer.common.lang.Nullable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -121,7 +117,7 @@ public interface UserControllerApi {
      * Requires an OWNER role. The service validates username uniqueness.
      *
      * @param updateDTO An {@link OwnerProfileUpdateDto} containing the fields to update. Validation rules are applied.
-     * @return A {@link ResponseEntity} containing the updated {@link OwnerProfileDto} and HTTP status 200 (OK).
+     * @return A {@link ResponseEntity} containing the updated {@link OwnerProfileUpdateResponseDto} and HTTP status 200 (OK).
      *         Returns 400 for invalid input data.
      *         Returns 401 if not authenticated.
      *         Returns 403 if the authenticated user is not an Owner.
@@ -132,14 +128,14 @@ public interface UserControllerApi {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Owner profile updated successfully",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = OwnerProfileDto.class))),
+                            schema = @Schema(implementation = OwnerProfileUpdateResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Invalid Update Data", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not an Owner)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "409", description = "Conflict (New username already exists)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
     @PutMapping(value = "/me", consumes = MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<OwnerProfileDto> updateCurrentOwnerProfile(
+    ResponseEntity<OwnerProfileUpdateResponseDto> updateCurrentOwnerProfile(
             @Parameter(description = "Owner profile data (JSON part)", schema = @Schema(implementation = OwnerProfileUpdateDto.class))
             @RequestPart("dto") @Valid OwnerProfileUpdateDto updateDTO,
             @Parameter(description = "Optional new avatar image file")
@@ -152,7 +148,7 @@ public interface UserControllerApi {
      * Requires a VET or ADMIN role.
      *
      * @param updateDTO A {@link UserProfileUpdateDto} containing the common fields to update. Validation rules are applied.
-     * @return A {@link ResponseEntity} containing the updated {@link ClinicStaffProfileDto} and HTTP status 200 (OK).
+     * @return A {@link ResponseEntity} containing the updated {@link ClinicStaffProfileUpdateResponseDto} and HTTP status 200 (OK).
      *         Returns 400 for invalid input data.
      *         Returns 401 if not authenticated.
      *         Returns 403 if the authenticated user is not Clinic Staff (Vet/Admin).
@@ -163,14 +159,14 @@ public interface UserControllerApi {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Staff profile updated successfully",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ClinicStaffProfileDto.class))),
+                            schema = @Schema(implementation = ClinicStaffProfileUpdateResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "Invalid Update Data", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden (User is not Clinic Staff)", content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "409", description = "Conflict (New username already exists)", content = @Content(schema = @Schema(implementation = Map.class)))
     })
     @PutMapping(value = "/me/staff", consumes = MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<ClinicStaffProfileDto> updateCurrentClinicStaffProfile(
+    ResponseEntity<ClinicStaffProfileUpdateResponseDto> updateCurrentClinicStaffProfile(
             @Parameter(description = "Staff common profile data (JSON part)", schema = @Schema(implementation = UserProfileUpdateDto.class))
             @RequestPart("dto") @Valid UserProfileUpdateDto updateDTO,
             @Parameter(description = "Optional new avatar image file")

@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 /**
@@ -63,12 +62,11 @@ public class UserController implements UserControllerApi {
      */
     @Override
     @PutMapping(value = "/me", consumes = MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<OwnerProfileDto> updateCurrentOwnerProfile(
-            @RequestPart("dto") @Valid OwnerProfileUpdateDto updateDTO,
-            @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    public ResponseEntity<OwnerProfileUpdateResponseDto> updateCurrentOwnerProfile( @RequestPart("dto") @Valid OwnerProfileUpdateDto updateDTO,
+                                                                                    @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
     ) throws IOException {
-        OwnerProfileDto updatedProfile = userService.updateCurrentOwnerProfile(updateDTO, imageFile);
-        return ResponseEntity.ok(updatedProfile);
+        OwnerProfileUpdateResponseDto responseDto = userService.updateCurrentOwnerProfile(updateDTO, imageFile);
+        return ResponseEntity.ok(responseDto);
     }
 
     /**
@@ -76,10 +74,10 @@ public class UserController implements UserControllerApi {
      */
     @Override
     @PutMapping(value = "/me/staff", consumes = MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ClinicStaffProfileDto> updateCurrentClinicStaffProfile( @RequestPart("dto") @Valid UserProfileUpdateDto updateDTO,
-                                                                                  @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
+    public ResponseEntity<ClinicStaffProfileUpdateResponseDto> updateCurrentClinicStaffProfile( @RequestPart("dto") @Valid UserProfileUpdateDto updateDTO,
+                                                                                                @RequestPart(value = "imageFile", required = false) @Nullable MultipartFile imageFile
     ) throws IOException {
-        ClinicStaffProfileDto updatedProfile = userService.updateCurrentClinicStaffProfile(updateDTO, imageFile);
-        return ResponseEntity.ok(updatedProfile);
+        ClinicStaffProfileUpdateResponseDto responseDto = userService.updateCurrentClinicStaffProfile(updateDTO, imageFile);
+        return ResponseEntity.ok(responseDto);
     }
 }

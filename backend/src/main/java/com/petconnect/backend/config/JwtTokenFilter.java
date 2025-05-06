@@ -1,6 +1,7 @@
 package com.petconnect.backend.config;
 
 
+import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.petconnect.backend.security.JwtUtils;
@@ -16,7 +17,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -61,28 +61,27 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                 // Validate the JWT token and retrieve the decoded token
                 DecodedJWT decodedJWT = jwtUtils.validateToken(jwtToken);
 
-                // Extract the username from the decoded token
-                String username = jwtUtils.extractUsername(decodedJWT);
-
-                // Extract the authorities claim as a comma-separated string
+                String userId = jwtUtils.extractUserId(decodedJWT);
                 String stringAuthorities = jwtUtils.getSpecificClaim(decodedJWT, "authorities").asString();
-
-                // Convert the comma-separated string into a collection of GrantedAuthority objects
                 Collection<? extends GrantedAuthority> authorities =
                         AuthorityUtils.commaSeparatedStringToAuthorityList(stringAuthorities);
 
-                // Create an Authentication object using the username and authorities
                 Authentication authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, authorities);
+                        new UsernamePasswordAuthenticationToken(
+                                Long.parseLong(userId),
+                                null,
+                                authorities
+                        );
 
                 // Set the authentication in the SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("JWT Filter - Setting authentication for user: {}, Authorities: {}", username, authorities);
+                log.debug("JWT Filter - Setting authentication for user ID: {}, Authorities: {}", userId, authorities);
 
             } catch (JWTVerificationException e) {
-                // If token validation fails (expired, invalid signature, etc.)
-                log.warn("Invalid JWT token received: {}. Reason: {}", jwtToken, e.getMessage());
-                // Explicitly clear the context to ensure no potentially stale/invalid authentication remains
+                log.warn("Invalid JWT token received. Reason: {}", e.getMessage());
+                SecurityContextHolder.clearContext();
+            } catch (NumberFormatException e) {
+                log.error("Invalid User ID format in JWT subject: {}", jwtUtils.extractUserId(JWT.decode(jwtToken)));
                 SecurityContextHolder.clearContext();
             }
         } else {

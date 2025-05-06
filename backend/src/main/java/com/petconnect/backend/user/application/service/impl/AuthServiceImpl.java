@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -71,7 +72,7 @@ public class AuthServiceImpl implements AuthService{
         }
 
         if (userRepository.existsByUsername(registrationDTO.username())) {
-         throw new UsernameAlreadyExistsException(registrationDTO.username());
+            throw new UsernameAlreadyExistsException(registrationDTO.username());
         }
 
 
@@ -126,9 +127,23 @@ public class AuthServiceImpl implements AuthService{
     public Authentication authenticate(String username, String password) throws BadCredentialsException {
 
         UserDetails userDetails = this.userService.loadUserByUsername(username);
-        if (userDetails == null) throw new BadCredentialsException("Invalid username or password");
-        if (!passwordEncoder.matches(password, userDetails.getPassword())) throw new BadCredentialsException("Incorrect Password");
-        return new UsernamePasswordAuthenticationToken(username, userDetails.getPassword(), userDetails.getAuthorities());
+        if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+            log.warn("Incorrect password attempt for user: {}", username);
+            throw new BadCredentialsException("Incorrect Password");
+        }
+
+        UserEntity userEntity = userRepository.findByUsername(username)
+                .or(() -> userRepository.findByEmail(username))
+                .orElseThrow(() -> new InternalAuthenticationServiceException(
+                        "User entity not found during successful authentication for: " + username));
+
+        log.info("User {} authenticated successfully. ID: {}", username, userEntity.getId());
+
+        return new UsernamePasswordAuthenticationToken(
+                userEntity.getId(),
+                null,
+                userDetails.getAuthorities()
+        );
     }
 
     /**

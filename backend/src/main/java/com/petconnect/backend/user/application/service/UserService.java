@@ -1,7 +1,6 @@
 package com.petconnect.backend.user.application.service;
 
 import com.petconnect.backend.user.application.dto.*;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.multipart.MultipartFile;
@@ -70,20 +69,18 @@ public interface UserService {
      * Updates the profile of the currently authenticated Owner user.
      *
      * @param updateDTO DTO containing the fields to update.
-     * @return The updated OwnerProfileDto.
-     * @throws IllegalStateException if the current user is not an Owner or not authenticated.
-     * @throws EntityNotFoundException if the user cannot be found.
+     * @return The {@link OwnerProfileUpdateResponseDto} containing the updated profile and potentially a new JWT.
+     * @throws IOException if image processing fails.
      */
-    OwnerProfileDto updateCurrentOwnerProfile(OwnerProfileUpdateDto updateDTO, @Nullable MultipartFile imageFile )throws IOException;
+    OwnerProfileUpdateResponseDto updateCurrentOwnerProfile(OwnerProfileUpdateDto updateDTO, @Nullable MultipartFile imageFile )throws IOException;
 
     /**
      * Updates the profile of the currently authenticated ClinicStaff user.
      * (Note: Admins updating OTHER staff might be in ClinicStaffService).
      *
      * @param updateDTO DTO containing the fields to update.
-     * @return The updated ClinicStaffProfileDto.
-     * @throws IllegalStateException if the current user is not ClinicStaff or not authenticated.
-     * @throws EntityNotFoundException if the user cannot be found.
+     * @return The {@link ClinicStaffProfileUpdateResponseDto} containing the updated profile and potentially a new JWT.
+     * @throws IOException if image processing fails.
      */
-    ClinicStaffProfileDto updateCurrentClinicStaffProfile(UserProfileUpdateDto updateDTO, @Nullable MultipartFile imageFile ) throws IOException;
+    ClinicStaffProfileUpdateResponseDto updateCurrentClinicStaffProfile(UserProfileUpdateDto updateDTO, @Nullable MultipartFile imageFile ) throws IOException;
 }

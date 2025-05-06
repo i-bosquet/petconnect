@@ -21,3 +21,6 @@ export * from './petTypes';
 
 // Re-export record related types
 export * from './recordTypes';
+
+// Re-export auth related types
+export * from './authTypes';

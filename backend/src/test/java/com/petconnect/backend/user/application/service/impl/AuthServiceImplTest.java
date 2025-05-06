@@ -26,7 +26,6 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -81,11 +80,11 @@ class AuthServiceImplTest {
     private AuthLoginRequestDto loginRequestDto;
     private UserDetails userDetails;
 
-    private String defaultUserImagePathBase = "images/avatars/users/";
     private String expectedOwnerAvatarPath;
 
     @BeforeEach
     void setUp() {
+        String defaultUserImagePathBase = "images/avatars/users/";
         ReflectionTestUtils.setField(authService, "defaultUserImagePathBase", defaultUserImagePathBase);
         expectedOwnerAvatarPath = defaultUserImagePathBase + "owner.png";
 
@@ -130,7 +129,7 @@ class AuthServiceImplTest {
             given(userRepository.existsByUsername(registrationDto.username())).willReturn(false);
             given(passwordEncoder.encode(registrationDto.password())).willReturn("hashedPassword");
             given(roleRepository.findByRoleEnum(RoleEnum.OWNER)).willReturn(Optional.of(ownerRole));
-             given(ownerRepository.save(any(Owner.class))).willReturn(savedOwner);
+            given(ownerRepository.save(any(Owner.class))).willReturn(savedOwner);
             given(userMapper.toOwnerProfileDto(savedOwner)).willReturn(expectedOwnerDto);
 
             // Act
@@ -376,4 +375,3 @@ class AuthServiceImplTest {
         }
     }
 }
-
