@@ -355,4 +355,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# others
+/images/
+
 # End of https://www.toptal.com/developers/gitignore/api/java,maven,intellij,node,visualstudiocode,windows,react
