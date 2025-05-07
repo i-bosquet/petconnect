@@ -1037,11 +1037,11 @@ class PetServiceImplTest {
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
             given(petMapper.updateFromOwnerDto(noChangeDto, existingPet, existingPet.getBreed())).willReturn(false);
             PetProfileDto originalDto = new PetProfileDto(
-                            existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(), existingPet.getColor(),
-                            existingPet.getGender(), existingPet.getBirthDate(), existingPet.getMicrochip(),
-                            existingPet.getImage(), existingPet.getStatus(), owner.getId(), owner.getUsername(),
-                            existingPet.getBreed().getId(), existingPet.getBreed().getName(), null, Set.of()
-                    );
+                    existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(), existingPet.getColor(),
+                    existingPet.getGender(), existingPet.getBirthDate(), existingPet.getMicrochip(),
+                    existingPet.getImage(), existingPet.getStatus(), owner.getId(), owner.getUsername(),
+                    existingPet.getBreed().getId(), existingPet.getBreed().getName(), null, Set.of()
+            );
 
             given(petMapper.toProfileDto(existingPet)).willReturn(originalDto);
 
@@ -1753,7 +1753,7 @@ class PetServiceImplTest {
                     null,
                     Set.of(new VetSummaryDto(vetId, associatedVet.getName(), associatedVet.getSurname()))
             );
-            }
+        }
 
         /**
          * Test successful retrieval when the requester is the owner.

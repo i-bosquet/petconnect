@@ -72,13 +72,13 @@ public class Clinic extends BaseEntity{
     private String phone;
 
     /**
-     * The public cryptographic key associated with the clinic.
+     * The path to the public cryptographic key file associated with the clinic,
+     * relative to the application's classpath.
      * Used for verifying digital signatures originating from the clinic.
-     * Cannot be null. Stored as TEXT for potentially long keys.
-     * Must be unique across all clinics.
+     * Cannot be blank. Must be unique across all clinics.
      */
-    @NotBlank(message = "Clinic public key cannot cannot be blank")
-    @Column(name = "public_key", nullable = false, unique = true, columnDefinition = "TEXT")
+    @NotBlank(message = "Clinic public key path cannot be blank")
+    @Column(name = "public_key", nullable = false, unique = true, length = 255)
     private String publicKey;
 
     /**

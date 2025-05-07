@@ -4,8 +4,7 @@ import { Eye, EyeOff, User, Lock, LogIn } from "lucide-react";
 import { loginUser, getCurrentUserProfile } from "../../services/authService";
 import {
   UserProfile,
-  ClinicStaffProfile,
-  OwnerProfile,
+  ClinicStaffProfile
 } from "@/types/apiTypes";
 import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal";
 
@@ -73,53 +72,52 @@ const LoginPage = (): JSX.Element => {
 
       if (loginResponse?.jwt && loginResponse.status) {
         const token = loginResponse.jwt;
-        // userProfile is OwnerProfile or ClinicStaffProfile
         const userProfile: UserProfile = await getCurrentUserProfile(token);
         console.log("Get User Profile Response:", userProfile);
 
-        if (userProfile?.roles && userProfile.roles.length > 0) {
-          const primaryRole = userProfile.roles[0]; // Take the first role for redirection logic
+        let userRolesArray: string[] = []; 
+                if (userProfile?.roles && Array.isArray(userProfile.roles) && userProfile.roles.length > 0) {
+                    userRolesArray = userProfile.roles; 
+                } else if (userProfile?.roles && typeof userProfile.roles === 'string') {
+                    userRolesArray = [userProfile.roles];
+                } else {
+                     console.error("Could not determine user roles from profile API response:", userProfile);
+                     setError("Login successful, but failed to retrieve user role information.");
+                     setIsLoading(false);
+                     return;
+                }
+
+                const primaryRole = userRolesArray[0];
+                console.log("Roles from profile API:", userRolesArray, "Primary role:", primaryRole);
 
           // Build the object to be saved with all relevant fields
           const userDataToStore: StoredUserForStorage = {
-            id: userProfile.id,
-            username: userProfile.username,
-            email: userProfile.email,
-            avatar: userProfile.avatar,
-            roles: userProfile.roles, 
-            jwt: token,
-          };
+                    id: userProfile.id,
+                    username: userProfile.username,
+                    email: userProfile.email,
+                    avatar: userProfile.avatar,
+                    roles: userRolesArray, 
+                    jwt: token,
+                    // Add Owner-specific fields
+                    ...( ('phone' in userProfile && userProfile.phone) && { phone: userProfile.phone }),
+                    // Add ClinicStaff Specific Fields
+                    ...( ('clinicId' in userProfile && userProfile.clinicId) && {
+                        name: (userProfile as ClinicStaffProfile).name,
+                        surname: (userProfile as ClinicStaffProfile).surname,
+                        isActive: (userProfile as ClinicStaffProfile).isActive,
+                        clinicId: (userProfile as ClinicStaffProfile).clinicId,
+                        clinicName: (userProfile as ClinicStaffProfile).clinicName,
+                        licenseNumber: (userProfile as ClinicStaffProfile).licenseNumber,
+                        vetPublicKey: (userProfile as ClinicStaffProfile).vetPublicKey,
+                    }),
+                };
 
-          // Add Owner-specific fields
-          if ("phone" in userProfile && (userProfile as OwnerProfile).phone) {
-            userDataToStore.phone = (userProfile as OwnerProfile).phone;
-          }
-
-          // Add ClinicStaff Specific Fields
-          if (
-            "clinicId" in userProfile &&
-            (userProfile as ClinicStaffProfile).clinicId
-          ) {
-            const staffProfile = userProfile as ClinicStaffProfile;
-            userDataToStore.name = staffProfile.name;
-            userDataToStore.surname = staffProfile.surname;
-            userDataToStore.isActive = staffProfile.isActive;
-            userDataToStore.clinicId = staffProfile.clinicId;
-            userDataToStore.clinicName = staffProfile.clinicName;
-            if (staffProfile.licenseNumber)
-              userDataToStore.licenseNumber = staffProfile.licenseNumber;
-            if (staffProfile.vetPublicKey)
-              userDataToStore.vetPublicKey = staffProfile.vetPublicKey;
-          }
-
-          const storage = rememberMe ? localStorage : sessionStorage;
-          storage.setItem("user", JSON.stringify(userDataToStore));
-          console.log(
-            `User data (including specific profile fields) stored in ${
-              rememberMe ? "localStorage" : "sessionStorage"
-            }:`,
-            userDataToStore
-          );
+                const storage = rememberMe ? localStorage : sessionStorage;
+                storage.setItem("user", JSON.stringify(userDataToStore));
+                console.log(
+                    `User data (roles as array) stored in ${rememberMe ? "localStorage" : "sessionStorage"}:`,
+                    userDataToStore
+                );
 
           // Redirection based on the primary role
           if (primaryRole === "OWNER") {
@@ -127,32 +125,17 @@ const LoginPage = (): JSX.Element => {
           } else if (primaryRole === "VET" || primaryRole === "ADMIN") {
             navigate("/clinic", { replace: true });
           } else {
-            setError(
-              "Login successful, but user role is unrecognized for redirection."
-            );
+            setError("Login successful, but user role is unrecognized for redirection.");
+            setIsLoading(false); 
           }
         } else {
-          console.error(
-            "Could not determine user roles from profile API response:",
-            userProfile
-          );
-          setError(
-            "Login successful, but failed to retrieve user role information."
-          );
-        }
-      } else {
-        setError(
-          loginResponse?.message ||
-            "Login failed. Please check your credentials."
-        );
-      }
+          setError(loginResponse?.message || "Login failed. Please check your credentials.");
+                setIsLoading(false); 
+            }
     } catch (err) {
       console.error("Login handleSubmit error:", err);
-      setError(
-        err instanceof Error ? err.message : "An unknown login error occurred."
-      );
-    } finally {
-      setIsLoading(false);
+      setError(err instanceof Error ? err.message : "An unknown login error occurred.");
+      setIsLoading(false); 
     }
   };
 
@@ -378,5 +361,4 @@ const LoginPage = (): JSX.Element => {
     </div>
   );
 };
-
 export default LoginPage;

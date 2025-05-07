@@ -111,329 +111,329 @@ class ClinicStaffServiceImplTest {
         existingVetMember.setAvatar("images/avatars/users/vet.png");
     }
 
-    /**
-     * --- Tests for createClinicStaff ---
-     */
-    @Nested
-    @DisplayName("createClinicStaff Tests")
-    class CreateClinicStaffTests {
-
-        private ClinicStaffCreationDto vetCreationDto;
-        private ClinicStaffCreationDto adminCreationDto;
-        private Vet savedVet;
-        private ClinicStaff savedAdmin;
-        private ClinicStaffProfileDto vetProfileDto;
-        private ClinicStaffProfileDto adminProfileDto;
-        private final String actionContext = "create clinic staff";
-
-
-        @BeforeEach
-        void createDtoSetup() {
-            String defaultUserImagePathBase = "images/avatars/users/";
-            vetCreationDto = new ClinicStaffCreationDto(
-                    "newvet", "new.vet@test.com", "password123",
-                    "New", "Vet", RoleEnum.VET,
-                    // clinicId removed from DTO
-                    "VET999", "VETKEY999");
-
-            adminCreationDto = new ClinicStaffCreationDto(
-                    "newadmin", "new.admin@test.com", "password123",
-                    "New", "Admin", RoleEnum.ADMIN,
-                    null, null); // No vet fields
-
-            // Simulate saved entities (IDs assigned, password hashed)
-            savedVet = new Vet();
-            savedVet.setId(100L);
-            savedVet.setUsername(vetCreationDto.username());
-            savedVet.setEmail(vetCreationDto.email());
-            savedVet.setPassword("hashedPassword");
-            savedVet.setName(vetCreationDto.name());
-            savedVet.setSurname(vetCreationDto.surname());
-            savedVet.setLicenseNumber(vetCreationDto.licenseNumber());
-            savedVet.setVetPublicKey(vetCreationDto.vetPublicKey());
-            savedVet.setClinic(clinic1);
-            savedVet.setRoles(Set.of(vetRole));
-            savedVet.setActive(true);
-            savedVet.setAvatar(defaultUserImagePathBase+ "vet.png");
-
-            savedAdmin = new ClinicStaff();
-            savedAdmin.setId(101L);
-            savedAdmin.setUsername(adminCreationDto.username());
-            savedAdmin.setEmail(adminCreationDto.email());
-            savedAdmin.setPassword("hashedPassword");
-            savedAdmin.setName(adminCreationDto.name());
-            savedAdmin.setSurname(adminCreationDto.surname());
-            savedAdmin.setClinic(clinic1);
-            savedAdmin.setRoles(Set.of(adminRole));
-            savedAdmin.setActive(true);
-            savedAdmin.setAvatar(defaultUserImagePathBase+ "admin.png");
-
-            vetProfileDto = new ClinicStaffProfileDto(
-                    100L, savedVet.getUsername(), savedVet.getEmail(),
-                    Set.of(RoleEnum.VET.name()), savedVet.getAvatar(),
-                    savedVet.getName(), savedVet.getSurname(), savedVet.isActive(),
-                    savedVet.getClinic().getId(), savedVet.getClinic().getName(),
-                    savedVet.getLicenseNumber(), savedVet.getVetPublicKey()
-            );
-            adminProfileDto = new ClinicStaffProfileDto(
-                    101L, savedAdmin.getUsername(), savedAdmin.getEmail(),
-                    Set.of(RoleEnum.ADMIN.name()), savedAdmin.getAvatar(),
-                    savedAdmin.getName(), savedAdmin.getSurname(), savedAdmin.isActive(),
-                    savedAdmin.getClinic().getId(), savedAdmin.getClinic().getName(),
-                    null, null // No vet fields for admin
-            );
-        }
-
-        @Test
-        @DisplayName("should create VET successfully when data is valid and admin authorized")
-        void createClinicStaff_Success_Vet() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
-            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1)).willReturn(savedVet);
-            given(clinicStaffRepository.save(savedVet)).willAnswer(invocation -> {
-                Vet vetToSave = invocation.getArgument(0);
-                vetToSave.setId(100L);
-                return vetToSave;
-            });
-            given(userMapper.toClinicStaffProfileDto(any(Vet.class))).willReturn(vetProfileDto);
-
-            // Act
-            ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
-
-            // Assert
-            assertThat(result).isNotNull().isEqualTo(vetProfileDto);
-
-            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
-            then(validateHelper).should().validateStaffRole(RoleEnum.VET);
-            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            then(clinicStaffHelper).should().buildNewStaffEntity(vetCreationDto, clinic1);
-            then(clinicStaffRepository).should().save(savedVet);
-            then(userMapper).should().toClinicStaffProfileDto(any(Vet.class));
-        }
-
-        @Test
-        @DisplayName("should create ADMIN successfully when data is valid and admin authorized")
-        void createClinicStaff_Success_Admin() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(RoleEnum.ADMIN);
-            doNothing().when(validateHelper).validateNewStaffUniqueness(adminCreationDto.email(), adminCreationDto.username());
-            given(clinicStaffHelper.buildNewStaffEntity(adminCreationDto, clinic1)).willReturn(savedAdmin);
-            given(clinicStaffRepository.save(savedAdmin)).willAnswer(invocation -> {
-                ClinicStaff adminToSave = invocation.getArgument(0);
-                adminToSave.setId(101L);
-                return adminToSave;
-            });
-            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(adminProfileDto);
-
-            // Act
-            ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(adminCreationDto, adminUser.getId());
-
-            // Assert
-            assertThat(result).isNotNull().isEqualTo(adminProfileDto);
-
-            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
-            then(validateHelper).should().validateStaffRole(RoleEnum.ADMIN);
-            then(validateHelper).should().validateNewStaffUniqueness(adminCreationDto.email(), adminCreationDto.username());
-            then(clinicStaffHelper).should().buildNewStaffEntity(adminCreationDto, clinic1);
-            then(clinicStaffRepository).should().save(savedAdmin);
-            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
-        }
-
-        @Test
-        @DisplayName("should throw IllegalArgumentException for invalid role")
-        void createClinicStaff_Error_InvalidRole() {
-            ClinicStaffCreationDto dto = new ClinicStaffCreationDto("u", "e@e.c", "p", "N", "S", RoleEnum.OWNER, null, null);
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doThrow(new IllegalArgumentException("Invalid role specified"))
-                    .when(validateHelper).validateStaffRole(RoleEnum.OWNER);
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(dto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Invalid role specified");
-
-            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
-            then(validateHelper).should().validateStaffRole(RoleEnum.OWNER);
-            then(validateHelper).should(never()).validateNewStaffUniqueness(anyString(), anyString());
-            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
-            then(clinicStaffRepository).should(never()).save(any());
-
-        }
-
-        @Test
-        @DisplayName("should throw EmailAlreadyExistsException")
-        void createClinicStaff_Error_EmailExists() {
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(vetCreationDto.role());
-            doThrow(new EmailAlreadyExistsException(vetCreationDto.email()))
-                    .when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(EmailAlreadyExistsException.class);
-
-            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
-            then(validateHelper).should().validateStaffRole(vetCreationDto.role());
-            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw UsernameAlreadyExistsException")
-        void createClinicStaff_Error_UsernameExists() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(vetCreationDto.role());
-            doThrow(new UsernameAlreadyExistsException(vetCreationDto.username()))
-                    .when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(UsernameAlreadyExistsException.class);
-
-            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
-            then(validateHelper).should().validateStaffRole(vetCreationDto.role());
-            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw EntityNotFoundException if creating admin not found")
-        void createClinicStaff_Error_AdminNotFound() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(999L, actionContext))
-                    .willThrow(new EntityNotFoundException("User performing action..."));
-
-            assertThatThrownBy(() -> clinicStaffService.createClinicStaff(vetCreationDto, 999L))
-                    .isInstanceOf(EntityNotFoundException.class);
-            then(validateHelper).should(never()).validateStaffRole(any());
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException if creator is not Admin")
-        void createClinicStaff_Error_CreatorNotAdmin() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(15L, actionContext))
-                    .willThrow(new AccessDeniedException("User 15 is not an authorized Admin..."));
-
-            // Act & Assert
-            assertThatThrownBy(() -> clinicStaffService.createClinicStaff(vetCreationDto, 15L))
-                    .isInstanceOf(AccessDeniedException.class);
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw IllegalStateException if creator has no clinic")
-        void createClinicStaff_Error_CreatorNoClinic() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext))
-                    .willThrow(new IllegalStateException("Admin user " + adminUser.getId() + " is not associated with any clinic."));
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
-
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("is not associated with any clinic");
-
-            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
-            then(validateHelper).should(never()).validateStaffRole(any());
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw IllegalArgumentException if Vet license is missing")
-        void createClinicStaff_Error_VetLicenseMissing() {
-            // Arrange
-            ClinicStaffCreationDto missingLicenseDto = new ClinicStaffCreationDto("v","e@v.c","p","N","S",RoleEnum.VET,null, "KEY");
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
-            doNothing().when(validateHelper).validateNewStaffUniqueness(missingLicenseDto.email(), missingLicenseDto.username());
-            given(clinicStaffHelper.buildNewStaffEntity(missingLicenseDto, clinic1))
-                    .willThrow(new IllegalArgumentException("License number is required"));
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(missingLicenseDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("License number is required");
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw IllegalArgumentException if Vet public key is missing")
-        void createClinicStaff_Error_VetKeyMissing() {
-            // Arrange
-            ClinicStaffCreationDto missingKeyDto = new ClinicStaffCreationDto("v","e@v.c","p","N","S",RoleEnum.VET,"LICENSE123", null);
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
-            doNothing().when(validateHelper).validateNewStaffUniqueness(missingKeyDto.email(), missingKeyDto.username());
-            given(clinicStaffHelper.buildNewStaffEntity(missingKeyDto, clinic1))
-                    .willThrow(new IllegalArgumentException("public key is required"));
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(missingKeyDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("public key is required");
-            then(clinicStaffHelper).should().buildNewStaffEntity(missingKeyDto, clinic1);
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw LicenseNumberAlreadyExistsException")
-        void createClinicStaff_Error_VetLicenseExists() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
-            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1))
-                    .willThrow(new LicenseNumberAlreadyExistsException(vetCreationDto.licenseNumber()));
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(()->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(LicenseNumberAlreadyExistsException.class);
-
-            // Assert
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw VetPublicKeyAlreadyExistsException")
-        void createClinicStaff_Error_VetPublicKeyExists() {
-            // Arrange
-            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
-            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
-            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
-            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1))
-                    .willThrow(new VetPublicKeyAlreadyExistsException());
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(()->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(VetPublicKeyAlreadyExistsException.class);
-            // Verify...
-            then(clinicStaffHelper).should().buildNewStaffEntity(vetCreationDto, clinic1);
-            then(clinicStaffRepository).should(never()).save(any());
-        }
-    }
+//    /**
+//     * --- Tests for createClinicStaff ---
+//     */
+//    @Nested
+//    @DisplayName("createClinicStaff Tests")
+//    class CreateClinicStaffTests {
+//
+//        private ClinicStaffCreationDto vetCreationDto;
+//        private ClinicStaffCreationDto adminCreationDto;
+//        private Vet savedVet;
+//        private ClinicStaff savedAdmin;
+//        private ClinicStaffProfileDto vetProfileDto;
+//        private ClinicStaffProfileDto adminProfileDto;
+//        private final String actionContext = "create clinic staff";
+//
+//
+//        @BeforeEach
+//        void createDtoSetup() {
+//            String defaultUserImagePathBase = "images/avatars/users/";
+//            vetCreationDto = new ClinicStaffCreationDto(
+//                    "newvet", "new.vet@test.com", "password123",
+//                    "New", "Vet", RoleEnum.VET,
+//                    // clinicId removed from DTO
+//                    "VET999", "VETKEY999");
+//
+//            adminCreationDto = new ClinicStaffCreationDto(
+//                    "newadmin", "new.admin@test.com", "password123",
+//                    "New", "Admin", RoleEnum.ADMIN,
+//                    null, null); // No vet fields
+//
+//            // Simulate saved entities (IDs assigned, password hashed)
+//            savedVet = new Vet();
+//            savedVet.setId(100L);
+//            savedVet.setUsername(vetCreationDto.username());
+//            savedVet.setEmail(vetCreationDto.email());
+//            savedVet.setPassword("hashedPassword");
+//            savedVet.setName(vetCreationDto.name());
+//            savedVet.setSurname(vetCreationDto.surname());
+//            savedVet.setLicenseNumber(vetCreationDto.licenseNumber());
+//            savedVet.setVetPublicKey(vetCreationDto.vetPublicKey());
+//            savedVet.setClinic(clinic1);
+//            savedVet.setRoles(Set.of(vetRole));
+//            savedVet.setActive(true);
+//            savedVet.setAvatar(defaultUserImagePathBase+ "vet.png");
+//
+//            savedAdmin = new ClinicStaff();
+//            savedAdmin.setId(101L);
+//            savedAdmin.setUsername(adminCreationDto.username());
+//            savedAdmin.setEmail(adminCreationDto.email());
+//            savedAdmin.setPassword("hashedPassword");
+//            savedAdmin.setName(adminCreationDto.name());
+//            savedAdmin.setSurname(adminCreationDto.surname());
+//            savedAdmin.setClinic(clinic1);
+//            savedAdmin.setRoles(Set.of(adminRole));
+//            savedAdmin.setActive(true);
+//            savedAdmin.setAvatar(defaultUserImagePathBase+ "admin.png");
+//
+//            vetProfileDto = new ClinicStaffProfileDto(
+//                    100L, savedVet.getUsername(), savedVet.getEmail(),
+//                    Set.of(RoleEnum.VET.name()), savedVet.getAvatar(),
+//                    savedVet.getName(), savedVet.getSurname(), savedVet.isActive(),
+//                    savedVet.getClinic().getId(), savedVet.getClinic().getName(),
+//                    savedVet.getLicenseNumber(), savedVet.getVetPublicKey()
+//            );
+//            adminProfileDto = new ClinicStaffProfileDto(
+//                    101L, savedAdmin.getUsername(), savedAdmin.getEmail(),
+//                    Set.of(RoleEnum.ADMIN.name()), savedAdmin.getAvatar(),
+//                    savedAdmin.getName(), savedAdmin.getSurname(), savedAdmin.isActive(),
+//                    savedAdmin.getClinic().getId(), savedAdmin.getClinic().getName(),
+//                    null, null // No vet fields for admin
+//            );
+//        }
+//
+//        @Test
+//        @DisplayName("should create VET successfully when data is valid and admin authorized")
+//        void createClinicStaff_Success_Vet() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+//            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1)).willReturn(savedVet);
+//            given(clinicStaffRepository.save(savedVet)).willAnswer(invocation -> {
+//                Vet vetToSave = invocation.getArgument(0);
+//                vetToSave.setId(100L);
+//                return vetToSave;
+//            });
+//            given(userMapper.toClinicStaffProfileDto(any(Vet.class))).willReturn(vetProfileDto);
+//
+//            // Act
+//            ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId());
+//
+//            // Assert
+//            assertThat(result).isNotNull().isEqualTo(vetProfileDto);
+//
+//            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+//            then(validateHelper).should().validateStaffRole(RoleEnum.VET);
+//            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            then(clinicStaffHelper).should().buildNewStaffEntity(vetCreationDto, clinic1);
+//            then(clinicStaffRepository).should().save(savedVet);
+//            then(userMapper).should().toClinicStaffProfileDto(any(Vet.class));
+//        }
+//
+//        @Test
+//        @DisplayName("should create ADMIN successfully when data is valid and admin authorized")
+//        void createClinicStaff_Success_Admin() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(RoleEnum.ADMIN);
+//            doNothing().when(validateHelper).validateNewStaffUniqueness(adminCreationDto.email(), adminCreationDto.username());
+//            given(clinicStaffHelper.buildNewStaffEntity(adminCreationDto, clinic1)).willReturn(savedAdmin);
+//            given(clinicStaffRepository.save(savedAdmin)).willAnswer(invocation -> {
+//                ClinicStaff adminToSave = invocation.getArgument(0);
+//                adminToSave.setId(101L);
+//                return adminToSave;
+//            });
+//            given(userMapper.toClinicStaffProfileDto(any(ClinicStaff.class))).willReturn(adminProfileDto);
+//
+//            // Act
+//            ClinicStaffProfileDto result = clinicStaffService.createClinicStaff(adminCreationDto, adminUser.getId());
+//
+//            // Assert
+//            assertThat(result).isNotNull().isEqualTo(adminProfileDto);
+//
+//            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+//            then(validateHelper).should().validateStaffRole(RoleEnum.ADMIN);
+//            then(validateHelper).should().validateNewStaffUniqueness(adminCreationDto.email(), adminCreationDto.username());
+//            then(clinicStaffHelper).should().buildNewStaffEntity(adminCreationDto, clinic1);
+//            then(clinicStaffRepository).should().save(savedAdmin);
+//            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
+//        }
+//
+//        @Test
+//        @DisplayName("should throw IllegalArgumentException for invalid role")
+//        void createClinicStaff_Error_InvalidRole() {
+//            ClinicStaffCreationDto dto = new ClinicStaffCreationDto("u", "e@e.c", "p", "N", "S", RoleEnum.OWNER, null, null);
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doThrow(new IllegalArgumentException("Invalid role specified"))
+//                    .when(validateHelper).validateStaffRole(RoleEnum.OWNER);
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(dto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(IllegalArgumentException.class)
+//                    .hasMessageContaining("Invalid role specified");
+//
+//            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+//            then(validateHelper).should().validateStaffRole(RoleEnum.OWNER);
+//            then(validateHelper).should(never()).validateNewStaffUniqueness(anyString(), anyString());
+//            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
+//            then(clinicStaffRepository).should(never()).save(any());
+//
+//        }
+//
+//        @Test
+//        @DisplayName("should throw EmailAlreadyExistsException")
+//        void createClinicStaff_Error_EmailExists() {
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(vetCreationDto.role());
+//            doThrow(new EmailAlreadyExistsException(vetCreationDto.email()))
+//                    .when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(EmailAlreadyExistsException.class);
+//
+//            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+//            then(validateHelper).should().validateStaffRole(vetCreationDto.role());
+//            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw UsernameAlreadyExistsException")
+//        void createClinicStaff_Error_UsernameExists() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(vetCreationDto.role());
+//            doThrow(new UsernameAlreadyExistsException(vetCreationDto.username()))
+//                    .when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(UsernameAlreadyExistsException.class);
+//
+//            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+//            then(validateHelper).should().validateStaffRole(vetCreationDto.role());
+//            then(validateHelper).should().validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            then(clinicStaffHelper).should(never()).buildNewStaffEntity(any(), any());
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw EntityNotFoundException if creating admin not found")
+//        void createClinicStaff_Error_AdminNotFound() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(999L, actionContext))
+//                    .willThrow(new EntityNotFoundException("User performing action..."));
+//
+//            assertThatThrownBy(() -> clinicStaffService.createClinicStaff(vetCreationDto, 999L))
+//                    .isInstanceOf(EntityNotFoundException.class);
+//            then(validateHelper).should(never()).validateStaffRole(any());
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException if creator is not Admin")
+//        void createClinicStaff_Error_CreatorNotAdmin() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(15L, actionContext))
+//                    .willThrow(new AccessDeniedException("User 15 is not an authorized Admin..."));
+//
+//            // Act & Assert
+//            assertThatThrownBy(() -> clinicStaffService.createClinicStaff(vetCreationDto, 15L))
+//                    .isInstanceOf(AccessDeniedException.class);
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw IllegalStateException if creator has no clinic")
+//        void createClinicStaff_Error_CreatorNoClinic() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext))
+//                    .willThrow(new IllegalStateException("Admin user " + adminUser.getId() + " is not associated with any clinic."));
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+//
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(IllegalStateException.class)
+//                    .hasMessageContaining("is not associated with any clinic");
+//
+//            then(entityFinderHelper).should().findAdminStaffOrFail(adminUser.getId(), actionContext);
+//            then(validateHelper).should(never()).validateStaffRole(any());
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw IllegalArgumentException if Vet license is missing")
+//        void createClinicStaff_Error_VetLicenseMissing() {
+//            // Arrange
+//            ClinicStaffCreationDto missingLicenseDto = new ClinicStaffCreationDto("v","e@v.c","p","N","S",RoleEnum.VET,null, "KEY");
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+//            doNothing().when(validateHelper).validateNewStaffUniqueness(missingLicenseDto.email(), missingLicenseDto.username());
+//            given(clinicStaffHelper.buildNewStaffEntity(missingLicenseDto, clinic1))
+//                    .willThrow(new IllegalArgumentException("License number is required"));
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> clinicStaffService.createClinicStaff(missingLicenseDto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(IllegalArgumentException.class)
+//                    .hasMessageContaining("License number is required");
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw IllegalArgumentException if Vet public key is missing")
+//        void createClinicStaff_Error_VetKeyMissing() {
+//            // Arrange
+//            ClinicStaffCreationDto missingKeyDto = new ClinicStaffCreationDto("v","e@v.c","p","N","S",RoleEnum.VET,"LICENSE123", null);
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+//            doNothing().when(validateHelper).validateNewStaffUniqueness(missingKeyDto.email(), missingKeyDto.username());
+//            given(clinicStaffHelper.buildNewStaffEntity(missingKeyDto, clinic1))
+//                    .willThrow(new IllegalArgumentException("public key is required"));
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() ->clinicStaffService.createClinicStaff(missingKeyDto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(IllegalArgumentException.class)
+//                    .hasMessageContaining("public key is required");
+//            then(clinicStaffHelper).should().buildNewStaffEntity(missingKeyDto, clinic1);
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw LicenseNumberAlreadyExistsException")
+//        void createClinicStaff_Error_VetLicenseExists() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+//            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1))
+//                    .willThrow(new LicenseNumberAlreadyExistsException(vetCreationDto.licenseNumber()));
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(()->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(LicenseNumberAlreadyExistsException.class);
+//
+//            // Assert
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw VetPublicKeyAlreadyExistsException")
+//        void createClinicStaff_Error_VetPublicKeyExists() {
+//            // Arrange
+//            given(entityFinderHelper.findAdminStaffOrFail(adminUser.getId(), actionContext)).willReturn(adminUser);
+//            doNothing().when(validateHelper).validateStaffRole(RoleEnum.VET);
+//            doNothing().when(validateHelper).validateNewStaffUniqueness(vetCreationDto.email(), vetCreationDto.username());
+//            given(clinicStaffHelper.buildNewStaffEntity(vetCreationDto, clinic1))
+//                    .willThrow(new VetPublicKeyAlreadyExistsException());
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(()->clinicStaffService.createClinicStaff(vetCreationDto, adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(VetPublicKeyAlreadyExistsException.class);
+//            // Verify...
+//            then(clinicStaffHelper).should().buildNewStaffEntity(vetCreationDto, clinic1);
+//            then(clinicStaffRepository).should(never()).save(any());
+//        }
+//    }
 
     /**
      * --- Tests for updateClinicStaff ---

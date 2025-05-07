@@ -72,10 +72,10 @@ public class UserMapper {
         UserProfileDto baseDto = mapToBaseProfileDTO(staff);
 
         String licenseNumber = null;
-        String vetPublicKey = null;
+        String vetPublicKeyPath = null;
         if (staff instanceof Vet vet) {
             licenseNumber = vet.getLicenseNumber();
-            vetPublicKey = vet.getVetPublicKey();
+            vetPublicKeyPath = vet.getVetPublicKey();
         }
 
         Long clinicId = (staff.getClinic() != null) ? staff.getClinic().getId() : null;
@@ -93,7 +93,7 @@ public class UserMapper {
                 clinicId,
                 clinicName,
                 licenseNumber,
-                vetPublicKey
+                vetPublicKeyPath
         );
     }
 

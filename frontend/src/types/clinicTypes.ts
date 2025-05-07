@@ -2,7 +2,7 @@ import { Country } from './enumTypes';
 export type { ClinicStaffProfile } from './authTypes'; 
 
 /**
- * Summary information for a Veterinarian, often used when listing vets associated with a Pet or Clinic.
+ * Summary information for a Veterinarian, often used when listing keys.vets associated with a Pet or Clinic.
  */
 export interface VetSummaryDto {
     /** The unique ID of the Vet user. */

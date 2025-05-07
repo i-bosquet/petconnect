@@ -7,7 +7,9 @@ import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffUpdateDto;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -25,6 +27,7 @@ public interface ClinicStaffService {
      * Validates uniqueness of email, username, and potentially license number for Vets.
      *
      * @param creationDTO DTO containing the details of the staff member to create.
+     * @param publicKeyFile The public key file for the staff member's digital signature capability can be null for an ADMIN role.
      * @param creatingAdminId The ID of the ADMIN user performing the creation (for authorization checks).
      * @return A DTO representing the profile of the newly created staff member.
      * @throws EmailAlreadyExistsException if email is taken.
@@ -35,7 +38,7 @@ public interface ClinicStaffService {
      *         or if required Vet fields are missing when a role is VET.
      * @throws AccessDeniedException if the creating user is not authorized.
      */
-    ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, Long creatingAdminId);
+    ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, @Nullable MultipartFile publicKeyFile, Long creatingAdminId);
 
     /**
      * Activates a previously deactivated Clinic Staff member account.

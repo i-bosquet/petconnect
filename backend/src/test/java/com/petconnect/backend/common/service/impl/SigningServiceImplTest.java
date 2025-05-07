@@ -125,7 +125,7 @@ class SigningServiceImplTest {
         @Test
         @DisplayName("generateVetSignature should throw RuntimeException if private key file not found")
         void generateVetSignature_Failure_KeyFileNotFound() {
-            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "keys/non_existent_vet_key.pem");
+            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "static/keys/non_existent_vet_key.pem");
             assertThatThrownBy(() -> signingService.generateVetSignature(testVet, "data"))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Failed to generate Vet digital signature");
@@ -161,7 +161,7 @@ class SigningServiceImplTest {
         @Test
         @DisplayName("generateClinicSignature should throw RuntimeException if private key file not found")
         void generateClinicSignature_Failure_KeyFileNotFound() {
-            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "keys/non_existent_clinic_key.pem");
+            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "static/keys/non_existent_clinic_key.pem");
             assertThatThrownBy(() -> signingService.generateClinicSignature(testClinic, "data"))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Failed to generate Clinic digital signature");

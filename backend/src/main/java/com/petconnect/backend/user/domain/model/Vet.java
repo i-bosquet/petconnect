@@ -35,12 +35,12 @@ public class Vet extends ClinicStaff {
     private String licenseNumber;
 
     /**
-     * The public cryptographic key associated with the veterinarian.
-     * Used for verifying digital signatures created by this vet (e.g., on medical records).
-     * Cannot be blank. Stored as TEXT for potentially long keys.
-     * Must be unique across all veterinarians.
+     * The path to the public cryptographic key file associated with the veterinarian,
+     * relative to the application's classpath.
+     * Used for verifying digital signatures created by this vet.
+     * Cannot be blank. Must be unique across all veterinarians.
      */
-    @NotBlank(message = "Veterinarian public key cannot be blank")
-    @Column(name = "vet_public_key", nullable = false, unique = true, columnDefinition = "TEXT")
+    @NotBlank(message = "Veterinarian public key path cannot be blank")
+    @Column(name = "vet_public_key", nullable = false, unique = true, length = 255)
     private String vetPublicKey;
 }

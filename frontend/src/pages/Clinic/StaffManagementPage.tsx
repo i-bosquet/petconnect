@@ -31,9 +31,9 @@ const StaffManagementPage = (): JSX.Element => {
     const [error, setError] = useState<string>('');
     const [showAddStaffModal, setShowAddStaffModal] = useState<boolean>(false);
 
-    // clinicId se extrae de forma segura
-    const clinicId = user && user.clinicId ? user.clinicId : null;
+    const clinicId = user?.clinicId;
     const isAdmin = user?.roles?.includes('ADMIN');
+
     console.log("StaffManagementPage - Extracted clinicId:", clinicId, "IsAdmin:", isAdmin);
 
     const fetchStaff = useCallback(async () => {
@@ -202,7 +202,7 @@ const StaffManagementPage = (): JSX.Element => {
                                         <TableCell className="text-right space-x-1">
                                              <Tooltip>
                                                  <TooltipTrigger asChild>
-                                                     <Button variant="ghost" size="icon" className="text-cyan-400 hover:text-cyan-300 h-8 w-8" onClick={() => { console.log("Edit staff:", staff.id)}}>
+                                                     <Button  size="icon" className="text-cyan-400 hover:bg-cyan-800 hover:text-[#FFECAB] h-8 w-8" onClick={() => { console.log("Edit staff:", staff.id)}}>
                                                          <Edit2 size={16} />
                                                      </Button>
                                                  </TooltipTrigger>

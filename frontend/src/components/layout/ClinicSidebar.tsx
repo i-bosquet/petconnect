@@ -67,7 +67,7 @@ const ClinicSidebar = ({
             </div>
 
             {/* Navigation Items */}
-            <nav className="space-y-1.5 flex-grow overflow-y-auto custom-scrollbar-dark">
+            <nav className="space-y-1.5 flex-grow">
                 {menuItems.map((item) => {
                     if (item.adminOnly && !currentStaff.roles.includes('ADMIN')) {
                         return null;

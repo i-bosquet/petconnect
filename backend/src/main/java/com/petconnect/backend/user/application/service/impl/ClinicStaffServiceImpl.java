@@ -3,6 +3,9 @@ package com.petconnect.backend.user.application.service.impl;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
+import com.petconnect.backend.common.service.KeyStorageService;
+import org.springframework.lang.Nullable;
+import org.springframework.web.multipart.MultipartFile;
 import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffUpdateDto;
@@ -16,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -34,18 +38,18 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
 
     private final ClinicStaffRepository clinicStaffRepository;
     private final UserMapper userMapper;
-
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
     private final ValidateHelper validateHelper;
     private final ClinicStaffHelper clinicStaffHelper;
+    private final KeyStorageService keyStorageService;
 
     /**
      * {@inheritDoc}
      */
     @Override
     @Transactional
-    public ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, Long creatingAdminId) {
+    public ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, @Nullable MultipartFile publicKeyFile, Long creatingAdminId) {
         // Verify the user performing the action is a valid Admin and get their clinic
         ClinicStaff creatingAdminStaff = entityFinderHelper.findAdminStaffOrFail(creatingAdminId, "create clinic staff");
         Clinic targetClinic = creatingAdminStaff.getClinic(); // New staff will belong to this admin's clinic
@@ -54,8 +58,29 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         validateHelper.validateStaffRole(creationDTO.role());
         validateHelper.validateNewStaffUniqueness(creationDTO.email(), creationDTO.username());
 
+        // --- Logic to save the public key BEFORE creating the Vet entity---
+        String publicKeyPath = null;
+        if (creationDTO.role() == RoleEnum.VET) {
+            if (publicKeyFile == null || publicKeyFile.isEmpty()) {
+                throw new IllegalArgumentException("Public Key file (.pem) is required for VET role.");
+            }
+            // Validate other VET (license) fields
+            validateHelper.validateVetLicenseNumber(creationDTO.licenseNumber());
+
+            try {
+                // Create a predictable filename, e.g., vet_<username>_pub
+                String desiredFilenameBase = "vet_" + creationDTO.username() + "_pub";
+                // Save in the "vets" subdirectory
+                publicKeyPath = keyStorageService.storePublicKey(publicKeyFile, "vets", desiredFilenameBase);
+                log.info("Stored public key for new vet {} at path: {}", creationDTO.username(), publicKeyPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store public key file for vet {}: {}", creationDTO.username(), e.getMessage(), e);
+                throw new RuntimeException("Failed to store public key file: " + e.getMessage(), e);
+            }
+        }
+
         // Create Entity (Vet or Admin)
-        ClinicStaff newStaff = clinicStaffHelper.buildNewStaffEntity(creationDTO, targetClinic);
+        ClinicStaff newStaff = clinicStaffHelper.buildNewStaffEntity(creationDTO, publicKeyPath, targetClinic);
 
         // Save and Map Response
         ClinicStaff savedStaff = clinicStaffRepository.save(newStaff);

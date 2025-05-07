@@ -9,6 +9,7 @@ import com.petconnect.backend.user.domain.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -46,20 +47,20 @@ public class ClinicStaffHelper {
      * @throws LicenseNumberAlreadyExistsException if the VET license number is already in use.
      * @throws VetPublicKeyAlreadyExistsException if the VET public key is already in use.
      */
-    public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto, Clinic targetClinic) {
+    public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto, @Nullable String publicKeyPath, Clinic targetClinic) {
         ClinicStaff newStaff;
         String defaultAvatarPath;
 
         if (dto.role() == RoleEnum.VET) {
-            // Validate VET-specific fields first
-            validateHelper.validateVetLicenseNumber(dto.licenseNumber());
-            validateHelper.validateVetPublicKey(dto.vetPublicKey(), null);
 
             Vet newVet = new Vet();
             setCommonStaffFields(newVet, dto, targetClinic); // Populate common fields
             // Set Vet specific fields
             newVet.setLicenseNumber(dto.licenseNumber());
-            newVet.setVetPublicKey(dto.vetPublicKey());
+            if (!StringUtils.hasText(publicKeyPath)) {
+                throw new IllegalStateException("Internal Error: PublicKey path is missing for VET creation."); // Defensive check
+            }
+            newVet.setVetPublicKey(publicKeyPath);
             defaultAvatarPath = getDefaultAvatarPath("vet.png");
             newVet.setAvatar(defaultAvatarPath);
             newStaff = newVet;

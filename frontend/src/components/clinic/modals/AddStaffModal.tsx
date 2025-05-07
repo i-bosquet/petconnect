@@ -1,6 +1,6 @@
-import { useState, FormEvent, ChangeEvent, JSX } from 'react'; 
+import { useState, FormEvent, ChangeEvent, JSX, useRef} from 'react'; 
 import Modal from '@/components/common/Modal';
-import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Hash, Loader2 } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2 } from 'lucide-react';
 import { RoleEnum } from '@/types/enumTypes';
 import { ClinicStaffCreationPayload, createClinicStaff } from '@/services/clinicStaffService';
 import { useAuth } from '@/hooks/useAuth'; 
@@ -13,7 +13,17 @@ interface AddStaffModalProps {
     clinicId: number | string; 
 }
 
-const initialFormData: Omit<ClinicStaffCreationPayload, 'clinicId'> = {
+interface StaffFormFields {
+    username: string;
+    email: string;
+    password: string;
+    name: string;
+    surname: string;
+    role: RoleEnum;
+    licenseNumber: string | null; 
+}
+
+const initialFormData: StaffFormFields = {
     username: '',
     email: '',
     password: '',
@@ -21,28 +31,51 @@ const initialFormData: Omit<ClinicStaffCreationPayload, 'clinicId'> = {
     surname: '',
     role: RoleEnum.VET, 
     licenseNumber: '',
-    vetPublicKey: ''
 };
 
 /**
  * AddStaffModal - Modal for Admins to create new Clinic Staff (Vets or Admins).
+ * Includes file upload for Vet's public key PEM file.
  *
  * @param {AddStaffModalProps} props - Component props.
  * @returns {JSX.Element | null} The modal component or null if not open.
  */
-const AddStaffModal = ({ isOpen, onClose, onStaffAdded }: AddStaffModalProps): JSX.Element | null => {
+const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffModalProps): JSX.Element | null => {
     const { token } = useAuth();
-    const [formData, setFormData] = useState<Omit<ClinicStaffCreationPayload, 'clinicId'>>(initialFormData);
+    const [formData, setFormData] = useState<StaffFormFields>(initialFormData);
     const [confirmPassword, setConfirmPassword] = useState<string>('');
+    const [selectedPublicKeyFile, setSelectedPublicKeyFile] = useState<File | null>(null);
+    const publicKeyFileInputRef = useRef<HTMLInputElement>(null);
     const [error, setError] = useState<string>('');
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false)
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-        if (name === "role" && value === RoleEnum.ADMIN.toString()) { 
-            setFormData(prev => ({ ...prev, licenseNumber: '', vetPublicKey: ''}));
+        if (name === "role" && value === RoleEnum.ADMIN.toString()) {
+            setFormData(prev => ({ ...prev, licenseNumber: ''}));
+            setSelectedPublicKeyFile(null); 
         }
+    };
+
+    const handlePublicKeyFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file.type === 'application/x-x509-ca-cert' || file.type === 'application/pkix-cert' || file.name.endsWith('.pem') || file.name.endsWith('.crt')) {
+                setSelectedPublicKeyFile(file);
+                setError('');
+            } else {
+                setSelectedPublicKeyFile(null);
+                e.target.value = ''; 
+                setError('Invalid file type. Please select a .pem or .crt file.');
+            }
+        } else {
+            setSelectedPublicKeyFile(null);
+        }
+    };
+
+    const triggerPublicKeyFileInput = () => {
+        publicKeyFileInputRef.current?.click();
     };
 
     const validateForm = (): boolean => {
@@ -58,9 +91,16 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded }: AddStaffModalProps): J
             setError("Password must be at least 8 characters long.");
             return false;
         }
-        if (formData.role === RoleEnum.VET && (!formData.licenseNumber || !formData.vetPublicKey)) {
-            setError("License Number and Public Key are required for VET role.");
-            return false;
+
+        if (formData.role === RoleEnum.VET) {
+            if (!formData.licenseNumber) {
+                 setError("License Number is required for VET role.");
+                 return false;
+            }
+            if (!selectedPublicKeyFile) { 
+                setError("Public Key file (.pem) is required for VET role.");
+                return false;
+            }
         }
         return true;
     };
@@ -72,14 +112,32 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded }: AddStaffModalProps): J
         if (!token) { setError("Authentication error."); return; }
 
         setIsLoading(true);
+
+        const submissionFormData = new FormData();
+
+        // Ensure the role is VET or ADMIN before passing it
+        const roleToSend: 'VET' | 'ADMIN' = formData.role === RoleEnum.VET ? 'VET' : 'ADMIN';
+
+        const staffDtoPayload: ClinicStaffCreationPayload = {
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+            name: formData.name,
+            surname: formData.surname,
+            role: roleToSend,
+            licenseNumber: roleToSend === 'VET' ? formData.licenseNumber : null,
+        };
+
+        submissionFormData.append('dto', new Blob([JSON.stringify(staffDtoPayload)], { type: 'application/json' }));
+
+        if (formData.role === RoleEnum.VET && selectedPublicKeyFile) {
+            submissionFormData.append('publicKeyFile', selectedPublicKeyFile, selectedPublicKeyFile.name);
+        }
+
         try {
-            const payload: ClinicStaffCreationPayload = {
-                ...formData,
-                licenseNumber: formData.role === RoleEnum.VET ? formData.licenseNumber : null,
-                vetPublicKey: formData.role === RoleEnum.VET ? formData.vetPublicKey : null,
-            };
-            await createClinicStaff(token, payload);
-            onStaffAdded(); 
+            await createClinicStaff(token, submissionFormData);
+            onStaffAdded();
+            console.log("Adding staff for clinic ID:", clinicId);
         } catch (err) {
             console.error("Failed to add staff:", err);
             setError(err instanceof Error ? err.message : 'Could not add staff member.');
@@ -171,27 +229,33 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded }: AddStaffModalProps): J
                         <div className="space-y-1">
                             <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-300">License Number *</label>
                             <div className="relative">
-                                <KeySquare size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input id="licenseNumber" name="licenseNumber" type="text" value={formData.licenseNumber || ''} onChange={handleChange} disabled={isLoading} required={formData.role === RoleEnum.VET}
+                                {/* ... licenseNumber input ... */}
+                                 <KeySquare size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                 <input id="licenseNumber" name="licenseNumber" type="text" value={formData.licenseNumber || ''} onChange={handleChange} disabled={isLoading} required={formData.role === RoleEnum.VET}
                                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600"/>
                             </div>
                         </div>
-                        {/* Vet Public Key */}
+                        {/* Vet Public Key File Upload */}
                         <div className="space-y-1">
-                             <label htmlFor="vetPublicKey" className="block text-sm font-medium text-gray-300">Public Key * <span className="text-xs text-gray-400">(PEM format)</span></label>
-                             <div className="relative">
-                                 <Hash size={16} className="absolute left-3 top-3 text-gray-400" /> 
-                                <textarea 
-                                    id="vetPublicKey" 
-                                    name="vetPublicKey" 
-                                    value={formData.vetPublicKey || ''} 
-                                    onChange={handleChange} 
-                                    disabled={isLoading} 
-                                    required={formData.role === RoleEnum.VET}
-                                    rows={3}
-                                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600 custom-scrollbar-dark"
-                                    placeholder="-----BEGIN PUBLIC KEY-----...-----END PUBLIC KEY-----"
+                             <label htmlFor="vetPublicKeyFile" className="block text-sm font-medium text-gray-300">Public Key File (.pem/.crt) *</label>
+                             <div className="mt-1 flex items-center gap-2">
+                                <Button type="button"  onClick={triggerPublicKeyFileInput} disabled={isLoading}
+                                        className="border-[#FFECAB]/50 text-cyan-800 bg-gray-300 text-sm px-3 py-1.5 hover:text-[#FFECAB] hover:border">
+                                    <Upload size={16} className="mr-2"/>
+                                    {selectedPublicKeyFile ? "Change File" : "Select File"}
+                                </Button>
+                                <input
+                                    id="vetPublicKeyFile"
+                                    name="vetPublicKeyFile"
+                                    type="file"
+                                    ref={publicKeyFileInputRef}
+                                    className="hidden"
+                                    accept=".pem,.crt,application/x-x509-ca-cert,application/pkix-cert"
+                                    onChange={handlePublicKeyFileChange}
+                                    disabled={isLoading}
                                 />
+                                 {selectedPublicKeyFile && <span className="text-xs text-gray-400 truncate max-w-xs">{selectedPublicKeyFile.name}</span>}
+                                 {!selectedPublicKeyFile && <span className="text-xs text-gray-500">No file selected</span>}
                              </div>
                         </div>
                     </div>

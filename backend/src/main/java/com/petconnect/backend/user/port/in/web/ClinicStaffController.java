@@ -9,8 +9,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Implementation of {@link ClinicStaffControllerApi}.
@@ -30,10 +33,12 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
      * {@inheritDoc}
      */
     @Override
-    @PostMapping("")
-    public ResponseEntity<ClinicStaffProfileDto> createClinicStaff(@Valid @RequestBody ClinicStaffCreationDto creationDTO) {
+    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ClinicStaffProfileDto> createClinicStaff(
+            @RequestPart("dto") @Valid ClinicStaffCreationDto creationDTO,
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile) {
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
-        ClinicStaffProfileDto createdStaff = clinicStaffService.createClinicStaff(creationDTO, currentAdminId);
+        ClinicStaffProfileDto createdStaff = clinicStaffService.createClinicStaff(creationDTO, publicKeyFile, currentAdminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdStaff);
     }
 

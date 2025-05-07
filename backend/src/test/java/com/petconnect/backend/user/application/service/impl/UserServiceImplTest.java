@@ -3,15 +3,11 @@ package com.petconnect.backend.user.application.service.impl;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.UserHelper;
-import com.petconnect.backend.common.helper.Utils;
 import com.petconnect.backend.common.service.ImageService;
 import com.petconnect.backend.exception.EntityNotFoundException;
-import com.petconnect.backend.exception.UsernameAlreadyExistsException;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.OwnerProfileDto;
-import com.petconnect.backend.user.application.dto.OwnerProfileUpdateDto;
 import com.petconnect.backend.user.application.dto.UserProfileDto;
-import com.petconnect.backend.user.application.dto.UserProfileUpdateDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicStaffRepository;
@@ -28,15 +24,11 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -681,8 +673,8 @@ class UserServiceImplTest {
 //            then(userMapper).should().updateOwnerFromDto(noChangeDto, ownerUser);
 //            then(ownerRepository).should(never()).save(any(Owner.class));
 //            then(userMapper).should().toOwnerProfileDto(ownerUser);
-//            then(imageService).should(never()).storeImage(any(), anyString());
-//            then(imageService).should(never()).deleteImage(anyString());
+//            then(fileService).should(never()).storeImage(any(), anyString());
+//            then(fileService).should(never()).deleteImage(anyString());
 //        }
 //
 //        @Test
@@ -751,8 +743,8 @@ class UserServiceImplTest {
 //            then(userMapper).should().updateClinicStaffCommonFromDto(updateDtoWithUsernameChange, adminUser);
 //            then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
 //            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
-//            then(imageService).should(never()).storeImage(any(), anyString());
-//            then(imageService).should(never()).deleteImage(anyString());
+//            then(fileService).should(never()).storeImage(any(), anyString());
+//            then(fileService).should(never()).deleteImage(anyString());
 //
 //            ClinicStaff saved = clinicStaffCaptor.getValue();
 //            assertThat(saved).isNotNull();
@@ -805,8 +797,8 @@ class UserServiceImplTest {
 //            then(userMapper).should().updateClinicStaffCommonFromDto(noUsernameChangeDto, adminUser);
 //            then(clinicStaffRepository).should(never()).save(any(ClinicStaff.class));
 //            then(userMapper).should().toClinicStaffProfileDto(adminUser);
-//            then(imageService).should(never()).storeImage(any(), anyString());
-//            then(imageService).should(never()).deleteImage(anyString());
+//            then(fileService).should(never()).storeImage(any(), anyString());
+//            then(fileService).should(never()).deleteImage(anyString());
 //        }
 //
 //        @Test
@@ -824,7 +816,7 @@ class UserServiceImplTest {
 //            then(userServiceHelper).should().getAuthenticatedUserEntity();
 //            then(authorizationHelper).should(never()).validateUsernameUpdate(any(), any());
 //            then(clinicStaffRepository).should(never()).save(any());
-//            then(imageService).should(never()).storeImage(any(), anyString());
+//            then(fileService).should(never()).storeImage(any(), anyString());
 //        }
 //
 //        @Test
@@ -839,9 +831,9 @@ class UserServiceImplTest {
 //            // Mocks setup
 //            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
 //            doNothing().when(authorizationHelper).validateUsernameUpdate(dtoWithUsernameChange.username(), adminUser);
-//            given(imageService.storeImage(imageFile, "users/avatars")).willReturn(newAvatarPath);
+//            given(fileService.storeImage(imageFile, "users/avatars")).willReturn(newAvatarPath);
 //            assertThat(oldAvatar).isNotEqualTo("images/avatars/users/admin.png");
-//            doNothing().when(imageService).deleteImage(oldAvatar);
+//            doNothing().when(fileService).deleteImage(oldAvatar);
 //
 //            when(userMapper.updateClinicStaffCommonFromDto(dtoWithUsernameChange, adminUser))
 //                    .thenAnswer(invocation -> {
@@ -874,10 +866,10 @@ class UserServiceImplTest {
 //            // Verify interactions
 //            then(userServiceHelper).should().getAuthenticatedUserEntity();
 //            then(authorizationHelper).should().validateUsernameUpdate(dtoWithUsernameChange.username(), adminUser);
-//            then(imageService).should().storeImage(imageFile, "users/avatars");
+//            then(fileService).should().storeImage(imageFile, "users/avatars");
 //            then(userMapper).should().updateClinicStaffCommonFromDto(dtoWithUsernameChange, adminUser);
 //            then(clinicStaffRepository).should().save(clinicStaffCaptor.capture());
-//            then(imageService).should().deleteImage(oldAvatar);
+//            then(fileService).should().deleteImage(oldAvatar);
 //            then(userMapper).should().toClinicStaffProfileDto(any(ClinicStaff.class));
 //
 //            ClinicStaff capturedStaff = clinicStaffCaptor.getValue();
@@ -892,7 +884,7 @@ class UserServiceImplTest {
 //            MockMultipartFile imageFile = new MockMultipartFile("avatar", "fail.jpg", MediaType.IMAGE_JPEG_VALUE, "img".getBytes());
 //            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
 //
-//            given(imageService.storeImage(imageFile, "users/avatars")).willThrow(new IOException("Disk full"));
+//            given(fileService.storeImage(imageFile, "users/avatars")).willThrow(new IOException("Disk full"));
 //
 //            // Act & Assert
 //            assertThatThrownBy(() -> userService.updateCurrentClinicStaffProfile(baseUpdateDto, imageFile))
@@ -901,10 +893,10 @@ class UserServiceImplTest {
 //
 //            then(userServiceHelper).should().getAuthenticatedUserEntity();
 //            then(authorizationHelper).should().validateUsernameUpdate(baseUpdateDto.username(), adminUser);
-//            then(imageService).should().storeImage(imageFile, "users/avatars");
+//            then(fileService).should().storeImage(imageFile, "users/avatars");
 //            then(userMapper).should(never()).updateClinicStaffCommonFromDto(any(), any());
 //            then(clinicStaffRepository).should(never()).save(any());
-//            then(imageService).should(never()).deleteImage(anyString());
+//            then(fileService).should(never()).deleteImage(anyString());
 //        }
 //    }
 }

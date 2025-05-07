@@ -17,29 +17,28 @@ export interface ClinicStaffCreationPayload {
     surname: string;
     role: 'VET' | 'ADMIN'; 
     licenseNumber?: string | null;
-    vetPublicKey?: string | null;
     }
 
 
 /**
  * Creates a new clinic staff member (Vet or Admin) for the admin's clinic.
+ * Sends data as multipart/form-data if a public key file is included for a VET.
  *
  * @param {string} token - The JWT token of the authenticated Admin.
- * @param {ClinicStaffCreationPayload} staffData - The data for the new staff member.
+ * @param {FormData} formData - The FormData object containing 'dto' (JSON blob) and optionally 'publicKeyFile'.
  * @returns {Promise<ClinicStaffProfile>} A promise resolving to the profile of the newly created staff member.
  * @throws {Error} Throws an error if creation fails.
  */
 export const createClinicStaff = async (
     token: string,
-    staffData: ClinicStaffCreationPayload
+    formData: FormData
 ): Promise<ClinicStaffProfile> => {
     if (!token) { throw new Error("Authentication token required."); }
 
     try {
-        const response = await axios.post<ClinicStaffProfile>(`${API_BASE_URL}/staff`, staffData, {
+        const response = await axios.post<ClinicStaffProfile>(`${API_BASE_URL}/staff`, formData, {
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
             }
         });
         return response.data;

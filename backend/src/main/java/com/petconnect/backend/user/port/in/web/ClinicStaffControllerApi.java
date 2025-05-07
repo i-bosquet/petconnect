@@ -14,7 +14,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -56,11 +58,12 @@ public interface ClinicStaffControllerApi {
             @ApiResponse(responseCode = "409", description = "Conflict (Username, Email, License Number, or Public Key already exists)",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Map.class)))
     })
-    @PostMapping("")
+    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ClinicStaffProfileDto> createClinicStaff(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Details for the new clinic staff member.", required = true,
-                    content = @Content(schema = @Schema(implementation = ClinicStaffCreationDto.class)))
-            @Valid @RequestBody ClinicStaffCreationDto creationDTO);
+            @Parameter(description = "Details for the new clinic staff member.", required = true, schema = @Schema(implementation = ClinicStaffCreationDto.class))
+            @RequestPart("dto") @Valid ClinicStaffCreationDto creationDTO,
+            @Parameter(description = "Vet's Public Key file (.pem/.crt) - Required if role is VET")
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
 
     /**
      * Updates the details of an existing clinic staff member.
