@@ -5,6 +5,7 @@ import { Specie, Gender } from '../../../types/enumTypes';
 import { PetRegistrationData, BreedDto } from '../../../types/apiTypes';
 import { registerPet, getBreedsBySpecie } from '../../../services/petService';
 import { BACKEND_BASE_URL } from '../../../config';
+import { Button } from "@/components/ui/button";
 
 interface AddPetModalProps {
     onClose: () => void;
@@ -267,16 +268,23 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                  {error && ( <p className="text-sm text-red-400 text-center">{error}</p> )}
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} disabled={isLoading}
-                            className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-[#FFECAB]/10 transition-colors disabled:opacity-50">
+                <div className="flex justify-end gap-4 pt-4"> {/* Mantenido pt-4 aquí, no pt-5 como en otros */}
+                    <Button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isLoading}
+                        className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50"
+                    >
                         Cancel
-                    </button>
-                    <button type="submit" disabled={isLoading}
-                            className="px-5 py-2.5 rounded-lg bg-cyan-700 text-white hover:bg-cyan-600 transition-colors disabled:opacity-50 flex items-center">
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50"
+                    >
                         {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                         {isLoading ? 'Adding Pet...' : 'Add Pet'}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </Modal>

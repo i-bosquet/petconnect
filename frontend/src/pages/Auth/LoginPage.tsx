@@ -1,20 +1,37 @@
 import React, { useState, JSX, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, User, Lock, LogIn } from "lucide-react";
-import { loginUser, getCurrentUserProfile} from "../../services/authService";
-import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal"; 
+import { loginUser, getCurrentUserProfile } from "../../services/authService";
+import {
+  UserProfile,
+  ClinicStaffProfile,
+  OwnerProfile,
+} from "@/types/apiTypes";
+import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal";
 
 /**
  * Represents the user data stored in session/local storage after successful login.
- * Adjust fields as needed based on what your application requires client-side.
+ * Should align with StoredUserDataType from useAuth.
  */
-interface StoredUser {
+interface StoredUserForStorage {
+  id: number | string;
   username: string;
+  email: string;
+  roles: string[];
+  avatar: string | null;
   jwt: string;
-  role: string;
-  id?: number | string;
-  email?: string;
-  avatar: string;
+
+  // Owner
+  phone?: string;
+
+  // ClinicStaff
+  name?: string;
+  surname?: string;
+  isActive?: boolean;
+  clinicId?: number | string;
+  clinicName?: string;
+  licenseNumber?: string | null;
+  vetPublicKey?: string | null;
 }
 
 /**
@@ -32,7 +49,8 @@ const LoginPage = (): JSX.Element => {
   const [error, setError] = useState<string>("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState<boolean>(false);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] =
+    useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -50,48 +68,72 @@ const LoginPage = (): JSX.Element => {
     setIsLoading(true);
 
     try {
-      const loginResponse = await loginUser({
-        username: username,
-        password: password,
-      });
+      const loginResponse = await loginUser({ username, password });
       console.log("Login API Response:", loginResponse);
 
-      if (loginResponse && loginResponse.jwt && loginResponse.status) {
+      if (loginResponse?.jwt && loginResponse.status) {
         const token = loginResponse.jwt;
-        const userProfile = await getCurrentUserProfile(token);
+        // userProfile is OwnerProfile or ClinicStaffProfile
+        const userProfile: UserProfile = await getCurrentUserProfile(token);
         console.log("Get User Profile Response:", userProfile);
 
-        const userRole = userProfile?.roles?.[0] || "UNKNOWN";
-        console.log("Role obtained from profile API:", userRole);
+        if (userProfile?.roles && userProfile.roles.length > 0) {
+          const primaryRole = userProfile.roles[0]; // Take the first role for redirection logic
 
-        if (userRole !== "UNKNOWN") {
-          const userDataToStore: StoredUser = {
-            username: userProfile.username || loginResponse.username,
-            jwt: token,
-            role: userRole,
+          // Build the object to be saved with all relevant fields
+          const userDataToStore: StoredUserForStorage = {
             id: userProfile.id,
+            username: userProfile.username,
             email: userProfile.email,
             avatar: userProfile.avatar,
+            roles: userProfile.roles, 
+            jwt: token,
           };
 
-          // Choose storage based on the 'rememberMe' state
+          // Add Owner-specific fields
+          if ("phone" in userProfile && (userProfile as OwnerProfile).phone) {
+            userDataToStore.phone = (userProfile as OwnerProfile).phone;
+          }
+
+          // Add ClinicStaff Specific Fields
+          if (
+            "clinicId" in userProfile &&
+            (userProfile as ClinicStaffProfile).clinicId
+          ) {
+            const staffProfile = userProfile as ClinicStaffProfile;
+            userDataToStore.name = staffProfile.name;
+            userDataToStore.surname = staffProfile.surname;
+            userDataToStore.isActive = staffProfile.isActive;
+            userDataToStore.clinicId = staffProfile.clinicId;
+            userDataToStore.clinicName = staffProfile.clinicName;
+            if (staffProfile.licenseNumber)
+              userDataToStore.licenseNumber = staffProfile.licenseNumber;
+            if (staffProfile.vetPublicKey)
+              userDataToStore.vetPublicKey = staffProfile.vetPublicKey;
+          }
+
           const storage = rememberMe ? localStorage : sessionStorage;
           storage.setItem("user", JSON.stringify(userDataToStore));
           console.log(
-            `User data and JWT stored in ${
+            `User data (including specific profile fields) stored in ${
               rememberMe ? "localStorage" : "sessionStorage"
-            }`
+            }:`,
+            userDataToStore
           );
 
-          // Redirect based on the verified role
-          if (userRole === "OWNER") {
+          // Redirection based on the primary role
+          if (primaryRole === "OWNER") {
             navigate("/pet", { replace: true });
-          } else if (userRole === "VET" || userRole === "ADMIN") {
+          } else if (primaryRole === "VET" || primaryRole === "ADMIN") {
             navigate("/clinic", { replace: true });
+          } else {
+            setError(
+              "Login successful, but user role is unrecognized for redirection."
+            );
           }
         } else {
           console.error(
-            "Could not determine user role from profile API response:",
+            "Could not determine user roles from profile API response:",
             userProfile
           );
           setError(
@@ -100,7 +142,7 @@ const LoginPage = (): JSX.Element => {
         }
       } else {
         setError(
-          loginResponse.message ||
+          loginResponse?.message ||
             "Login failed. Please check your credentials."
         );
       }
@@ -171,7 +213,9 @@ const LoginPage = (): JSX.Element => {
         {/* Right Login Form Section */}
         <div className="lg:flex-1 w-full max-w-lg mx-auto lg:mx-4">
           <div className="bg-[#090D1A] rounded-2xl shadow-xl p-8 border-2 border-[#FFECAB] transform transition-all hover:scale-[1.01]">
-            <h2 className="text-2xl font-semibold text-[#FFECAB] mb-6">Sign In</h2>
+            <h2 className="text-2xl font-semibold text-[#FFECAB] mb-6">
+              Sign In
+            </h2>
 
             {/* Error message display */}
             {error && (
@@ -222,13 +266,16 @@ const LoginPage = (): JSX.Element => {
                   </label>
                   {/* Forgot Password Link */}
                   <div className="flex justify-between items-center">
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-300"></label> 
-                      <button 
-                        type="button"
-                        onClick={openForgotPasswordModal}
-                        className="text-sm font-medium text-cyan-400 hover:text-cyan-600 focus:outline-none cursor-pointer"
-                      >
-                        Forgot password?
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-gray-300"
+                    ></label>
+                    <button
+                      type="button"
+                      onClick={openForgotPasswordModal}
+                      className="text-sm font-medium text-cyan-400 hover:text-cyan-600 focus:outline-none cursor-pointer"
+                    >
+                      Forgot password?
                     </button>
                   </div>
                 </div>
@@ -273,7 +320,7 @@ const LoginPage = (): JSX.Element => {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setRememberMe(e.target.checked)
                     }
-                    className="h-4 w-4 rounded border-gray-500 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-gray-800 bg-gray-700 cursor-pointer" 
+                    className="h-4 w-4 rounded border-gray-500 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-gray-800 bg-gray-700 cursor-pointer"
                   />
                   <label
                     htmlFor="remember-me"
@@ -324,9 +371,9 @@ const LoginPage = (): JSX.Element => {
       {/* Forgot Password Modal */}
       {isForgotPasswordModalOpen && (
         <ForgotPasswordModal
-        isOpen={isForgotPasswordModalOpen}
-        onClose={closeForgotPasswordModal}
-      />
+          isOpen={isForgotPasswordModalOpen}
+          onClose={closeForgotPasswordModal}
+        />
       )}
     </div>
   );

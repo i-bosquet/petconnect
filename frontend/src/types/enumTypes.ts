@@ -74,3 +74,14 @@ export enum RecordType {
   OTHER = "OTHER"
 }
 
+/**
+* Defines the types of medical records.
+*/
+export enum RoleEnum {
+   OWNER = 'OWNER',
+   VET = 'VET',         
+   ADMIN = 'ADMIN',
+   SUPERUSER = 'SUPERUSER',
+}
+
+

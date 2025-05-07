@@ -43,7 +43,7 @@ export interface ClinicStaffProfile {
   /** An array containing the user's assigned roles ( ["VET"], ["ADMIN"], ...). */
   roles: string[];
   /** The URL path to the user's avatar image. */
-  avatar: string;
+  avatar: string | null;
   /** The staff member's first name. */
   name: string;
   /** The staff member's surname. */

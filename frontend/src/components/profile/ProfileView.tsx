@@ -1,6 +1,7 @@
 import { JSX } from 'react';
 import { UserProfile, ClinicStaffProfile } from '@/types/apiTypes'; 
 import { Edit, Mail, Phone, Building, UserCheck, KeySquare, Hash } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 interface ProfileViewProps {
     userProfile: UserProfile;
@@ -72,7 +73,7 @@ const ProfileView = ({ userProfile, onEdit }: ProfileViewProps): JSX.Element => 
                          <Building size={16} className="text-gray-500 mt-0.5 flex-shrink-0" />
                          <div>
                              <span className="font-medium text-gray-400 block">Clinic:</span>
-                             <span className="text-white">{userProfile.clinicName} (ID: {userProfile.clinicId})</span>
+                             <span className="text-white">{userProfile.clinicName}</span>
                          </div>
                       </div>
                       <div className="flex items-start gap-2">
@@ -108,13 +109,13 @@ const ProfileView = ({ userProfile, onEdit }: ProfileViewProps): JSX.Element => 
 
             {/* Edit Button */}
             <div className="mt-6 pt-4 border-t border-[#FFECAB]/20 flex justify-end">
-                <button
+            <Button
                     onClick={onEdit}
-                    className="px-5 py-2.5 rounded-lg bg-cyan-700 text-white hover:bg-cyan-600 transition-colors flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50"
                 >
-                    <Edit size={16} />
+                    <Edit size={16} className="mr-2" />
                     Edit Profile
-                </button>
+                </Button>
             </div>
         </div>
     );

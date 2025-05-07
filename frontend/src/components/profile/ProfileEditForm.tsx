@@ -8,6 +8,7 @@ import {  UserProfile,
     OwnerProfileUpdateResponseDto,
     ClinicStaffProfileUpdateResponseDto} from '@/types/apiTypes'; 
 import { updateCurrentOwnerProfile, updateCurrentClinicStaffProfile } from '@/services/userService'; 
+import { Button } from "@/components/ui/button";
 
 interface ProfileEditFormProps {
     userProfile: UserProfile; // The current profile data
@@ -191,7 +192,7 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
                      />
                  </div>
 
-                {/* Email */}
+                {/* Email*/}
                  <div className="space-y-1">
                      <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email</label>
                      <input id="email" type="email" value={userProfile.email} readOnly disabled
@@ -215,6 +216,7 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
                 {/* STAFF Specific: Read-only fields */}
                 {isClinicStaffProfile(userProfile) && (
                     <>
+                        {/* ... campos read-only para staff ... */}
                          <div className="space-y-1">
                              <label className="block text-sm font-medium text-gray-300">First Name</label>
                              <p className="px-3 py-2 text-gray-400">{userProfile.name}</p>
@@ -223,6 +225,7 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
                              <label className="block text-sm font-medium text-gray-300">Surname</label>
                              <p className="px-3 py-2 text-gray-400">{userProfile.surname}</p>
                          </div>
+                         {/* ... etc ... */}
                     </>
                 )}
 
@@ -232,21 +235,24 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
              {error && ( <p className="mt-3 text-sm text-red-400 text-center">{error}</p> )}
 
              {/* Action Buttons */}
-             <div className="flex justify-end gap-4 pt-4 border-t border-[#FFECAB]/20 mt-6">
-                 <button
-                    type="button" onClick={onCancel} disabled={isLoading}
-                     className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-[#FFECAB]/10 transition-colors disabled:opacity-50"
-                 >
-                     Cancel
-                 </button>
-                 <button
-                     type="submit" disabled={isLoading}
-                     className="px-5 py-2.5 rounded-lg bg-cyan-700 text-white hover:bg-cyan-600 transition-colors disabled:opacity-50 flex items-center"
-                 >
-                     {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-                     {isLoading ? 'Saving...' : 'Save Changes'}
-                 </button>
-             </div>
+            <div className="flex justify-end gap-4 pt-4 border-t border-[#FFECAB]/20 mt-6">
+                <Button
+                    type="button"
+                    onClick={onCancel}
+                    disabled={isLoading}
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50" // Ajustar hover/focus
+                >
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50"
+                >
+                    {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
+                    {isLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
+            </div>
         </form>
     );
 };

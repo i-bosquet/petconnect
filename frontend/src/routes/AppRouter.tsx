@@ -10,6 +10,7 @@ import SignupPage from '../pages/Auth/SignupPage';
 import ResetPasswordPage from '../pages/Auth/ResetPasswordPage';
 import OwnerDashboardPage from '../pages/Owner/OwnerDashboardPage';
 import ClinicDashboardPage from '../pages/Clinic/ClinicDashboardPage';
+import StaffManagementPage from '../pages/Clinic/StaffManagementPage';
 import NotFoundPage from '../pages/NotFound/NotFoundPage';
 
 
@@ -31,12 +32,14 @@ const AppRouter = (): JSX.Element => {
 
        {/* Authenticated Routes*/}
        {/* Owner Routes */}
-      <Route element={<OwnerLayout />}> 
+       <Route path="/pet" element={<OwnerLayout />}>
         <Route path="/pet" element={<OwnerDashboardPage />} />
       </Route>
       {/* Clinic Routes */}
-      <Route element={<ClinicLayout />}> 
-        <Route path="/clinic" element={<ClinicDashboardPage />} />
+      <Route path="/clinic" element={<ClinicLayout />}> 
+        <Route index element={<ClinicDashboardPage />} />
+        <Route path="dashboard" element={<ClinicDashboardPage />} />
+        <Route path="staff" element={<StaffManagementPage />} /> 
       </Route>
 
       {/* Catch-all Not Found Route */}

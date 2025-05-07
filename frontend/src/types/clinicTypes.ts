@@ -32,3 +32,14 @@ export interface ClinicDto {
     phone: string;
     /* Note: publicKey is excluded as it's likely not needed often in UI lists/summaries */
 }
+
+export interface ClinicStaffCreationPayload {
+    username: string;
+    email: string;
+    password: string;
+    name: string;
+    surname: string;
+    role: 'VET' | 'ADMIN';
+    licenseNumber?: string | null;
+    vetPublicKey?: string | null;
+}
