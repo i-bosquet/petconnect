@@ -111,7 +111,7 @@ const ProfileView = ({ userProfile, onEdit }: ProfileViewProps): JSX.Element => 
             <div className="mt-6 pt-4 border-t border-[#FFECAB]/20 flex justify-end">
             <Button
                     onClick={onEdit}
-                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
                 >
                     <Edit size={16} className="mr-2" />
                     Edit Profile

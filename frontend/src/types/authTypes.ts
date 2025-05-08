@@ -2,13 +2,9 @@
  * Structure of the response received after successful authentication (login).
  */
 export interface AuthResponse {
-  /** The username of the authenticated user. */
   username: string;
-  /** A confirmation message from the server. */
   message: string;
-  /** The JSON Web Token (JWT) for subsequent authenticated requests. */
   jwt: string;
-  /** Status indicating authentication success (true). */
   status: boolean;
 }
 
@@ -16,17 +12,11 @@ export interface AuthResponse {
  * Profile details specific to a Pet Owner user.
  */
 export interface OwnerProfile {
-  /** The unique ID of the user. */
   id: number | string;
-  /** The user's unique username. */
   username: string;
-  /** The user's unique email address. */
   email: string;
-  /** An array containing the user's assigned roles (typically ["OWNER"]). */
   roles: string[];
-  /** The URL path to the user's avatar image. */
   avatar: string;
-  /** The owner's contact phone number. */
   phone: string;
 }
 
@@ -34,32 +24,24 @@ export interface OwnerProfile {
  * Profile details specific to a Clinic Staff user (Vet or Admin).
  */
 export interface ClinicStaffProfile {
-  /** The unique ID of the user. */
   id: number | string;
-  /** The user's unique username. */
   username: string;
-  /** The user's unique email address. */
   email: string;
-  /** An array containing the user's assigned roles ( ["VET"], ["ADMIN"], ...). */
   roles: string[];
-  /** The URL path to the user's avatar image. */
   avatar: string | null;
-  /** The staff member's first name. */
   name: string;
-  /** The staff member's surname. */
   surname: string;
-  /** Indicates if the staff account is currently active. */
   isActive: boolean;
-  /** The ID of the clinic this staff member belongs to. */
   clinicId: number | string;
-  /** The name of the clinic this staff member belongs to. */
   clinicName: string;
-  /** The veterinarian's license number (only applicable if role is VET). */
   licenseNumber?: string | null;
-  /** The veterinarian's public cryptographic key (only applicable if role is VET). */
   vetPublicKey?: string | null;
+  createdAt?: string | null;
+  createdBy?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
 }
-
+  
 /**
  * Represents a user profile which can be either an OwnerProfile or a ClinicStaffProfile.
  */
@@ -70,13 +52,9 @@ export type UserProfile = OwnerProfile | ClinicStaffProfile;
  * matching the backend API endpoint requirement.
  */
 export interface OwnerRegistrationDto {
-  /** The user's unique username. */
   username: string;
-  /** The user's unique email address. */
   email: string;
-  /** The user's chosen password (plain text, will be hashed by backend). */
   password: string;
-  /** The owner's contact phone number. */
   phone: string;
 }
 

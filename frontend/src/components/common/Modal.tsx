@@ -45,7 +45,7 @@ const Modal = ({ title, children, onClose, maxWidth = 'max-w-lg' }: ModalProps):
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-[#FFECAB] p-1 rounded-full hover:bg-cyan-900/50"
+                        className="text-gray-400 hover:text-[#FFECAB] p-1 rounded-full hover:bg-cyan-900/50 cursor-pointer"
                         aria-label="Close modal"
                     >
                         <X size={24} />

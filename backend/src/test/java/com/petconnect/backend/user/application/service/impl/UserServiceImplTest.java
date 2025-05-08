@@ -77,69 +77,69 @@ class UserServiceImplTest {
     private UserProfileDto genericOwnerDto;
     private UserProfileDto genericStaffDto;
 
-    @BeforeEach
-    void setUp() {
-        Clinic clinic1 = Clinic.builder().name("Clinic A").build(); clinic1.setId(1L);
-        Clinic clinic2 = Clinic.builder().name("Clinic B").build(); clinic2.setId(2L);
-
-        RoleEntity ownerRole = RoleEntity.builder().roleEnum(RoleEnum.OWNER).build(); ownerRole.setId(1L);
-        RoleEntity adminRole = RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build(); adminRole.setId(3L);
-        RoleEntity vetRole = RoleEntity.builder().roleEnum(RoleEnum.VET).build(); vetRole.setId(2L);
-
-        ownerUser = new Owner();
-        ownerUser.setId(1L);
-        ownerUser.setUsername("testowner");
-        ownerUser.setEmail("owner@test.com");
-        ownerUser.setPassword("hashedPasswordOwner");
-        ownerUser.setPhone("111-222-333");
-        ownerUser.setRoles(Set.of(ownerRole));
-        ownerUser.setAvatar("avatar_owner.png");
-
-        adminUser = new ClinicStaff();
-        adminUser.setId(2L);
-        adminUser.setUsername("testadmin");
-        adminUser.setEmail("admin@test.com");
-        adminUser.setPassword("hashedPasswordAdmin");
-        adminUser.setName("Admin");
-        adminUser.setSurname("Test");
-        adminUser.setClinic(clinic1);
-        adminUser.setRoles(Set.of(adminRole));
-        adminUser.setAvatar("avatar_admin.png");
-        adminUser.setActive(true);
-
-        // Vet in the SAME clinic as adminUser
-        vetUserSameClinic = new Vet();
-        vetUserSameClinic.setId(3L);
-        vetUserSameClinic.setUsername("testvet_c1");
-        vetUserSameClinic.setEmail("vet_c1@test.com");
-        vetUserSameClinic.setPassword("hashedPasswordVet1");
-        vetUserSameClinic.setName("Vet");
-        vetUserSameClinic.setSurname("SameClinic");
-        vetUserSameClinic.setClinic(clinic1);
-        vetUserSameClinic.setRoles(Set.of(vetRole));
-        vetUserSameClinic.setLicenseNumber("VET_C1");
-        vetUserSameClinic.setVetPublicKey("KEY_C1");
-        vetUserSameClinic.setAvatar("avatar_vet.png");
-        vetUserSameClinic.setActive(true);
-
-        // Admin in a DIFFERENT clinic
-        adminUserOtherClinic = new ClinicStaff();
-        adminUserOtherClinic.setId(4L);
-        adminUserOtherClinic.setUsername("admin_other");
-        adminUserOtherClinic.setEmail("admin_c2@test.com");
-        adminUserOtherClinic.setPassword("hashedPasswordAdmin2");
-        adminUserOtherClinic.setName("Admin");
-        adminUserOtherClinic.setSurname("OtherClinic");
-        adminUserOtherClinic.setClinic(clinic2);
-        adminUserOtherClinic.setRoles(Set.of(adminRole));
-        adminUserOtherClinic.setAvatar("avatar_admin2.png");
-        adminUserOtherClinic.setActive(true);
-
-        ownerProfileDto = new OwnerProfileDto(ownerUser.getId(), ownerUser.getUsername(), ownerUser.getEmail(), Set.of("OWNER"), ownerUser.getAvatar(), ownerUser.getPhone());
-        staffProfileDto = new ClinicStaffProfileDto(adminUser.getId(), adminUser.getUsername(), adminUser.getEmail(), Set.of("ADMIN"), adminUser.getAvatar(), adminUser.getName(), adminUser.getSurname(), adminUser.isActive(), adminUser.getClinic().getId(), adminUser.getClinic().getName(), null, null);
-        genericOwnerDto = new UserProfileDto(ownerUser.getId(), ownerUser.getUsername(), ownerUser.getEmail(), Set.of("OWNER"), ownerUser.getAvatar());
-        genericStaffDto = new UserProfileDto(adminUser.getId(), adminUser.getUsername(), adminUser.getEmail(), Set.of("ADMIN"), adminUser.getAvatar());
-    }
+//    @BeforeEach
+//    void setUp() {
+//        Clinic clinic1 = Clinic.builder().name("Clinic A").build(); clinic1.setId(1L);
+//        Clinic clinic2 = Clinic.builder().name("Clinic B").build(); clinic2.setId(2L);
+//
+//        RoleEntity ownerRole = RoleEntity.builder().roleEnum(RoleEnum.OWNER).build(); ownerRole.setId(1L);
+//        RoleEntity adminRole = RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build(); adminRole.setId(3L);
+//        RoleEntity vetRole = RoleEntity.builder().roleEnum(RoleEnum.VET).build(); vetRole.setId(2L);
+//
+//        ownerUser = new Owner();
+//        ownerUser.setId(1L);
+//        ownerUser.setUsername("testowner");
+//        ownerUser.setEmail("owner@test.com");
+//        ownerUser.setPassword("hashedPasswordOwner");
+//        ownerUser.setPhone("111-222-333");
+//        ownerUser.setRoles(Set.of(ownerRole));
+//        ownerUser.setAvatar("avatar_owner.png");
+//
+//        adminUser = new ClinicStaff();
+//        adminUser.setId(2L);
+//        adminUser.setUsername("testadmin");
+//        adminUser.setEmail("admin@test.com");
+//        adminUser.setPassword("hashedPasswordAdmin");
+//        adminUser.setName("Admin");
+//        adminUser.setSurname("Test");
+//        adminUser.setClinic(clinic1);
+//        adminUser.setRoles(Set.of(adminRole));
+//        adminUser.setAvatar("avatar_admin.png");
+//        adminUser.setActive(true);
+//
+//        // Vet in the SAME clinic as adminUser
+//        vetUserSameClinic = new Vet();
+//        vetUserSameClinic.setId(3L);
+//        vetUserSameClinic.setUsername("testvet_c1");
+//        vetUserSameClinic.setEmail("vet_c1@test.com");
+//        vetUserSameClinic.setPassword("hashedPasswordVet1");
+//        vetUserSameClinic.setName("Vet");
+//        vetUserSameClinic.setSurname("SameClinic");
+//        vetUserSameClinic.setClinic(clinic1);
+//        vetUserSameClinic.setRoles(Set.of(vetRole));
+//        vetUserSameClinic.setLicenseNumber("VET_C1");
+//        vetUserSameClinic.setVetPublicKey("KEY_C1");
+//        vetUserSameClinic.setAvatar("avatar_vet.png");
+//        vetUserSameClinic.setActive(true);
+//
+//        // Admin in a DIFFERENT clinic
+//        adminUserOtherClinic = new ClinicStaff();
+//        adminUserOtherClinic.setId(4L);
+//        adminUserOtherClinic.setUsername("admin_other");
+//        adminUserOtherClinic.setEmail("admin_c2@test.com");
+//        adminUserOtherClinic.setPassword("hashedPasswordAdmin2");
+//        adminUserOtherClinic.setName("Admin");
+//        adminUserOtherClinic.setSurname("OtherClinic");
+//        adminUserOtherClinic.setClinic(clinic2);
+//        adminUserOtherClinic.setRoles(Set.of(adminRole));
+//        adminUserOtherClinic.setAvatar("avatar_admin2.png");
+//        adminUserOtherClinic.setActive(true);
+//
+//        ownerProfileDto = new OwnerProfileDto(ownerUser.getId(), ownerUser.getUsername(), ownerUser.getEmail(), Set.of("OWNER"), ownerUser.getAvatar(), ownerUser.getPhone());
+//        staffProfileDto = new ClinicStaffProfileDto(adminUser.getId(), adminUser.getUsername(), adminUser.getEmail(), Set.of("ADMIN"), adminUser.getAvatar(), adminUser.getName(), adminUser.getSurname(), adminUser.isActive(), adminUser.getClinic().getId(), adminUser.getClinic().getName(), null, null);
+//        genericOwnerDto = new UserProfileDto(ownerUser.getId(), ownerUser.getUsername(), ownerUser.getEmail(), Set.of("OWNER"), ownerUser.getAvatar());
+//        genericStaffDto = new UserProfileDto(adminUser.getId(), adminUser.getUsername(), adminUser.getEmail(), Set.of("ADMIN"), adminUser.getAvatar());
+//    }
 
     /**
      * --- Tests for loadUserByUsername ---

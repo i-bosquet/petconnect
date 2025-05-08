@@ -44,6 +44,9 @@ public class JwtUtils {
     public String createToken(Authentication authentication) {
         Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
 
+        long nowMillis = System.currentTimeMillis();
+        long expirationMillis = nowMillis + (8 * 60 * 60 * 1000); // 8 HOURS
+
         String userId = authentication.getPrincipal().toString();
 
         String authorities = authentication.getAuthorities()
@@ -55,10 +58,10 @@ public class JwtUtils {
                 .withIssuer(this.userGenerator)
                 .withSubject(userId)
                 .withClaim("authorities", authorities)
-                .withIssuedAt(new Date())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1800000)) // 30 min
+                .withIssuedAt(new Date(nowMillis))
+                .withExpiresAt(new Date(expirationMillis))
                 .withJWTId(UUID.randomUUID().toString())
-                .withNotBefore(new Date(System.currentTimeMillis()))
+                .withNotBefore(new Date(nowMillis))
                 .sign(algorithm);
     }
 

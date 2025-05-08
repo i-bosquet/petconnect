@@ -1,13 +1,5 @@
-import { useState, useEffect, useCallback, JSX } from "react";
-import {
-  PlusCircle,
-  Users,
-  Loader2,
-  AlertCircle,
-  Edit2,
-  UserCheck,
-  UserX,
-} from "lucide-react";
+import { useState, useEffect, useCallback, useMemo, JSX, ChangeEvent} from "react";
+import {UserRoundPlus, Users, Loader2, AlertCircle, Edit2, UserCheck, UserX, Search} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -24,7 +16,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import AddStaffModal from "@/components/clinic/modals/AddStaffModal";
+import StaffDetailModal from "@/components/clinic/modals/StaffDetailModal";
 import { ClinicStaffProfile } from "@/types/apiTypes";
 import {
   getAllStaffForClinic,
@@ -46,6 +42,12 @@ const StaffManagementPage = (): JSX.Element => {
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [showAddStaffModal, setShowAddStaffModal] = useState<boolean>(false);
+  const [selectedStaff, setSelectedStaff] = useState<ClinicStaffProfile | null>(
+    null
+  );
+  const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showOnlyActive, setShowOnlyActive] = useState<boolean>(true);
 
   const clinicId = user?.clinicId;
   const isAdmin = user?.roles?.includes("ADMIN");
@@ -92,7 +94,7 @@ const StaffManagementPage = (): JSX.Element => {
   }, [fetchStaff, isAdmin, user, isLoadingAuth]);
 
   const handleStaffAdded = () => {
-    fetchStaff(); // Refrescar lista
+    fetchStaff();
     setShowAddStaffModal(false);
   };
 
@@ -105,30 +107,58 @@ const StaffManagementPage = (): JSX.Element => {
       );
       return;
     }
-    const originalStaffList = [...staffList];
-    setStaffList((prevList) =>
-      prevList.map((s) =>
-        s.id === staffMember.id ? { ...s, isActive: !s.isActive } : s
-      )
-    );
-    setError("");
+    setError('');
+    setIsLoadingData(true); 
 
     try {
       if (staffMember.isActive) {
-        await deactivateStaffMember(token, staffMember.id);
+          await deactivateStaffMember(token, staffMember.id);
       } else {
-        await activateStaffMember(token, staffMember.id);
+          await activateStaffMember(token, staffMember.id);
       }
-      await fetchStaff();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : `Failed to update status for ${staffMember.username}.`
-      );
-      setStaffList(originalStaffList);
-    }
+      await fetchStaff(); 
+  } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to update status for ${staffMember.username}.`);
+       setIsLoadingData(false); 
+  }
   };
+
+  const handleOpenDetailModal = (staff: ClinicStaffProfile) => {
+    setSelectedStaff(staff);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setSelectedStaff(null);
+    setShowDetailModal(false);
+  };
+
+  const handleStaffUpdateInModal = () => {
+    setShowDetailModal(false);
+    fetchStaff();
+  };
+
+  // Filter and Search
+  const filteredStaffList = useMemo(() => {
+    console.log("Recalculating filtered list:", { count: staffList.length, term: searchTerm, activeOnly: showOnlyActive });
+        return staffList.filter((staff) => {
+          if (showOnlyActive && !staff.isActive) {
+            return false;
+          }
+          if (searchTerm) {
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            if (
+              !(staff.name?.toLowerCase().includes(lowerSearchTerm) ||
+              staff.surname?.toLowerCase().includes(lowerSearchTerm) ||
+              staff.username?.toLowerCase().includes(lowerSearchTerm) ||
+              staff.email?.toLowerCase().includes(lowerSearchTerm))
+            ) {
+              return false; 
+            }
+          }
+          return true;
+        });
+      }, [staffList, searchTerm, showOnlyActive]);
 
   if (isLoadingAuth) {
     return (
@@ -151,6 +181,7 @@ const StaffManagementPage = (): JSX.Element => {
       </div>
     );
   }
+
   if (!clinicId && isAdmin) {
     return (
       <div className="p-6 text-center bg-[#0c1225]/50 rounded-lg border border-red-500/30">
@@ -167,65 +198,94 @@ const StaffManagementPage = (): JSX.Element => {
 
   return (
     <div className="space-y-6">
+      {/* Header*/}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-[#FFECAB] flex items-center">
-          <Users className="mr-3 h-7 w-7 text-cyan-400" />
-          Staff Management
-        </h1>
-        <Button
-          onClick={() => setShowAddStaffModal(true)}
-          variant="outline"
-          className="bg-cyan-700 hover:bg-cyan-600 text-[#FFECAB] border-cyan-600 hover:border-cyan-500"
-        >
-          <PlusCircle size={18} className="mr-2" />
-          Add New Staff
-        </Button>
+          <Users className="mr-3 h-7 w-7 text-cyan-400" />Staff Management</h1>
+        <div className="flex items-center gap-4">
+          {/* Search */}
+          <div className="relative">
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+            <Input
+              type="text"
+              placeholder="Search name, email..."
+              value={searchTerm}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setSearchTerm(e.target.value)
+              }
+              className="pl-10 pr-3 py-2 h-9 w-40 sm:w-56 border-gray-700 bg-[#070913]/80 rounded-md focus:ring-cyan-600"
+            />
+          </div>
+          {/* Filter*/}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="active-filter"
+              checked={showOnlyActive}
+              onCheckedChange={(checked) => setShowOnlyActive(!!checked)}
+              className="data-[state=checked]:bg-cyan-600 data-[state=checked]:text-white border-gray-500"
+            />
+            <Label
+              htmlFor="active-filter"
+              className="text-sm font-medium text-gray-300 cursor-pointer"
+            >
+              Active Only
+            </Label>
+          </div>
+          {/* Add Staff Button */}
+          <Button
+            onClick={() => setShowAddStaffModal(true)}
+            className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
+          >
+            <UserRoundPlus size={18} className="mr-2" />
+            Add New Staff
+          </Button>
+        </div>
       </div>
 
+      {/* Error message */}
       {error && (
         <div className="p-3 text-center text-red-400 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center justify-center gap-2">
           <AlertCircle size={20} /> {error}
         </div>
       )}
 
+      {/* Carrd */}
       <Card className="border-2 border-[#FFECAB]/30 bg-[#0c1225]/70 shadow-xl">
         <CardHeader>
           <CardTitle className="text-[#FFECAB]">Clinic Staff List</CardTitle>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="p-0">
           {isLoadingData ? (
             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
               <span className="ml-2 text-gray-400">Loading staff list...</span>
             </div>
-          ) : staffList.length === 0 && !error ? (
+          ) : filteredStaffList.length === 0 ? (
             <p className="text-center text-gray-400 py-8">
-              No staff members found for this clinic.
+            {searchTerm || !showOnlyActive ? 'No staff members match your filters.' : 'No active staff members found for this clinic.'}
             </p>
-          ) : staffList.length > 0 ? (
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow className="border-b-[#FFECAB]/20">
-                  <TableHead className="text-[#FFECAB]/80">Name</TableHead>
-                  <TableHead className="text-[#FFECAB]/80 hidden md:table-cell">
-                    Email
-                  </TableHead>
+                  <TableHead className="text-[#FFECAB]/80  pl-6">Name</TableHead>
+                  <TableHead className="text-[#FFECAB]/80 hidden md:table-cell">Email</TableHead>
                   <TableHead className="text-[#FFECAB]/80">Role(s)</TableHead>
-                  <TableHead className="text-[#FFECAB]/80 text-center">
-                    Status
-                  </TableHead>
-                  <TableHead className="text-[#FFECAB]/80 text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead className="text-[#FFECAB]/80 text-center">Status</TableHead>
+                  <TableHead className="text-[#FFECAB]/80 text-right pr-6">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staffList.map((staff) => (
+              {filteredStaffList.map((staff) => (
                   <TableRow
                     key={staff.id}
                     className="border-b-[#FFECAB]/10 hover:bg-[#FFECAB]/5"
                   >
-                    <TableCell>
+                    <TableCell className="pl-6">
                       <div className="flex items-center gap-3">
                         <img
                           src={
@@ -279,15 +339,13 @@ const StaffManagementPage = (): JSX.Element => {
                         {staff.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
+                    <TableCell className="text-right space-x-1 pr-6">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="icon"
-                            className="text-cyan-400 hover:bg-cyan-800 hover:text-[#FFECAB] h-8 w-8"
-                            onClick={() => {
-                              console.log("Edit staff:", staff.id);
-                            }}
+                            className="text-cyan-400 hover:bg-cyan-800 hover:text-[#FFECAB] h-8 w-8 cursor-pointer"
+                            onClick={() => handleOpenDetailModal(staff)}
                           >
                             <Edit2 size={16} />
                           </Button>
@@ -304,7 +362,7 @@ const StaffManagementPage = (): JSX.Element => {
                               staff.isActive
                                 ? "text-red-400 hover:text-[#FFECAB] hover:bg-red-800"
                                 : "text-cyan-400 hover:text-[#FFECAB] hover:bg-cyan-700"
-                            }`}
+                            } cursor-pointer`}
                             onClick={() => handleToggleStaffStatus(staff)}
                             disabled={user?.id === staff.id}
                             title={
@@ -337,21 +395,27 @@ const StaffManagementPage = (): JSX.Element => {
                 ))}
               </TableBody>
             </Table>
-          ) : null}
-          {!isLoadingData && !error && staffList.length === 0 && (
-            <p className="text-center text-gray-400 py-8">
-              No staff members found for this clinic.
-            </p>
           )}
         </CardContent>
       </Card>
 
+      {/* Add Staff Modal */}
       {showAddStaffModal && clinicId && (
         <AddStaffModal
           isOpen={showAddStaffModal}
           onClose={() => setShowAddStaffModal(false)}
           onStaffAdded={handleStaffAdded}
           clinicId={clinicId as number | string}
+        />
+      )}
+
+      {/* Staff Detail Modal */}
+      {showDetailModal && selectedStaff && (
+        <StaffDetailModal
+          isOpen={showDetailModal}
+          onClose={handleCloseDetailModal}
+          staffProfileInitial={selectedStaff}
+          onStaffUpdate={handleStaffUpdateInModal}
         />
       )}
     </div>

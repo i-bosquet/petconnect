@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"; 
-import ClinicSearchModal from "@/components/clinic/ClinicSearchModal"; 
+import ClinicSearchModal from "@/components/clinic/modals/ClinicSearchModal"; 
 import Footer from "@/components/layout/Footer";
 
 /**

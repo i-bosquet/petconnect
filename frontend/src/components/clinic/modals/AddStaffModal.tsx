@@ -1,6 +1,6 @@
 import { useState, FormEvent, ChangeEvent, JSX, useRef} from 'react'; 
 import Modal from '@/components/common/Modal';
-import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2, Eye, EyeOff  } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2, Eye, EyeOff, CircleX, SaveAll  } from 'lucide-react';
 import { RoleEnum, ClinicStaffCreationPayload } from '@/types/apiTypes';
 import { createClinicStaff } from '@/services/clinicStaffService';
 import { useAuth } from '@/hooks/useAuth'; 
@@ -251,7 +251,7 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                         <div className="space-y-1">
                             <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-300">License Number *</label>
                             <div className="relative">
-                                {/* ... licenseNumber input ... */}
+                                {/* licenseNumber input*/}
                                  <KeySquare size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                  <input id="licenseNumber" name="licenseNumber" type="text" value={formData.licenseNumber || ''} onChange={handleChange} disabled={isLoading} required={formData.role === RoleEnum.VET}
                                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600"/>
@@ -262,7 +262,7 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                              <label htmlFor="vetPublicKeyFile" className="block text-sm font-medium text-gray-300">Public Key File (.pem/.crt) *</label>
                              <div className="mt-1 flex items-center gap-2">
                                 <Button type="button"  onClick={triggerPublicKeyFileInput} disabled={isLoading}
-                                        className="border-[#FFECAB]/50 text-cyan-800 bg-gray-300 text-sm px-3 py-1.5 hover:text-[#FFECAB] hover:border">
+                                        className="border-[#FFECAB]/50 text-sm px-3 py-1.5 text-[#FFECAB]  hover:text-cyan-800 hover:bg-gray-300 border cursor-pointer">
                                     <Upload size={16} className="mr-2"/>
                                     {selectedPublicKeyFile ? "Change File" : "Select File"}
                                 </Button>
@@ -286,13 +286,15 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 pt-5">
                     <Button type="button" onClick={onClose} disabled={isLoading}
-                            className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 transition-colors disabled:opacity-50"
-                            >
+                            className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50 cursor-pointer">
+    <CircleX size={16} className="mr-2"  />
                                 Cancel
                     </Button>
-                    <Button type="submit" disabled={isLoading} className="border border-[#FFECAB]/50 bg-cyan-800 hover:bg-cyan-600 text-[#FFECAB]">
+                    <Button type="submit" disabled={isLoading} 
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer">
+                        <SaveAll size={16} className="mr-2" />
                         {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-                        {isLoading ? 'Adding Staff...' : 'Add Staff'}
+                        {isLoading ? 'Adding Staff...' : 'Save Staff'}
                     </Button>
                 </div>
             </form>

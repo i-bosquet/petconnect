@@ -1,10 +1,9 @@
 import { useState, useEffect, JSX, ChangeEvent, FormEvent } from 'react';
 import { Search, MapPin, PhoneCall, Globe } from 'lucide-react';
-import { findClinics, getClinicCountries } from '../../services/clinicService'; 
-import { ClinicDto, Page, ApiErrorResponse } from '../../types/apiTypes'; 
-import { Country } from '../../types/enumTypes'; 
-import Modal from '../common/Modal'; 
-import Pagination from '../common/Pagination'; 
+import { findClinics, getClinicCountries } from '@/services/clinicService'; 
+import { ClinicDto, Page, ApiErrorResponse, Country } from '@/types/apiTypes'; 
+import Modal from '@/components/common/Modal'; 
+import Pagination from '@/components/common/Pagination'; 
 import { AxiosError } from 'axios';
 
 // --- Component Props ---

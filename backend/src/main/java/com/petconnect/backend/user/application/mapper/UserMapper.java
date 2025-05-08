@@ -93,7 +93,11 @@ public class UserMapper {
                 clinicId,
                 clinicName,
                 licenseNumber,
-                vetPublicKeyPath
+                vetPublicKeyPath,
+                staff.getCreatedAt(),
+                staff.getCreatedBy(),
+                staff.getUpdatedAt(),
+                staff.getUpdatedBy()
         );
     }
 

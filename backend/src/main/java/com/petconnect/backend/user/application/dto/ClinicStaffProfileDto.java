@@ -1,5 +1,6 @@
 package com.petconnect.backend.user.application.dto;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
@@ -34,6 +35,10 @@ public record ClinicStaffProfileDto(
         String clinicName, // Include clinic name for convenience
         // Only for vets:
         String licenseNumber,
-        String vetPublicKey
+        String vetPublicKey,
+        LocalDateTime createdAt,
+        String createdBy,
+        LocalDateTime updatedAt,
+        String updatedBy
 ) {
 }

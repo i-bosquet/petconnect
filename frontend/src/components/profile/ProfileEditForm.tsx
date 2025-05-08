@@ -1,5 +1,5 @@
 import { useState, useRef, JSX, ChangeEvent, FormEvent } from 'react';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, CircleX, SaveAll } from 'lucide-react';
 import {  UserProfile,
     OwnerProfile,
     ClinicStaffProfile,
@@ -225,7 +225,6 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
                              <label className="block text-sm font-medium text-gray-300">Surname</label>
                              <p className="px-3 py-2 text-gray-400">{userProfile.surname}</p>
                          </div>
-                         {/* ... etc ... */}
                     </>
                 )}
 
@@ -240,15 +239,16 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
                     type="button"
                     onClick={onCancel}
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50" // Ajustar hover/focus
-                >
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50 cursor-pointer">
+                        <CircleX size={16} className="mr-2"  />
                     Cancel
                 </Button>
                 <Button
                     type="submit"
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
                 >
+                    <SaveAll size={16} className="mr-2" />
                     {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                     {isLoading ? 'Saving...' : 'Save Changes'}
                 </Button>
