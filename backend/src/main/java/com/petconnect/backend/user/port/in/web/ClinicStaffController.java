@@ -46,12 +46,14 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
      * {@inheritDoc}
      */
     @Override
-    @PutMapping("/{staffId}")
+    @PutMapping(value = "/{staffId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ClinicStaffProfileDto> updateClinicStaff(
             @PathVariable Long staffId,
-            @Valid @RequestBody ClinicStaffUpdateDto updateDTO) {
+            @RequestPart("dto") @Valid ClinicStaffUpdateDto updateDTO,
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile) {
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
-        ClinicStaffProfileDto updatedStaff = clinicStaffService.updateClinicStaff(staffId, updateDTO, currentAdminId);
+
+        ClinicStaffProfileDto updatedStaff = clinicStaffService.updateClinicStaff(staffId, updateDTO, publicKeyFile, currentAdminId);
         return ResponseEntity.ok(updatedStaff);
     }
 

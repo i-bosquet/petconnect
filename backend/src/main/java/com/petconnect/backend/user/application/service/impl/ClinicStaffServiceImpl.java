@@ -5,6 +5,7 @@ import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
 import com.petconnect.backend.common.service.KeyStorageService;
 import org.springframework.lang.Nullable;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
@@ -94,18 +95,43 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
      */
     @Override
     @Transactional
-    public ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, Long updatingAdminId) {
+    public ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO,  @Nullable MultipartFile publicKeyFile,  Long updatingAdminId) {
         // Find staff to update
         ClinicStaff staffToUpdate = entityFinderHelper.findClinicStaffOrFail(staffId, "update");
         // Verify Admin authorization (same clinic)
         authorizationHelper.verifyAdminActionOnStaff(updatingAdminId, staffToUpdate, "update");
 
+        String newPublicKeyPath = null;
+
+        boolean attemptingVetRole = updateDTO.roles() != null && updateDTO.roles().contains(RoleEnum.VET);
+        if (attemptingVetRole && publicKeyFile != null && !publicKeyFile.isEmpty()) {
+            if (!(staffToUpdate instanceof Vet)) {
+                log.info("New public key file provided for staff ID {}, role update includes VET.", staffId);
+            }
+            try {
+                String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_pub";
+                newPublicKeyPath = keyStorageService.storePublicKey(publicKeyFile, "vets", desiredFilenameBase);
+                log.info("Stored new public key for staff {} at path: {}", staffToUpdate.getUsername(), newPublicKeyPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store new public key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
+                throw new RuntimeException("Failed to store new public key file: " + e.getMessage(), e);
+            }
+        } else if (attemptingVetRole && staffToUpdate instanceof Vet vet && StringUtils.hasText(vet.getVetPublicKey())) {
+            newPublicKeyPath = vet.getVetPublicKey();
+            log.debug("Keeping existing public key path for staff ID {}: {}", staffId, newPublicKeyPath);
+        }
+
         // Apply updates
-        boolean changed = clinicStaffHelper.applyStaffUpdates(staffToUpdate, updateDTO);
+        boolean changed = clinicStaffHelper.applyStaffUpdates(staffToUpdate, updateDTO, newPublicKeyPath);
 
         // Save if changed
         ClinicStaff updatedStaff = staffToUpdate;
         if (changed) {
+            if (newPublicKeyPath != null && staffToUpdate instanceof Vet vet &&
+                    StringUtils.hasText(vet.getVetPublicKey()) && !vet.getVetPublicKey().equals(newPublicKeyPath)) {
+                log.info("Deleting old public key file for staff {}: {}", staffId, vet.getVetPublicKey());
+                keyStorageService.deleteKey(vet.getVetPublicKey());
+            }
             updatedStaff = clinicStaffRepository.save(staffToUpdate);
             log.info("Admin {} updated staff {}", updatingAdminId, updatedStaff.getUsername());
         } else {

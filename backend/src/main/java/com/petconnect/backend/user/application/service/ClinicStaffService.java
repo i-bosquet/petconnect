@@ -85,17 +85,19 @@ public interface ClinicStaffService {
 
     /**
      * Updates the details of an existing Clinic Staff member.
-     * Allows updating name, surname, and Vet-specific fields if applicable.
-     * Requires authorization check (Admin of the same clinic).
+     * This operation can only be performed by an ADMIN user with proper authorization.
+     * The update includes editable fields in the ClinicStaffUpdateDto and optionally uploads a public key file
+     * if the staff role is VET.
      *
-     * @param staffId The ID of the staff member to update.
-     * @param updateDTO DTO containing the fields to update.
-     * @param updatingAdminId The ID of the Admin performing the update.
-     * @return The updated ClinicStaffProfileDto.
-     * @throws EntityNotFoundException if staff member not found.
-     * @throws AccessDeniedException if admin isn't authorized.
-     * @throws LicenseNumberAlreadyExistsException if updating the license number to an existing one.
+     * @param staffId The unique ID of the staff member to update.
+     * @param updateDTO A DTO containing updated staff details such as name, surname, and license number (if applicable).
+     * @param publicKeyFile The public key file for the staff member's digital signature capability. May be null if not applicable.
+     * @param updatingAdminId The ID of the ADMIN user performing the update operation.
+     * @return A ClinicStaffProfileDto representing the updated staff member's profile details.
+     * @throws EntityNotFoundException if the specified staff member does not exist.
+     * @throws AccessDeniedException if the updating user lacks authorization.
+     * @throws IllegalArgumentException if the provided update data is invalid or missing required fields.
      */
-    ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, Long updatingAdminId);
+    ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, @Nullable MultipartFile publicKeyFile, Long updatingAdminId);
 
 }

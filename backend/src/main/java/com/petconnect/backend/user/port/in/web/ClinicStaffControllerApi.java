@@ -66,15 +66,16 @@ public interface ClinicStaffControllerApi {
             @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
 
     /**
-     * Updates the details of an existing clinic staff member.
-     * Allows an authenticated Admin to update the name, surname, and (if applicable)
-     * license number and public key of a staff member within their own clinic.
-     * The service layer handles authorization checks and validates uniqueness if the license / key are changed.
+     * Updates the details of a clinic staff member.
+     * This method is intended to be used by an Admin to modify the information
+     * of a staff member within the same clinic to which the Admin belongs.
      *
-     * @param staffId The unique ID of the staff member to update.
-     * @param updateDTO A {@link ClinicStaffUpdateDto} containing the fields to update. Only non-null fields are considered.
-     * @return A {@link ResponseEntity} containing the updated {@link ClinicStaffProfileDto} and HTTP status 200 (OK).
-     *         See possible error responses for details on failures.
+     * @param staffId the unique identifier of the staff member to update
+     * @param updateDTO the details of the staff member to update;
+     *                  must be provided in a JSON format corresponding to ClinicStaffUpdateDto
+     * @param publicKeyFile an optional file containing the new public key for the staff member
+     *                      (must be in .pem or .crt format)
+     * @return ResponseEntity containing the updated staff profile as ClinicStaffProfileDto
      */
     @Operation(summary = "Update Clinic Staff Details",
             description = "Allows an Admin to update details of a staff member in their own clinic.")
@@ -92,13 +93,14 @@ public interface ClinicStaffControllerApi {
             @ApiResponse(responseCode = "409", description = "Conflict (Updated License Number or Public Key already exists)",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/{staffId}")
+    @PutMapping(value = "/{staffId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ClinicStaffProfileDto> updateClinicStaff(
             @Parameter(description = "ID of the staff member to update", required = true)
             @PathVariable Long staffId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated details for the staff member.", required = true,
-                    content = @Content(schema = @Schema(implementation = ClinicStaffUpdateDto.class)))
-            @Valid @RequestBody ClinicStaffUpdateDto updateDTO);
+            @Parameter(description = "Staff details to update (JSON part)", required = true, schema = @Schema(implementation = ClinicStaffUpdateDto.class))
+            @RequestPart("dto") @Valid ClinicStaffUpdateDto updateDTO,
+            @Parameter(description = "Optional new Vet's Public Key file (.pem/.crt)")
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
 
 
     /**

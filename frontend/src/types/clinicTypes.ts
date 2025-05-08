@@ -43,3 +43,9 @@ export interface ClinicStaffCreationPayload {
     licenseNumber?: string | null;
     vetPublicKey?: string | null;
 }
+
+export interface ClinicStaffUpdatePayload {
+    name?: string | null;
+    surname?: string | null;
+    licenseNumber?: string | null; // Only VET
+}

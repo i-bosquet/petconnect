@@ -15,13 +15,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * Helper component specifically for Clinic Staff related operations like
- * building new staff entities and applying updates, incorporating validation logic.
- *
- * @author ibosquet
+ * ClinicStaffHelper is a utility class responsible for creating, updating, and validating
+ * {@link ClinicStaff} and {@link Vet} entities. It handles core functionalities such as
+ * entity creation, field updates, role management, and validation of Vet-specific fields.
+ * It is designed to be used in conjunction with a clinic management system that requires
+ * dynamic creation and update of staff records while adhering to specific business rules.
  */
 @Component
 @RequiredArgsConstructor
@@ -106,43 +109,107 @@ public class ClinicStaffHelper {
     }
 
     /**
-     * Applies updates from a {@link ClinicStaffUpdateDto} to an existing {@link ClinicStaff} entity.
-     * Updates name, surname, and Vet-specific fields (license number, public key) if the entity is a Vet
-     * and the new values are provided and different from existing ones. Includes validation for Vet fields.
+     * Applies updates from a ClinicStaffUpdateDto to an existing ClinicStaff entity.
+     * Updates name, surname, roles, and Vet-specific fields. Delegates specific updates
+     * to private helper methods.
      *
-     * @param staffToUpdate The {@link ClinicStaff} entity to be modified.
+     * @param staffToUpdate The ClinicStaff entity to be modified.
      * @param updateDTO The DTO containing the potential updates.
-     * @return {@code true} if any field on the entity was actually changed, {@code false} otherwise.
-     * @throws IllegalArgumentException if attempting to update Vet fields with invalid data.
-     * @throws LicenseNumberAlreadyExistsException if the new license number conflicts with another Vet.
-     * @throws VetPublicKeyAlreadyExistsException if the new public key conflicts with another Vet.
+     * @param newPublicKeyPath Optional path to a newly uploaded public key file (null if not changed).
+     * @return true if any field on the entity was actually changed, false otherwise.
      */
-    public boolean applyStaffUpdates(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO) {
+    public boolean applyStaffUpdates(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO, @Nullable String newPublicKeyPath) {
+        boolean nameChanged = updateNameAndSurname(staffToUpdate, updateDTO);
+        boolean rolesChanged = updateRoles(staffToUpdate, updateDTO);
+        boolean vetFieldsChanged = updateVetSpecificFields(staffToUpdate, updateDTO, newPublicKeyPath);
+
+        return nameChanged || rolesChanged || vetFieldsChanged;
+    }
+
+    /**
+     * Updates the name and surname of the staff member if provided in the DTO and different.
+     *
+     * @param staffToUpdate The entity to update.
+     * @param updateDTO The DTO with potential updates.
+     * @return true if the name or surname was changed, false otherwise.
+     */
+    private boolean updateNameAndSurname(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO) {
         boolean changed = false;
-        if (updateDTO.name() != null && !updateDTO.name().isBlank() && !updateDTO.name().equals(staffToUpdate.getName())) {
-            staffToUpdate.setName(updateDTO.name());
-            changed = true;
-        }
-        if (updateDTO.surname() != null && !updateDTO.surname().isBlank() && !updateDTO.surname().equals(staffToUpdate.getSurname())) {
-            staffToUpdate.setSurname(updateDTO.surname());
-            changed = true;
+        changed |= Utils.updateStringFieldIfChanged(
+                staffToUpdate, updateDTO.name(), staffToUpdate::getName, ClinicStaff::setName, "name"
+        );
+        changed |= Utils.updateStringFieldIfChanged(
+                staffToUpdate, updateDTO.surname(), staffToUpdate::getSurname, ClinicStaff::setSurname, "surname"
+        );
+        return changed;
+    }
+
+    /**
+     * Updates the roles assigned to the staff member if a non-null, non-empty set of roles
+     * is provided in the DTO, and it differs from the current roles.
+     *
+     * @param staffToUpdate The entity to update.
+     * @param updateDTO The DTO with potential updates.
+     * @return true if the roles were changed, false otherwise.
+     */
+    private boolean updateRoles(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO) {
+        if (updateDTO.roles() == null || updateDTO.roles().isEmpty()) {
+            return false;
         }
 
+        Set<RoleEntity> newRoleEntities = updateDTO.roles().stream()
+                .map(roleEnum -> roleRepository.findByRoleEnum(roleEnum)
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid role specified in update: " + roleEnum)))
+                .collect(Collectors.toSet());
+
+        if (!Objects.equals(newRoleEntities, staffToUpdate.getRoles())) {
+            log.info("Updating roles for staff ID {}: Old={}, New={}", staffToUpdate.getId(),
+                    staffToUpdate.getRoles().stream().map(RoleEntity::getRoleEnum).collect(Collectors.toSet()),
+                    updateDTO.roles());
+            staffToUpdate.setRoles(newRoleEntities);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Updates Vet-specific fields (license number, public key path) if the staff member
+     * is a Vet and has the VET role assigned after potential role updates.
+     * Handles consistency checks.
+     *
+     * @param staffToUpdate The entity to update.
+     * @param updateDTO The DTO with potential updates.
+     * @param newPublicKeyPath Optional path to a newly uploaded public key file.
+     * @return true if any Vet-specific field was changed, false otherwise.
+     */
+    private boolean updateVetSpecificFields(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO, @Nullable String newPublicKeyPath) {
+        boolean changed = false;
+        Set<RoleEnum> currentOrUpdatedRoles = staffToUpdate.getRoles().stream()
+                .map(RoleEntity::getRoleEnum)
+                .collect(Collectors.toSet());
+        boolean shouldBeVet = currentOrUpdatedRoles.contains(RoleEnum.VET);
+
         if (staffToUpdate instanceof Vet vetToUpdate) {
-            if (StringUtils.hasText(updateDTO.licenseNumber()) && !updateDTO.licenseNumber().equals(vetToUpdate.getLicenseNumber())) {
-                validateHelper.validateVetLicenseUpdate(updateDTO.licenseNumber(), vetToUpdate.getId());
-                vetToUpdate.setLicenseNumber(updateDTO.licenseNumber());
-                changed = true;
+            if (shouldBeVet) {
+                // Update License if changed
+                if (StringUtils.hasText(updateDTO.licenseNumber()) && !Objects.equals(updateDTO.licenseNumber(), vetToUpdate.getLicenseNumber())) {
+                    validateHelper.validateVetLicenseUpdate(updateDTO.licenseNumber(), vetToUpdate.getId());
+                    vetToUpdate.setLicenseNumber(updateDTO.licenseNumber());
+                    changed = true;
+                }
+                // Update Public Key Path if a new file was provided and a path is different
+                if (StringUtils.hasText(newPublicKeyPath) && !newPublicKeyPath.equals(vetToUpdate.getVetPublicKey())) {
+                    log.info("Updating vetPublicKey path for Vet ID {} to {}", vetToUpdate.getId(), newPublicKeyPath);
+                    vetToUpdate.setVetPublicKey(newPublicKeyPath);
+                    changed = true;
+                }
+            } else {
+                log.warn("Staff ID {} is instance of Vet but no longer has VET role assigned. Vet-specific fields not updated/cleared.", staffToUpdate.getId());
             }
-            if (StringUtils.hasText(updateDTO.vetPublicKey()) && !updateDTO.vetPublicKey().equals(vetToUpdate.getVetPublicKey())) {
-                validateHelper.validateVetPublicKey(updateDTO.vetPublicKey(), vetToUpdate.getId());
-                vetToUpdate.setVetPublicKey(updateDTO.vetPublicKey());
-                changed = true;
-            }
-        } else {
-            if (StringUtils.hasText(updateDTO.licenseNumber()) || StringUtils.hasText(updateDTO.vetPublicKey())) {
-                log.warn("Attempted to update Vet-specific fields (license/key) for non-Vet staff ID {}", staffToUpdate.getId());
-            }
+        } else if (shouldBeVet) {
+            // This user *should* be a Vet based on roles but isn't the right entity type.
+            log.error("Data inconsistency: Staff ID {} has VET role but is not an instance of Vet.", staffToUpdate.getId());
+            throw new IllegalStateException("User " + staffToUpdate.getId() + " has VET role but incorrect entity type.");
         }
         return changed;
     }

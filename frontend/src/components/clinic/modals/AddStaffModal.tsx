@@ -1,8 +1,8 @@
 import { useState, FormEvent, ChangeEvent, JSX, useRef} from 'react'; 
 import Modal from '@/components/common/Modal';
-import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2 } from 'lucide-react';
-import { RoleEnum } from '@/types/enumTypes';
-import { ClinicStaffCreationPayload, createClinicStaff } from '@/services/clinicStaffService';
+import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2, Eye, EyeOff  } from 'lucide-react';
+import { RoleEnum, ClinicStaffCreationPayload } from '@/types/apiTypes';
+import { createClinicStaff } from '@/services/clinicStaffService';
 import { useAuth } from '@/hooks/useAuth'; 
 import { Button } from "@/components/ui/button";
 
@@ -44,6 +44,8 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
     const { token } = useAuth();
     const [formData, setFormData] = useState<StaffFormFields>(initialFormData);
     const [confirmPassword, setConfirmPassword] = useState<string>('');
+    const [showPassword, setShowPassword] = useState<boolean>(false); 
+    const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false); 
     const [selectedPublicKeyFile, setSelectedPublicKeyFile] = useState<File | null>(null);
     const publicKeyFileInputRef = useRef<HTMLInputElement>(null);
     const [error, setError] = useState<string>('');
@@ -141,9 +143,8 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
         } catch (err) {
             console.error("Failed to add staff:", err);
             setError(err instanceof Error ? err.message : 'Could not add staff member.');
-        } finally {
             setIsLoading(false);
-        }
+        } 
     };
 
     if (!isOpen) return null;
@@ -194,8 +195,19 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                         <label htmlFor="staffPassword" className="block text-sm font-medium text-gray-300">Password *</label>
                         <div className="relative">
                              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input id="staffPassword" name="password" type="password" required value={formData.password} onChange={handleChange} disabled={isLoading}
-                                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600"/>
+                            <input 
+                                id="staffPassword" 
+                                name="password" 
+                                type={showPassword ? "text" : "password"}  
+                                required value={formData.password} 
+                                onChange={handleChange} 
+                                disabled={isLoading}
+                                className="block w-full px-10 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600"
+                                placeholder="••••••••"
+                            />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300 disabled:opacity-50" disabled={isLoading}>
+                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                             </button>
                         </div>
                     </div>
                     {/* Confirm Password */}
@@ -203,8 +215,18 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                         <label htmlFor="staffConfirmPassword" className="block text-sm font-medium text-gray-300">Confirm Password *</label>
                         <div className="relative">
                              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input id="staffConfirmPassword" name="confirmPassword" type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={isLoading}
-                                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600"/>
+                            <input 
+                                id="staffConfirmPassword" 
+                                name="confirmPassword" 
+                                type={showConfirmPassword ? "text" : "password"} 
+                                required value={confirmPassword} 
+                                onChange={(e) => setConfirmPassword(e.target.value)} disabled={isLoading} 
+                                className="block w-full px-10 py-2.5 border border-gray-700 rounded-xl bg-[#070913] text-white placeholder-gray-500 focus:ring-cyan-600 focus:border-cyan-600"
+                                placeholder="••••••••"
+                            />
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300 disabled:opacity-50" disabled={isLoading}>
+                                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
                         </div>
                     </div>
                      {/* Role Selection */}
