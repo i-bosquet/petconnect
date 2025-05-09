@@ -4,10 +4,14 @@ import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
 import com.petconnect.backend.user.domain.model.Country;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -40,17 +44,19 @@ public interface ClinicService {
     ClinicDto findClinicById(Long id);
 
     /**
-     * Updates the details of an existing clinic.
-     * Requires the calling user to be an ADMIN associated with the clinic being updated.
+     * Updates the specified clinic's details based on the provided update data and optional public key file.
+     * The operation is performed under the authority of an admin user identified by their ID.
      *
-     * @param id The ID of the clinic to update.
-     * @param clinicUpdateDTO DTO containing the fields to update.
-     * @param updatingAdminId The ID of the ADMIN user performing the update. // ADDED PARAMETER
-     * @return The updated {@link ClinicDto}.
-     * @throws EntityNotFoundException if no clinic or admin user is found with the given IDs.
-     * @throws AccessDeniedException if the user is not an authorized Admin for this clinic. // ADDED EXCEPTION
+     * @param id The unique identifier of the clinic to update.
+     * @param clinicUpdateDTO An object containing the updated clinic details, such as name, address, city, country, and phone.
+     * @param publicKeyFile An optional file representing the clinic's new public key (nullable).
+     * @param updatingAdminId The ID of the admin user performing the update.
+     * @return A {@link ClinicDto} object representing the updated clinic information.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if the clinic with the specified ID does not exist.
+     * @throws AccessDeniedException if the updating admin does not have sufficient permissions.
+     * @throws IllegalArgumentException if the provided update data is invalid.
      */
-    ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, Long updatingAdminId);
+    ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, @Nullable MultipartFile publicKeyFile, Long updatingAdminId);
 
     /**
      * Retrieves a distinct list of countries where clinics currently exist.
@@ -58,4 +64,17 @@ public interface ClinicService {
      * @return A list of Country enum values, ordered alphabetically.
      */
     List<Country> getDistinctClinicCountries();
+
+    /**
+     * Retrieves the clinic's public key file as a Resource for downloading.
+     * Includes authorization checks.
+     *
+     * @param clinicId The ID of the clinic.
+     * @param requesterUserId The ID of the user requesting the download.
+     * @return The public key file as a Resource.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if a clinic or key file isn't found.
+     * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff.
+     * @throws java.io.FileNotFoundException if the physical file is missing despite a path existing.
+     */
+    Resource getClinicPublicKeyResource(Long clinicId, Long requesterUserId) throws IOException;
 }

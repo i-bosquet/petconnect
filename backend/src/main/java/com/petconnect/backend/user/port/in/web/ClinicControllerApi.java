@@ -20,7 +20,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.Resource;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -89,19 +92,13 @@ public interface ClinicControllerApi {
             @PathVariable Long id);
 
     /**
-     * Updates the details of an existing clinic.
-     * This operation requires the user to be authenticated and have the ADMIN role
-     * for the specific clinic being updated. Authorization is handled by the service layer.
-     * Only the fields included in the {@link ClinicUpdateDto} (name, address, city, country, phone)
-     * can be modified via this endpoint.
+     * Updates the details of a specific clinic. This method is used to modify editable fields
+     * of a clinic and requires the user to have an ADMIN role for that clinic.
      *
-     * @param id The unique ID of the clinic to update.
-     * @param clinicUpdateDTO A {@link ClinicUpdateDto} containing the updated information. Validation rules are applied.
-     * @return A {@link ResponseEntity} containing the updated {@link ClinicDto} and HTTP status 200 (OK).
-     *         Returns 400 (Bad Request) for invalid input data.
-     *         Returns 401 (Unauthorized) if the user is not authenticated.
-     *         Returns 403 (Forbidden) if the user is not an authorized Admin for this clinic.
-     *         Returns 404 (Not Found) if the clinic ID does not exist.
+     * @param id the unique identifier of the clinic to be updated
+     * @param clinicUpdateDTO an object containing the updated clinic details
+     * @param publicKeyFile an optional public key file to be associated with the clinic
+     * @return a ResponseEntity containing the updated ClinicDto object if the update is successful
      */
     @Operation(summary = "Update Clinic Details",
             description = "Updates editable information for a specific clinic. Requires ADMIN role for that clinic.")
@@ -119,13 +116,11 @@ public interface ClinicControllerApi {
             @ApiResponse(responseCode = "404", description = "Clinic Not Found",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Map.class)))
     })
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ClinicDto> updateClinic(
-            @Parameter(description = "ID of the clinic to update", required = true)
             @PathVariable Long id,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Updated clinic information.", required = true,
-                    content = @Content(schema = @Schema(implementation = ClinicUpdateDto.class)))
-            @Valid @RequestBody ClinicUpdateDto clinicUpdateDTO);
+            @RequestPart("dto") @Valid ClinicUpdateDto clinicUpdateDTO,
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
 
     /**
      * Retrieves a list of all staff members (active and inactive) for a specific clinic.
@@ -196,4 +191,27 @@ public interface ClinicControllerApi {
     })
     @GetMapping("/countries")
     ResponseEntity<List<Country>> getDistinctCountries();
+
+    /**
+     * Downloads the public key file (.pem) associated with the specified clinic.
+     * Requires the requester to be authenticated staff (Vet or Admin) of that clinic.
+     *
+     * @param clinicId The ID of the clinic whose public key is requested.
+     * @return A ResponseEntity containing the key file as a Resource for download.
+     *         Returns 404 if the clinic or its key file is not found.
+     *         Returns 403 if the user is not authorized.
+     */
+    @Operation(summary = "Download Clinic Public Key",
+            description = "Downloads the .pem file containing the clinic's public key. Requires Admin or Vet role for the clinic.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Public key file ready for download.",
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden (User not staff of this clinic)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Clinic or Public Key File Not Found", content = @Content(schema = @Schema(implementation = Map.class)))
+    })
+    @GetMapping("/{clinicId}/public-key/download")
+    ResponseEntity<Resource> downloadClinicPublicKey(
+            @Parameter(description = "ID of the clinic", required = true) @PathVariable Long clinicId);
 }

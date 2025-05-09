@@ -1,5 +1,4 @@
-import { Country } from './enumTypes'; 
-export type { ClinicStaffProfile } from './authTypes'; 
+import { Country } from './apiTypes'; 
 
 /**
  * Summary information for a Veterinarian, often used when listing keys.vets associated with a Pet or Clinic.
@@ -21,6 +20,18 @@ export interface ClinicDto {
     city: string;
     country: Country; 
     phone: string;
+    publicKey?: string | null; 
+}
+
+/**
+ * Payload for updating Clinic information.
+ */
+export interface ClinicUpdatePayload {
+    name?: string | null;
+    address?: string | null;
+    city?: string | null;
+    country?: Country | null;
+    phone?: string | null;
 }
 
 /**

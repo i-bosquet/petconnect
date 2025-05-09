@@ -133,7 +133,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/clinic-update").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Update clinical info by staff
                     http.requestMatchers(HttpMethod.GET, "/api/pets/clinic").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets associated with MY clinic
                     http.requestMatchers(HttpMethod.GET, "/api/pets/clinic/pending").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets pending at MY clinic
-
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/public-key/download").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Download the public-key file
                     // --- 4. DEFAULT RULE ---
                     // Any other request requires authentication
                     http.anyRequest().authenticated();

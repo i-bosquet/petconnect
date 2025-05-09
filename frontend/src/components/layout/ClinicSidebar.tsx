@@ -6,6 +6,7 @@ import {
   Users,
   LogOut,
   Edit,
+  Building
 } from 'lucide-react';
 import { ClinicStaffProfile } from '@/types/apiTypes';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -43,6 +44,7 @@ const ClinicSidebar = ({
     const menuItems: MenuItem[] = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/clinic/dashboard' },
         { id: 'staff_management', label: 'Staff Management', icon: Users, path: '/clinic/staff', adminOnly: true },
+        { id: 'settings', label: 'Clinic Management', icon: Building, path: '/clinic/settings' },
     ];
 
     const clinicName = currentStaff.clinicName || "Clinic Portal";
@@ -125,7 +127,7 @@ const ClinicSidebar = ({
 
                 <button
                     onClick={handleLogout}
-                    className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 bg-red-700/20 text-red-700 font-medium rounded-lg hover:bg-red-700/30 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 bg-red-800/20 text-[#090D1A]  font-medium rounded-lg hover:bg-red-700 hover:text-[#FFECAB] transition-colors cursor-pointer"
                 >
                     <LogOut size={16} />
                     <span>Logout</span>

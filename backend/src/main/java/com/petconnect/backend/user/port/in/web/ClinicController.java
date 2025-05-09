@@ -9,12 +9,21 @@ import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.user.domain.model.Country;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -26,6 +35,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/clinics")
 @RequiredArgsConstructor
+@Slf4j
 public class ClinicController implements ClinicControllerApi {
 
     private final ClinicService clinicService;
@@ -60,12 +70,14 @@ public class ClinicController implements ClinicControllerApi {
      * {@inheritDoc}
      */
     @Override
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ClinicDto> updateClinic(
             @PathVariable Long id,
-            @Valid @RequestBody ClinicUpdateDto clinicUpdateDTO) {
+            @RequestPart("dto") @Valid ClinicUpdateDto clinicUpdateDTO,
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile) {
         Long currentAdminId = userServiceHelper.getAuthenticatedUserId();
-        ClinicDto updatedClinic = clinicService.updateClinic(id, clinicUpdateDTO, currentAdminId);
+        // Pasar archivo al servicio
+        ClinicDto updatedClinic = clinicService.updateClinic(id, clinicUpdateDTO, publicKeyFile, currentAdminId);
         return ResponseEntity.ok(updatedClinic);
     }
 
@@ -99,5 +111,33 @@ public class ClinicController implements ClinicControllerApi {
     public ResponseEntity<List<Country>> getDistinctCountries() {
         List<Country> countries = clinicService.getDistinctClinicCountries();
         return ResponseEntity.ok(countries);
+    }
+
+    @Override
+    @GetMapping("/{clinicId}/public-key/download")
+    public ResponseEntity<Resource> downloadClinicPublicKey(@PathVariable Long clinicId) {
+        Long requesterUserId = userServiceHelper.getAuthenticatedUserId();
+        try {
+            Resource resource = clinicService.getClinicPublicKeyResource(clinicId, requesterUserId);
+
+            String contentType = "application/octet-stream";
+            String filename = resource.getFilename();
+
+            if (filename == null) {
+                filename = "clinic_" + clinicId + "_pub.pem";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(resource);
+
+        } catch (FileNotFoundException e) {
+            log.warn("Public key file not found for clinic {}: {}", clinicId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (IOException e) {
+            log.error("Error reading public key file for clinic {}: {}", clinicId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

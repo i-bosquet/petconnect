@@ -1,17 +1,18 @@
 import { JSX } from 'react';
 import { Routes, Route } from 'react-router-dom';
 //Layouts
-import OwnerLayout from '../layouts/OwnerLayout'; 
-import ClinicLayout from '../layouts/ClinicLayout';
+import OwnerLayout from '@/layouts/OwnerLayout'; 
+import ClinicLayout from '@/layouts/ClinicLayout';
 // Pages
-import LandingPage from '../pages/Landing/LandingPage';
-import LoginPage from '../pages/Auth/LoginPage';
-import SignupPage from '../pages/Auth/SignupPage';
-import ResetPasswordPage from '../pages/Auth/ResetPasswordPage';
-import OwnerDashboardPage from '../pages/Owner/OwnerDashboardPage';
-import ClinicDashboardPage from '../pages/Clinic/ClinicDashboardPage';
-import StaffManagementPage from '../pages/Clinic/StaffManagementPage';
-import NotFoundPage from '../pages/NotFound/NotFoundPage';
+import LandingPage from '@/pages/Landing/LandingPage';
+import LoginPage from '@/pages/Auth/LoginPage';
+import SignupPage from '@/pages/Auth/SignupPage';
+import ResetPasswordPage from '@/pages/Auth/ResetPasswordPage';
+import OwnerDashboardPage from '@/pages/Owner/OwnerDashboardPage';
+import ClinicDashboardPage from '@/pages/Clinic/ClinicDashboardPage';
+import StaffManagementPage from '@/pages/Clinic/StaffManagementPage';
+import ClinicManagementPage from '@/pages/Clinic/ClinicManagementPage';
+import NotFoundPage from '@/pages/NotFound/NotFoundPage';
 
 
 /**
@@ -40,6 +41,7 @@ const AppRouter = (): JSX.Element => {
         <Route index element={<ClinicDashboardPage />} />
         <Route path="dashboard" element={<ClinicDashboardPage />} />
         <Route path="staff" element={<StaffManagementPage />} /> 
+        <Route path="settings" element={<ClinicManagementPage />} />
       </Route>
 
       {/* Catch-all Not Found Route */}
