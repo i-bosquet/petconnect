@@ -1,4 +1,3 @@
-// frontend/src/components/clinic/modals/EditClinicModal.tsx
 import {
   useState,
   useEffect,

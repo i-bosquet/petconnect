@@ -29,13 +29,9 @@ export interface RecordViewDto {
  * Summary information for a medical Record, typically used within certificate details.
  */
 export interface RecordSummaryDto {
-    /** The unique ID of the medical record. */
     id: number | string;
-    /** The type of the medical record ("VACCINE", "ANNUAL_CHECK", ...). */
     type: RecordType;
-    /** A truncated description from the record. */
     description?: string | null;
-    /** Timestamp when the record was created (ISO string format). */
     createdAt?: string | null; 
 }
 

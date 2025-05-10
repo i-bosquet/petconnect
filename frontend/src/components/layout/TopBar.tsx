@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, JSX } from 'react';
 import { useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Bell, User, ChevronDown, UserCog, LogOut } from 'lucide-react';
+import { Bell, User, ChevronDown, UserCog, LogOut, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; 
 import ProfileModal from '../profile/ProfileModal'; 
+import { PetProfileDto } from '@/types/apiTypes';
 
 /**
  * Represents the basic user information needed for the TopBar.
@@ -12,7 +13,11 @@ interface UserData {
     id?: number | string;
     username?: string;
     avatar?: string | null;
-    role?: string;
+    roles?:string[];
+}
+
+interface TopBarProps { 
+    selectedPetForChat?: PetProfileDto | null;
 }
 
 /**
@@ -22,7 +27,7 @@ interface UserData {
  *
  * @returns {JSX.Element} The top navigation bar component.
  */
-const TopBar = (): JSX.Element => {
+const TopBar = ({ selectedPetForChat }: TopBarProps): JSX.Element => {
     const navigate = useNavigate();
     const [user, setUser] = useState<UserData | null>(null);
     const [showDropdown, setShowDropdown] = useState<boolean>(false);
@@ -53,9 +58,9 @@ const TopBar = (): JSX.Element => {
                     id: storedUser.id,
                     username: storedUser.username,
                     avatar: storedUser.avatar,
-                    role: storedUser.role
+                    roles: Array.isArray(storedUser.roles) ? storedUser.roles : (storedUser.role ? [storedUser.role] : [])
                 });
-                console.log("TopBar: User data loaded from storage.", { id: storedUser.id, username: storedUser.username, role: storedUser.role }); 
+                console.log("TopBar: User data loaded from storage.", { id: storedUser.id, username: storedUser.username, roles: storedUser.roles }); 
             } catch (e) {
                 console.error("TopBar: Failed to parse user data from storage", e);
                 handleLogoutCallback();
@@ -82,9 +87,7 @@ const TopBar = (): JSX.Element => {
     /**
      * Toggles the visibility of the profile dropdown menu.
      */
-    const handleProfileClick = (): void => {
-        setShowDropdown(prev => !prev); 
-    };
+   const handleProfileClick = useCallback((): void => { setShowDropdown(prev => !prev); },[]);
 
     /**
      * Opens the Profile Modal.
@@ -92,7 +95,7 @@ const TopBar = (): JSX.Element => {
     const handleOpenProfileModal = useCallback((): void => {
         console.log("TopBar: Opening profile modal.");
         setShowProfileModal(true);
-        setShowDropdown(false); // Close dropdown when modal opens
+        setShowDropdown(false); 
     },[]);
 
     /**
@@ -126,16 +129,24 @@ const TopBar = (): JSX.Element => {
     }, []);
 
     const displayName = user?.username || "Profile";
-    // Determine home path based on user role, default to '/' if role unknown or user null
-    const homePath = user?.role === 'OWNER' ? '/pet' : (user?.role === 'VET' || user?.role === 'ADMIN' ? '/clinic' : '/');
+     const getHomePath = () => {
+        if (user?.roles?.includes('OWNER')) return '/pet';
+        if (user?.roles?.includes('ADMIN') || user?.roles?.includes('VET')) return '/clinic';
+        return '/'; // Default
+    };
+    const homePath = getHomePath();
+
+    const showChatButton = user?.roles?.includes('OWNER') && selectedPetForChat;
+
+    console.log("TopBar Check - User Roles:", user?.roles, "Selected Pet:", selectedPetForChat, "Show Chat:", showChatButton);
 
     return (
         <> 
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#FFECAB]/20 bg-[#090D1A]/95 px-4 backdrop-blur-sm sm:h-16 sm:px-6">
+            <header className="flex justify-between items-center">
                 {/* Logo/Brand */}
-                <Link  to={homePath} className="flex items-center gap-2 font-semibold text-[#FFECAB]">
-                    <img src="/src/assets/images/SF-Logo1-D.png" alt="PetConnect Logo" className="h-8 w-8" />
-                    <span className="text-lg hidden sm:inline">PetConnect</span>
+                <Link  to={homePath} className="flex items-center gap-2 ">
+                    <img src="/src/assets/images/SF-Logo1-D.png" alt="PetConnect Logo" className="h-10 w-10" />
+                    <h1 className="text-2xl font-bold text-[#FFECAB]">PetConnect</h1>
                 </Link>
 
                 <div className="flex-1"></div> 
@@ -145,27 +156,31 @@ const TopBar = (): JSX.Element => {
                     <Tooltip>
                             <TooltipTrigger asChild>
                                 <button className="p-2 rounded-full hover:bg-cyan-900/50 text-[#FFECAB]/80 hover:text-[#FFECAB] transition-colors" aria-label="Notifications">
-                                    <Bell size={20} />
+                                    <Bell size={24} />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent className="bg-gray-950 text-white border border-cyan-700">
                                 <p>Notifications</p>
                             </TooltipContent>
                     </Tooltip>
-
-                    {/*    Chat button temporarily removed         
-                    <Tooltip>
+                     {/*  Chat Button*/}
+                  {showChatButton  && selectedPetForChat && ( 
+                        <Tooltip>
                             <TooltipTrigger asChild>
-                                <button className="p-2 rounded-full hover:bg-cyan-900/50 text-[#FFECAB]/80 hover:text-[#FFECAB] transition-colors" aria-label="Chat">
-                                    <MessageCircle size={20} />
+                                <button
+                                    onClick={() => alert(`Chat for ${selectedPetForChat.name} - Not implemented`)} 
+                                    className="p-2 rounded-full hover:bg-cyan-900/50 text-[#FFECAB]/80 hover:text-[#FFECAB] transition-colors"
+                                    aria-label={`Chat with vet for ${selectedPetForChat.name}`}
+                                >
+                                    <MessageSquare size={22} />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent className="bg-gray-950 text-white border border-cyan-700">
-                                <p>Chat</p>
+                                <p>Chat with Vet (for {selectedPetForChat.name})</p>
                             </TooltipContent>
-                    </Tooltip>
-                    */}
-
+                        </Tooltip>
+                    )}
+                   
                     {/* Profile Dropdown */}
                     <div className="relative" ref={dropdownRef}>
                         <Tooltip>
@@ -178,11 +193,11 @@ const TopBar = (): JSX.Element => {
                                         aria-label="User menu"
                                     >
                                     {/* Avatar/Icon Display Logic */}
-                                    <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
+                                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
                                         {user?.avatar ? (
                                             <img src={user.avatar} alt="User Avatar" className="w-full h-full object-cover" />
                                         ) : (
-                                            <User size={16} className="text-[#FFECAB]" />
+                                            <User size={24} className="text-[#FFECAB]" />
                                         )}
                                     </div>
 

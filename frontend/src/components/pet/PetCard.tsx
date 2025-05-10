@@ -21,9 +21,9 @@ const PetCard = ({ pet, onSelect }: PetCardProps): JSX.Element => {
     return (
         <button
             onClick={onSelect}
-            className="flex flex-col items-center p-3 rounded-lg transition-all bg-[#0c1225] border border-[#FFECAB]/30 hover:border-[#FFECAB]/60 hover:bg-cyan-900/20 w-32 text-center cursor-pointer group"
+            className="flex flex-col items-center p-3 rounded-xl transition-all border border-[#FFECAB]  hover:opacity-80 cursor-pointer"
         >
-            {/* Pet avatar image or placeholder */}
+            {/* Pet avatar image*/}
             <div className="relative mb-2">
                 <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-gray-600 group-hover:border-cyan-600 transition-colors">
                      {avatarUrl ? (

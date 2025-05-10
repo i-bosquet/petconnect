@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto } from '../types/apiTypes';
+import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload } from '../types/apiTypes';
 import { Specie } from '../types/enumTypes';
 
 /**
@@ -107,7 +107,7 @@ export const registerPet = async (
 export const updatePetByOwner = async (
     token: string,
     petId: number | string,
-    updateData: Omit<PetProfileDto, 'image'>, 
+    updateData: PetOwnerUpdatePayload, 
     imageFile: File | null
 ): Promise<PetProfileDto> => {
      if (!token) { throw new Error("Authentication token required."); }
@@ -172,6 +172,35 @@ export const updatePetByOwner = async (
         } else {
             console.error('Network or unexpected get breeds error:', error);
             throw new Error('Failed to fetch breeds due to network or unexpected error.');
+        }
+    }
+};
+
+/**
+ * Fetches the detailed profile of a specific pet by its ID.
+ * Requires authentication.
+ *
+ * @param {string} token - The JWT token.
+ * @param {number | string} petId - The ID of the pet to retrieve.
+ * @returns {Promise<PetProfileDto>} A promise resolving to the pet's detailed profile.
+ * @throws {Error} Throws an error if fetching fails.
+ */
+export const getPetDetailsById = async (token: string, petId: number | string): Promise<PetProfileDto> => {
+    if (!token) throw new Error("Authentication token required.");
+    if (!petId) throw new Error("Pet ID required.");
+    try {
+        const response = await axios.get<PetProfileDto>(`${API_BASE_URL}/pets/${petId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Get Pet Details (${petId}) Error:`, apiError);
+            throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to fetch pet details.');
+        } else {
+            console.error(`Network or unexpected get pet details (${petId}) error:`, error);
+            throw new Error('Failed to fetch pet details due to network or unexpected error.');
         }
     }
 };

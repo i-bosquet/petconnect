@@ -21,15 +21,15 @@ interface PetListProps {
 const PetList = ({ pets, onSelectPet, onAddPet }: PetListProps): JSX.Element => {
 
     return (
-        <Card className="border-2 border-[#FFECAB]/40 bg-[#0c1225]/50 shadow-lg"> 
-            <CardHeader className="pb-4">
-                <div className="flex justify-between items-center">
-                    <CardTitle className="flex justify-center sm:justify-start items-center gap-2 text-[#FFECAB] text-xl sm:text-2xl flex-grow text-center sm:text-left">
-                        <Dog size={24} className="text-cyan-400 hidden sm:block flex-shrink-0" /> 
+        <Card className="border-2 border-[#FFECAB]"> 
+            <CardHeader>
+                    <CardTitle className="flex items-center justify-between px-6">
+                        <div className="flex justify-between gap-2">
+                        <Dog size={20} /> 
                         <span>My Pets</span>
-                        <Cat size={24} className="text-cyan-400 hidden sm:block flex-shrink-0" /> 
-                    </CardTitle>
-                    <button
+                        <Cat size={20} /> 
+                        </div>
+                         <button
                         onClick={onAddPet}
                         className="flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-cyan-700 text-[#FFECAB] rounded-lg text-sm font-medium hover:bg-cyan-600 transition-colors"
                     >
@@ -37,11 +37,13 @@ const PetList = ({ pets, onSelectPet, onAddPet }: PetListProps): JSX.Element => 
                         <span className="hidden sm:inline">Add Pet</span>
                         <span className="sm:hidden"></span> 
                     </button>
-                </div>
+                    </CardTitle>
+                   
             </CardHeader>
+            {/* Grid of pet cards */}
             <CardContent>
                 {pets.length > 0 ? (
-                    <div className="flex flex-wrap justify-center gap-3"> 
+                    <div className="flex flex-wrap justify-evenly gap-3"> 
                         {pets.map((pet) => (
                             <PetCard
                                 key={pet.id}
