@@ -2,6 +2,7 @@ package com.petconnect.backend.pet.port.in.web;
 
 import com.petconnect.backend.common.helper.UserHelper;
 import com.petconnect.backend.pet.application.dto.*;
+import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.pet.application.service.PetService;
 import io.micrometer.common.lang.Nullable;
@@ -51,13 +52,13 @@ public class PetController implements PetControllerApi{
     /**
      * {@inheritDoc}
      */
-    @Override
     @GetMapping("")
+    @Override
     public ResponseEntity<Page<PetProfileDto>> findMyPets(
+            @RequestParam(required = false) List<PetStatus> statuses,
             @PageableDefault(sort = "name") Pageable pageable) {
         Long authenticatedUserId = userServiceHelper.getAuthenticatedUserId();
-
-        Page<PetProfileDto> petPage = petService.findPetsByOwner(authenticatedUserId, pageable);
+        Page<PetProfileDto> petPage = petService.findPetsByOwner(authenticatedUserId, statuses, pageable);
         return ResponseEntity.ok(petPage);
     }
 

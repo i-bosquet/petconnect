@@ -2,6 +2,7 @@ package com.petconnect.backend.pet.application.service;
 
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.pet.application.dto.*;
+import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -93,7 +94,7 @@ public interface PetService {
      * @return A Page of PetProfileDto objects.
      * @throws org.springframework.security.access.AccessDeniedException if the requester is not owner or authorized staff.
      */
-    Page<PetProfileDto> findPetsByOwner(Long ownerId, Pageable pageable);
+    Page<PetProfileDto> findPetsByOwner(Long ownerId, @Nullable List<PetStatus> statuses, Pageable pageable);
 
     /**
      * Retrieves the detailed profile of a specific pet by its ID.
@@ -184,7 +185,7 @@ public interface PetService {
      * @param vetId The ID of the target Veterinarian associated with the pet.
      * @param ownerId The ID of the authenticated Owner making the request.
      * @throws EntityNotFoundException if pet or vet not found.
-     * @throws AccessDeniedException if the user is not the owner or the vet is not associated with the pet.
+     * @throws AccessDeniedException if the user is not the owner, or the vet is not associated with the pet.
      */
     void requestCertificateGeneration(Long petId, Long vetId, Long ownerId);
 }

@@ -1,7 +1,13 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../config';
-import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload } from '../types/apiTypes';
-import { Specie } from '../types/enumTypes';
+import { API_BASE_URL } from '@/config';
+import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus,  } from '../types/apiTypes';
+
+interface FindMyPetsParams {
+page: number;
+size: number;
+sort: string;
+statuses?: string;
+}
 
 /**
  * Fetches the authenticated owner's pets from the backend API with pagination.
@@ -11,6 +17,7 @@ import { Specie } from '../types/enumTypes';
  * @param {number} [page=0] - The page number to retrieve (0-indexed).
  * @param {number} [size=10] - The number of pets per page.
  * @param {string} [sort='name,asc'] - Sorting criteria (e.g., 'name,desc').
+ * @param {PetStatus[]} [statuses] - Optional array of PetStatus enums to filter by.
  * @returns {Promise<Page<PetProfileDto>>} A promise resolving to the paginated pet data.
  * @throws {Error} Throws an error if fetching fails.
  */
@@ -18,15 +25,21 @@ export const findMyPets = async (
     token: string,
     page: number = 0,
     size: number = 10,
-    sort: string = 'name,asc'
+    sort: string = 'name,asc',
+    statuses?: PetStatus[]
 ): Promise<Page<PetProfileDto>> => {
     if (!token) {
         throw new Error("Authentication token is required to fetch pets.");
     }
     try {
+        const params: FindMyPetsParams = { page, size, sort };
+        if (statuses && statuses.length > 0) {
+        params.statuses = statuses.join(',');
+    }
+
         const response = await axios.get<Page<PetProfileDto>>(`${API_BASE_URL}/pets`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-            params: { page, size, sort }
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        params: params
         });
         return response.data;
     } catch (error) {
@@ -201,6 +214,45 @@ export const getPetDetailsById = async (token: string, petId: number | string): 
         } else {
             console.error(`Network or unexpected get pet details (${petId}) error:`, error);
             throw new Error('Failed to fetch pet details due to network or unexpected error.');
+        }
+    }
+};
+
+/**
+ * Deactivates a specific pet for the authenticated owner.
+ * This action sets the pet's status to INACTIVE.
+ *
+ * @param {string} token - The JWT token of the authenticated owner.
+ * @param {number | string} petId - The ID of the pet to deactivate.
+ * @returns {Promise<PetProfileDto>} A promise resolving to the updated pet profile (now inactive).
+ * @throws {Error} Throws an error if deactivation fails.
+ * @author ibosquet
+ */
+export const deactivatePet = async (
+    token: string,
+    petId: number | string
+): Promise<PetProfileDto> => {
+    if (!token) {
+        throw new Error("Authentication token is required.");
+    }
+    if (!petId) {
+        throw new Error("Pet ID is required for deactivation.");
+    }
+
+    try {
+        const response = await axios.put<PetProfileDto>(`${API_BASE_URL}/pets/${petId}/deactivate`, {}, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Deactivate Pet (${petId}) Error:`, apiError);
+            const message = typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to deactivate pet.';
+            throw new Error(message);
+        } else {
+            console.error(`Network or unexpected deactivate pet (${petId}) error:`, error);
+            throw new Error('Failed to deactivate pet due to network or unexpected error.');
         }
     }
 };

@@ -193,12 +193,21 @@ public class PetServiceImpl implements PetService {
     @Transactional
     public PetProfileDto deactivatePet(Long petId, Long ownerId) {
         Pet petToDeactivate = findPetByIdAndOwnerOrFail(petId, ownerId);
-        ensurePetIsNotInStatus(petToDeactivate);
+
+        if (petToDeactivate.getStatus() == PetStatus.INACTIVE) {
+            log.warn("Pet {} is already INACTIVE. No action taken.", petId);
+            return petMapper.toProfileDto(petToDeactivate);
+        }
 
         petToDeactivate.setStatus(PetStatus.INACTIVE);
 
+        if (!petToDeactivate.getAssociatedVets().isEmpty()) {
+            log.info("Deactivating Pet {}: Clearing all ({}) associated veterinarians.", petId, petToDeactivate.getAssociatedVets().size());
+            petToDeactivate.getAssociatedVets().clear();
+        }
+
         Pet deactivatedPet = petRepository.save(petToDeactivate);
-        log.info("Owner {} deactivated Pet {}", ownerId, petId);
+        log.info("Owner {} deactivated Pet {}. Status set to INACTIVE and vets cleared.", ownerId, petId);
         return petMapper.toProfileDto(deactivatedPet);
     }
 
@@ -285,9 +294,16 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<PetProfileDto> findPetsByOwner(Long ownerId, Pageable pageable) {
-        List<PetStatus> defaultStatuses = List.of(PetStatus.ACTIVE, PetStatus.PENDING);
-        Page<Pet> petPage = petRepository.findByOwnerIdAndStatusIn(ownerId, defaultStatuses, pageable);
+    public Page<PetProfileDto> findPetsByOwner(Long ownerId, @Nullable List<PetStatus> statuses, Pageable pageable) {
+        List<PetStatus> statusesToSearch;
+        if (statuses == null || statuses.isEmpty()) {
+            statusesToSearch = List.of(PetStatus.ACTIVE, PetStatus.PENDING);
+            log.debug("Finding pets for owner {} with default statuses: {}", ownerId, statusesToSearch);
+        } else {
+            statusesToSearch = statuses;
+            log.debug("Finding pets for owner {} with specified statuses: {}", ownerId, statusesToSearch);
+        }
+        Page<Pet> petPage = petRepository.findByOwnerIdAndStatusIn(ownerId, statusesToSearch, pageable);
         return petPage.map(petMapper::toProfileDto);
     }
 
@@ -383,8 +399,8 @@ public class PetServiceImpl implements PetService {
         log.info("Owner {} disassociated Vet {} from Pet {}", ownerId, vetId, petId);
 
         if (pet.getAssociatedVets().isEmpty() && pet.getStatus() == PetStatus.ACTIVE) {
-            pet.setStatus(PetStatus.INACTIVE);
-            log.warn("Pet {} automatically set to INACTIVE as last associated Vet was removed.", petId);
+            pet.setStatus(PetStatus.PENDING);
+            log.warn("Pet {} automatically set to PENDING as last associated Vet was removed.", petId);
         }
         petRepository.save(pet);
     }
@@ -515,20 +531,6 @@ public class PetServiceImpl implements PetService {
         if (pet.getStatus() != PetStatus.PENDING) {
             throw new IllegalStateException(String.format("Pet %d must be in %s status to %s, but was %s.",
                     pet.getId(), PetStatus.PENDING, actionDescription, pet.getStatus()));
-        }
-    }
-
-    /**
-     * Checks if the given Pet is NOT in the specified status.
-     * Throws IllegalStateException if the status matches the forbidden status.
-     *
-     * @param pet The Pet entity to check.
-     * @throws IllegalStateException if the pet's status matches the forbidden one.
-     */
-    private void ensurePetIsNotInStatus(Pet pet) {
-        if (pet.getStatus() == PetStatus.INACTIVE) {
-            throw new IllegalStateException(String.format("Cannot %s pet %d because it is already in %s status.",
-                    "deactivate", pet.getId(), PetStatus.INACTIVE));
         }
     }
 

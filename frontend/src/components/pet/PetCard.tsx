@@ -1,5 +1,5 @@
 import { JSX } from 'react';
-import { PetProfileDto } from '../../types/apiTypes'; 
+import { PetProfileDto, PetStatus  } from '@/types/apiTypes'; 
 import { PawPrint } from 'lucide-react'; 
 
 interface PetCardProps {
@@ -17,11 +17,15 @@ interface PetCardProps {
 const PetCard = ({ pet, onSelect }: PetCardProps): JSX.Element => {
 
     const avatarUrl = pet.image
+    const isInactive = pet.status === PetStatus.INACTIVE;
 
     return (
         <button
             onClick={onSelect}
-            className="flex flex-col items-center p-3 rounded-xl transition-all border border-[#FFECAB]  hover:opacity-80 cursor-pointer"
+            className={`flex flex-col items-center p-3 rounded-xl transition-all border border-[#FFECAB] hover:opacity-80 cursor-pointer ${
+                isInactive ? 'opacity-50 filter grayscale' : '' 
+            }`}
+            //disabled={isInactive} 
         >
             {/* Pet avatar image*/}
             <div className="relative mb-2">
@@ -43,6 +47,9 @@ const PetCard = ({ pet, onSelect }: PetCardProps): JSX.Element => {
             <span className="text-xs text-gray-400 capitalize">
                 {pet.specie?.toLowerCase() || 'Unknown'} 
             </span>
+            {isInactive && (
+                <span className="text-xs text-red-400 font-semibold mt-1">(Inactive)</span>
+            )}
         </button>
     );
 };

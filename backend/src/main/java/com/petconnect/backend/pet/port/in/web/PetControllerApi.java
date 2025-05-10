@@ -1,6 +1,7 @@
 package com.petconnect.backend.pet.port.in.web;
 
 import com.petconnect.backend.pet.application.dto.*;
+import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
 import io.micrometer.common.lang.Nullable;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,11 +67,14 @@ public interface PetControllerApi {
     ) throws IOException;
 
     /**
-     * Retrieves a paginated list of pets belonging to the currently authenticated owner.
-     * Filters by status (ACTIVE, PENDING by default).
+     * Retrieves a paginated list of pets that belong to a specific owner.
+     * This method requires either an authenticated owner or an ADMIN role
+     * for access. If the user is not authorized or the owner does not exist,
+     * appropriate error responses are returned.
      *
-     * @param pageable Pagination parameters.
-     * @return ResponseEntity with a Page of PetProfileDto and status 200.
+     * @param statuses an optional list of pet statuses to filter the pets (e.g., ACTIVE, INACTIVE)
+     * @param pageable a Pageable object specifying pagination and sorting preferences
+     * @return a ResponseEntity containing a Page of PetProfileDto objects with the pet details
      */
     @Operation(summary = "List Pets by Owner", description = "Retrieves pets for a specific owner. Requires owner authentication or ADMIN role.")
     @ApiResponses(value = {
@@ -81,7 +85,9 @@ public interface PetControllerApi {
     })
     @GetMapping("")
     ResponseEntity<Page<PetProfileDto>> findMyPets(
-            @Parameter(description = "Pagination details") @PageableDefault(sort = "name") Pageable pageable);
+            @Parameter(description = "Pagination details")
+            @RequestParam(required = false) List<PetStatus> statuses,
+            @PageableDefault(sort = "name") Pageable pageable);
 
     /**
      * Updates information for a pet owned by the authenticated user.

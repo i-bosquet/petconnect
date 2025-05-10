@@ -37,6 +37,7 @@ import {
 import { updatePetByOwner, getBreedsBySpecie } from "@/services/petService";
 import { useAuth } from "@/hooks/useAuth";
 import { BACKEND_BASE_URL } from "@/config";
+import { TooltipTrigger, TooltipContent, Tooltip } from "@/components/ui/tooltip";
 
 interface EditPetModalProps {
   petInitialData: PetProfileDto;
@@ -259,16 +260,22 @@ const EditPetModal = ({
                 }`;
               }}
             />
-            <Button
-              type="button"
-              size="icon"
-              onClick={triggerImageInput}
-              className="absolute bottom-0 right-0 p-2 bg-cyan-800 text-[#FFECAB] rounded-full hover:bg-cyan-600 transition-colors ring-2 ring-gray-400 h-9 w-9 sm:h-10 sm:w-10 cursor-pointer"
-              aria-label="Upload pet image"
-              title="Upload image"
-            >
-              <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-            </Button>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"   
+                    onClick={triggerImageInput}
+                    className="absolute bottom-0 right-0 p-2 bg-cyan-800 text-[#FFECAB] rounded-full hover:bg-cyan-600 transition-colors ring-2 ring-gray-400 h-9 w-9 sm:h-10 sm:w-10 cursor-pointer" // Ajusta clases según necesites
+                    aria-label="Change pet image" 
+                  >
+                    <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-gray-950 text-white border border-cyan-700">
+                  <p>Change Pet Image</p>
+                </TooltipContent>
+             </Tooltip>
           </div>
           <input
             ref={imageFileRef}
