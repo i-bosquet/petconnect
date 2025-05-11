@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config';
-import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto } from '../types/apiTypes';
+import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto, PetClinicUpdatePayload } from '../types/apiTypes';
 
 interface FindMyPetsParams {
 page: number;
@@ -405,6 +405,52 @@ export const findPetsByClinic = async (
             throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to fetch clinic pets.');
         }
         throw new Error('Failed to fetch clinic pets due to network or unexpected error.');
+    }
+};
+
+/**
+ * Updates an existing pet's clinical information by clinic staff.
+ *
+ * @param {string} token - JWT token of the authenticated clinic staff.
+ * @param {number | string} petId - The ID of the pet to update.
+ * @param {PetClinicUpdatePayload} updateData - DTO with updatable clinical fields.
+ * @returns {Promise<PetProfileDto>} Promise resolving to the updated pet profile.
+ * @throws {Error} Throws an error if update fails.
+ */
+export const updatePetByClinicStaff = async (
+    token: string,
+    petId: number | string,
+    updateData: PetClinicUpdatePayload
+): Promise<PetProfileDto> => {
+    if (!token) { throw new Error("Authentication token required."); }
+    if (!petId) { throw new Error("Pet ID required."); }
+
+    try {
+        const response = await axios.put<PetProfileDto>(
+            `${API_BASE_URL}/pets/${petId}/clinic-update`,
+            updateData, 
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json', 
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Update Pet by Clinic Staff (${petId}) Error:`, apiError);
+            let errorMessage = 'Failed to update pet by clinic staff.';
+            // ... (manejo de errorMessage similar a otros) ...
+            if (typeof apiError.message === 'string') { errorMessage = apiError.message; }
+            else if (typeof apiError.message === 'object' && apiError.message !== null) { errorMessage = Object.values(apiError.message).join(' '); }
+            else if (apiError.error) { errorMessage = apiError.error; }
+            throw new Error(errorMessage);
+        } else {
+            console.error(`Network or unexpected update pet by clinic staff (${petId}) error:`, error);
+            throw new Error('Failed to update pet by clinic staff due to network or unexpected error.');
+        }
     }
 };
 

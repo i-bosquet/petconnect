@@ -12,7 +12,7 @@ const PetHomeTab = ({ pet }: PetHomeTabProps): JSX.Element => {
 
    return (
         <div className="space-y-6">
-            <Card className="border-2 border-[#FFECAB] bg-[#070913]/50 shadow-md">
+            <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
                 <CardHeader>
                     <CardTitle className="text-[#FFECAB] text-xl text-center">General Information</CardTitle>
                 </CardHeader>

@@ -253,7 +253,7 @@ const StaffManagementPage = (): JSX.Element => {
       )}
 
       {/* Carrd */}
-      <Card className="border-2 border-[#FFECAB]/30 bg-[#0c1225]/70 shadow-xl">
+      <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
         <CardHeader>
           <CardTitle className="text-[#FFECAB]">Clinic Staff List</CardTitle>
         </CardHeader>

@@ -26,7 +26,7 @@ interface PetListProps {
 const PetList = ({ pets, onSelectPet, onAddPet, showInactive, onToggleShowInactive}: PetListProps): JSX.Element => {
 
     return (
-      <Card className="border-2 border-[#FFECAB]">
+      <Card className="border-2 border-[#FFECAB]/30 bg-[#0c1225]/70 shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center justify-between px-6">
             <div className="flex justify-between gap-2">

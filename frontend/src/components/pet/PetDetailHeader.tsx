@@ -45,7 +45,7 @@ const PetDetailHeader = ({pet, onBack, onEdit, onDeactivate, onRequestActivation
     const canRequestActivation = pet.status === PetStatus.PENDING && !pet.pendingActivationClinicId;
 
     return (
-      <Card className="border-2 border-[#FFECAB] bg-[#090D1A]">
+      <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
         <CardHeader>
           <div className="flex items-center gap-4">
             <img

@@ -6,7 +6,8 @@ import {
   Users,
   LogOut,
   Edit,
-  Building
+  Building,
+  PawPrint
 } from 'lucide-react';
 import { ClinicStaffProfile } from '@/types/apiTypes';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,7 +24,8 @@ interface MenuItem {
     label: string;
     icon: React.ElementType;
     path: string;
-    adminOnly?: boolean;
+    adminOnly?: boolean; 
+    vetOrAdmin?: boolean; 
 }
 
 /**
@@ -43,8 +45,9 @@ const ClinicSidebar = ({
 
     const menuItems: MenuItem[] = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/clinic/dashboard' },
+        { id: 'pet_management', label: 'Pet Management', icon: PawPrint, path: '/clinic/pets', vetOrAdmin: true },
         { id: 'staff_management', label: 'Staff Management', icon: Users, path: '/clinic/staff', adminOnly: true },
-        { id: 'settings', label: 'Clinic Management', icon: Building, path: '/clinic/settings' },
+        { id: 'settings', label: 'Clinic Info', icon: Building, path: '/clinic/settings' },
     ];
 
     const clinicName = currentStaff.clinicName || "Clinic Portal";

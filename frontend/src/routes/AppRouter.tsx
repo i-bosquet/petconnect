@@ -12,6 +12,7 @@ import OwnerDashboardPage from '@/pages/Owner/OwnerDashboardPage';
 import ClinicDashboardPage from '@/pages/Clinic/ClinicDashboardPage';
 import StaffManagementPage from '@/pages/Clinic/StaffManagementPage';
 import ClinicManagementPage from '@/pages/Clinic/ClinicManagementPage';
+import PetManagementPage from '@/pages/Clinic/PetManagementPage'; 
 import NotFoundPage from '@/pages/NotFound/NotFoundPage';
 
 
@@ -41,6 +42,7 @@ const AppRouter = (): JSX.Element => {
         <Route index element={<ClinicDashboardPage />} />
         <Route path="dashboard" element={<ClinicDashboardPage />} />
         <Route path="staff" element={<StaffManagementPage />} /> 
+        <Route path="pets" element={<PetManagementPage />} /> 
         <Route path="settings" element={<ClinicManagementPage />} />
       </Route>
 
