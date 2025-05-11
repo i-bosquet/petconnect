@@ -3,6 +3,7 @@ package com.petconnect.backend.user.port.in.web;
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.application.service.ClinicService;
 import com.petconnect.backend.user.application.service.ClinicStaffService;
 import com.petconnect.backend.common.helper.UserHelper;
@@ -113,6 +114,9 @@ public class ClinicController implements ClinicControllerApi {
         return ResponseEntity.ok(countries);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @GetMapping("/{clinicId}/public-key/download")
     public ResponseEntity<Resource> downloadClinicPublicKey(@PathVariable Long clinicId) {
@@ -139,5 +143,15 @@ public class ClinicController implements ClinicControllerApi {
             log.error("Error reading public key file for clinic {}: {}", clinicId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @GetMapping("/{clinicId}/vets-for-selection")
+    public ResponseEntity<List<VetSummaryDto>> getActiveVetsForSelectionByClinic(@PathVariable Long clinicId) {
+        List<VetSummaryDto> vets = clinicService.findActiveVetsForSelectionByClinicId(clinicId);
+        return ResponseEntity.ok(vets);
     }
 }

@@ -2,6 +2,7 @@ package com.petconnect.backend.user.application.service;
 
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.domain.model.Country;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.core.io.Resource;
@@ -77,4 +78,14 @@ public interface ClinicService {
      * @throws java.io.FileNotFoundException if the physical file is missing despite a path existing.
      */
     Resource getClinicPublicKeyResource(Long clinicId, Long requesterUserId) throws IOException;
+
+    /**
+     * Retrieves a list of active veterinarians associated with a specific clinic
+     * who are available for selection. Each veterinarian is represented in a simplified DTO format.
+     *
+     * @param clinicId The unique identifier of the clinic for which to retrieve active veterinarians.
+     * @return A list of {@code VetSummaryForSelectionDto} objects, each representing an active veterinarian
+     *         from the specified clinic. The list will be empty if no active veterinarians are found.
+     */
+    List<VetSummaryDto> findActiveVetsForSelectionByClinicId(Long clinicId);
 }

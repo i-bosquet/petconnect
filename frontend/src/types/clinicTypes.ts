@@ -1,14 +1,23 @@
 import { Country } from './apiTypes'; 
 
 /**
- * Summary information for a Veterinarian, often used when listing keys.vets associated with a Pet or Clinic.
+ * Summary information for a Veterinarian, including their avatar, email,
+ * and essential details of their primary clinic.
+ * Used when listing vets associated with a pet or for selection.
  */
 export interface VetSummaryDto {
     id: number | string;
-    name: string | null; 
-    surname: string | null; 
+    name: string | null;
+    surname: string | null;
+    avatar: string | null;    
+    email: string | null;   
+    clinicId: number | string | null; 
+    clinicName: string | null;
+    clinicAddress: string | null; 
+    clinicCity: string | null; 
+    clinicCountry: string | null; 
+    clinicPhone: string | null; 
 }
-
 
 /**
  * Data Transfer Object representing a Clinic's details.

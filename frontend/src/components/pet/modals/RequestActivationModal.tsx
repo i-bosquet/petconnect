@@ -3,7 +3,7 @@ import Modal from '@/components/common/Modal';
 import { Button } from '@/components/ui/button';
 import { PetProfileDto, ClinicDto } from '@/types/apiTypes';
 import { Loader2,  Search, CircleX, CheckCircle } from 'lucide-react';
-import ClinicSelectionForActivation from '@/components/pet/ClinicSelectionForActivation'; 
+import ClinicSelectionForActivation from '@/components/pet/modals/ClinicSelectionForActivationModal'; 
 
 interface RequestActivationModalProps {
     isOpen: boolean;

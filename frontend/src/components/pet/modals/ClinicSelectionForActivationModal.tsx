@@ -111,7 +111,7 @@ const ClinicSelectionForActivation = ({ isOpen, onClose, onClinicSelected }: Cli
     if (!isOpen) return null;
 
     return (
-        <Modal title="Select Clinic for Activation" onClose={onClose} maxWidth="max-w-2xl">
+        <Modal title="Select Clinic for activation" onClose={onClose} maxWidth="max-w-2xl">
             <form onSubmit={handleSearchSubmit} className="mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     {/* Name Input */}

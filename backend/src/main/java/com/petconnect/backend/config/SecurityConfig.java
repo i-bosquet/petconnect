@@ -61,14 +61,13 @@ public class SecurityConfig {
 
 
     /**
-     * Defines the security filter chain that applies to HTTP requests.
-     * Configures CSRF, session management, authorization rules, JWT filter,
-     * and custom AuthenticationEntryPoint/AccessDeniedHandler.
-     * Order matters: more specific rules should come before more general ones.
+     * Configures the security filter chain for HTTP requests.
+     * Sets up CORS, CSRF, session management policies, request authorization rules,
+     * JWT token filter, and exception handling mechanisms for the application.
      *
-     * @param httpSecurity The HttpSecurity object to configure.
-     * @return The configured SecurityFilterChain.
-     * @throws Exception If an error occurs during configuration.
+     * @param httpSecurity The HttpSecurity instance to configure security settings.
+     * @return The configured SecurityFilterChain instance.
+     * @throws Exception If a configuration error occurs.
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -135,6 +134,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/pets/clinic/pending").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets pending at MY clinic
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/public-key/download").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Download the public-key file
                     // --- 4. DEFAULT RULE ---
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/vets-for-selection").authenticated(); // List vets by clinic
                     // Any other request requires authentication
                     http.anyRequest().authenticated();
                 })

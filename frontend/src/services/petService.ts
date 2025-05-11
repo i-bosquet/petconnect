@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config';
-import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto, PetClinicUpdatePayload } from '../types/apiTypes';
+import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto, PetClinicUpdatePayload, VetSummaryDto } from '../types/apiTypes';
 
 interface FindMyPetsParams {
 page: number;
@@ -451,6 +451,94 @@ export const updatePetByClinicStaff = async (
             console.error(`Network or unexpected update pet by clinic staff (${petId}) error:`, error);
             throw new Error('Failed to update pet by clinic staff due to network or unexpected error.');
         }
+    }
+};
+
+/**
+ * Associates a veterinarian with a specific pet for the authenticated owner.
+ *
+ * @param {string} token - The JWT token of the authenticated owner.
+ * @param {number | string} petId - The ID of the pet.
+ * @param {number | string} vetId - The ID of the veterinarian to associate.
+ * @returns {Promise<void>} A promise that resolves when the association is successful.
+ * @throws {Error} Throws an error if association fails.
+ */
+export const associateVetWithPet = async (
+    token: string,
+    petId: number | string,
+    vetId: number | string
+): Promise<void> => {
+    if (!token) throw new Error("Authentication token required.");
+    if (!petId || !vetId) throw new Error("Pet ID and Veterinarian ID are required.");
+
+    try {
+        await axios.post(`${API_BASE_URL}/pets/${petId}/associate-vet/${vetId}`, {}, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+    } catch (error) {
+        // ... (manejo de error similar a otras funciones)
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to associate veterinarian.');
+        }
+        throw new Error('Failed to associate veterinarian due to network or unexpected error.');
+    }
+};
+
+/**
+ * Disassociates a veterinarian from a specific pet for the authenticated owner.
+ *
+ * @param {string} token - The JWT token of the authenticated owner.
+ * @param {number | string} petId - The ID of the pet.
+ * @param {number | string} vetId - The ID of the veterinarian to disassociate.
+ * @returns {Promise<void>} A promise that resolves when the disassociation is successful.
+ * @throws {Error} Throws an error if disassociation fails.
+ */
+export const disassociateVetFromPet = async (
+    token: string,
+    petId: number | string,
+    vetId: number | string
+): Promise<void> => {
+    if (!token) throw new Error("Authentication token required.");
+    if (!petId || !vetId) throw new Error("Pet ID and Veterinarian ID are required.");
+
+    try {
+        await axios.delete(`${API_BASE_URL}/pets/${petId}/associate-vet/${vetId}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to disassociate veterinarian.');
+        }
+        throw new Error('Failed to disassociate veterinarian due to network or unexpected error.');
+    }
+};
+
+/**
+ * Fetches a list of active veterinarians for a given clinic ID, suitable for selection.
+ *
+ * @param {string} token - The JWT token for authorization.
+ * @param {number | string} clinicId - The ID of the clinic.
+ * @returns {Promise<VetSummaryForSelectionDto[]>} A promise resolving to a list of vet summaries.
+ *                                                 (Asegúrate que el tipo coincida con lo que devuelve el backend)
+ * @throws {Error} Throws an error if fetching fails.
+ */
+export const getVetsByClinicId = async (token: string, clinicId: number | string): Promise<VetSummaryDto[]> => {
+    if (!token) throw new Error("Authentication token is required.");
+    if (!clinicId) throw new Error("Clinic ID is required.");
+
+    try {
+        const response = await axios.get<VetSummaryDto[]>(`${API_BASE_URL}/clinics/${clinicId}/vets-for-selection`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to fetch veterinarians for clinic.');
+        }
+        throw new Error('Failed to fetch veterinarians for clinic due to network or unexpected error.');
     }
 };
 

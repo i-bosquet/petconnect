@@ -6,10 +6,13 @@ import com.petconnect.backend.common.helper.Utils;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.application.mapper.ClinicMapper;
+import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.application.service.ClinicService;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicRepository;
+import com.petconnect.backend.user.domain.repository.ClinicStaffRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,6 +35,7 @@ import java.nio.file.Path;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -49,7 +53,9 @@ import java.util.Objects;
 public class ClinicServiceImpl implements ClinicService {
 
     private final ClinicRepository clinicRepository;
+    private final ClinicStaffRepository clinicStaffRepository;
     private final ClinicMapper clinicMapper;
+    private final UserMapper userMapper;
     private final EntityFinderHelper entityFinderHelper;
     private final KeyStorageService keyStorageService;
     private final AuthorizationHelper authorizationHelper;
@@ -192,6 +198,32 @@ public class ClinicServiceImpl implements ClinicService {
             log.error("Public key file not found or not readable at path: {}", absolutePath);
             throw new FileNotFoundException("Public key file not found for clinic " + clinicId + " at path " + relativePath);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<VetSummaryDto> findActiveVetsForSelectionByClinicId(Long clinicId) {
+        entityFinderHelper.findClinicOrFail(clinicId);
+        List<ClinicStaff> activeStaff = clinicStaffRepository.findByClinicIdAndIsActive(clinicId, true);
+
+        List<Vet> activeVets = activeStaff.stream()
+                .filter(Vet.class::isInstance)
+                .map(Vet.class::cast)
+                .toList();
+
+        log.debug("Found {} active vets for selection in clinic ID {}", activeVets.size(), clinicId);
+        if (activeVets.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<VetSummaryDto> list = new ArrayList<>();
+        for (Vet activeVet : activeVets) {
+            VetSummaryDto vetSummaryDto = userMapper.toVetSummaryDto(activeVet);
+            list.add(vetSummaryDto);
+        }
+        return list;
     }
 
     /**

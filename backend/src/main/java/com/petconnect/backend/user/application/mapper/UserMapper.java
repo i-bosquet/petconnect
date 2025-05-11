@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 import com.petconnect.backend.common.helper.ImageUrlHelper;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -218,7 +219,48 @@ public class UserMapper {
         if (vet == null) {
             return null;
         }
-        return new VetSummaryDto(vet.getId(), vet.getName(), vet.getSurname());
+
+        String vetAvatarFullUrl = imageUrlHelper.buildFullImageUrl(
+                vet.getAvatar(),
+                defaultUserImageDbPrefix,
+                DEFAULT_USER_AVATAR_URL_PREFIX,
+                USER_AVATAR_UPLOAD_SUBDIRECTORY,
+                UPLOADED_USER_AVATAR_URL_PREFIX,
+                "USER_VET",
+                vet.getId(),
+                (backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/") + DEFAULT_USER_AVATAR_URL_PREFIX.substring(1) + "vet.png"
+        );
+
+        Clinic clinic = vet.getClinic();
+        Long clinicId = null;
+        String clinicName = null;
+        String clinicAddress = null;
+        String clinicCity = null;
+        String clinicCountry = null;
+        String clinicPhone = null;
+
+        if (clinic != null) {
+            clinicId = clinic.getId();
+            clinicName = clinic.getName();
+            clinicAddress = clinic.getAddress();
+            clinicCity = clinic.getCity();
+            clinicCountry = clinic.getCountry() != null ? clinic.getCountry().name() : null;
+            clinicPhone = clinic.getPhone();
+        }
+
+        return new VetSummaryDto(
+                vet.getId(),
+                vet.getName(),
+                vet.getSurname(),
+                vetAvatarFullUrl,
+                vet.getEmail(),
+                clinicId,
+                clinicName,
+                clinicAddress,
+                clinicCity,
+                clinicCountry,
+                clinicPhone
+        );
     }
 
     /**

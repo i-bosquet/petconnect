@@ -12,7 +12,7 @@ import {
   PetProfileDto,
   PetOwnerUpdatePayload,
   BreedDto,
-} from "@/types/apiTypes"; // Usar PetOwnerUpdatePayload
+} from "@/types/apiTypes"; 
 import { Specie, Gender } from "@/types/enumTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

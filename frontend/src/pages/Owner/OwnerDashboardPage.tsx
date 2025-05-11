@@ -297,7 +297,10 @@ const OwnerDashboardPage = (): JSX.Element => {
             onDeactivate={() => handleOpenDeactivateModal(selectedPet)}
             onRequestActivation={() => handleOpenRequestActivationModal(selectedPet)} 
           />
-          <PetDetailTabs pet={selectedPet} />
+          <PetDetailTabs 
+          pet={selectedPet}
+          onAssociationChanged={handlePetAddedOrUpdated}
+          />
         </div>
       )}
 

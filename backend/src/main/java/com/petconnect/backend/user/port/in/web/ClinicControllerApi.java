@@ -3,6 +3,7 @@ package com.petconnect.backend.user.port.in.web;
 import com.petconnect.backend.user.application.dto.ClinicDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicUpdateDto;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.domain.model.Country;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -214,4 +215,20 @@ public interface ClinicControllerApi {
     @GetMapping("/{clinicId}/public-key/download")
     ResponseEntity<Resource> downloadClinicPublicKey(
             @Parameter(description = "ID of the clinic", required = true) @PathVariable Long clinicId);
+
+    /**
+     * Retrieves a list of active veterinarians from the specified clinic for owner selection.
+     *
+     * @param clinicId the unique identifier of the clinic from which active veterinarians need to be retrieved
+     * @return a ResponseEntity containing a list of VetSummaryDto objects representing the active veterinarians
+     */
+    @Operation(summary = "Get active veterinarians for selection from a specific clinic", description = "Retrieves a list of active veterinarians from the specified clinic, suitable for an owner to select for association.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of active veterinarians retrieved successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = VetSummaryDto[].class))),
+            @ApiResponse(responseCode = "404", description = "Clinic not found", content = @Content)
+    })
+    ResponseEntity<List<VetSummaryDto>> getActiveVetsForSelectionByClinic(
+            @Parameter(description = "ID of the clinic to retrieve veterinarians from") @PathVariable Long clinicId
+    );
 }
