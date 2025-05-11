@@ -11,11 +11,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data # Named volume for persistence
     ports:
-     - "5432:5432" # Map host port 5432 to container port 5432
+      - "5432:5432" # Map host port 5432 to container port 5432
     networks:
       - petconnect-network
 
-#   Adminer Service (Graphical Interface for the Database)
+  #   Adminer Service (Graphical Interface for the Database)
   adminer:
     image: adminer
     container_name: petconnect_adminer
@@ -27,7 +27,7 @@ services:
     depends_on: # needs the DB to be ready
       - db
 
-#  Backend Service (Spring Boot Application)
+  #  Backend Service (Spring Boot Application)
   backend:
     container_name: petconnect_backend
     # Build the image from the Dockerfile in the 'backend' directory
@@ -44,6 +44,7 @@ services:
     # Pass environment variables from the .env file to the Spring Boot container
     # Spring Boot will automatically use these to override application.properties
     environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       # Database Connection (matches application.properties placeholders)
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB}
       - POSTGRES_DB=${POSTGRES_DB}
