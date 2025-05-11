@@ -5,6 +5,7 @@ import { ClinicDto, Page, ApiErrorResponse, Country } from '@/types/apiTypes';
 import Modal from '@/components/common/Modal'; 
 import Pagination from '@/components/common/Pagination'; 
 import { AxiosError } from 'axios';
+import { Button } from '@/components/ui/button';
 
 // --- Component Props ---
 interface ClinicSearchModalProps {
@@ -209,14 +210,14 @@ const ClinicSearchModal = ({ isOpen, onClose }: ClinicSearchModalProps): JSX.Ele
                         </p>
                     )}
                     {/* Search Button */}
-                    <button
+                    <Button
                         type="submit"
                         disabled={isLoading}
-                        className="bg-cyan-800 hover:opacity-80 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center sm:w-auto disabled:opacity-50"
+                        className="bg-cyan-800 hover:bg-cyan-600 text-[#FFECAB] font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center sm:w-auto disabled:opacity-50 cursor-pointer"
                         aria-label="Submit Clinic Search"
                     >
                         <Search size={18} className="mr-1 sm:mr-2" /> Search
-                    </button>
+                    </Button>
                 </div>
             </form>
 

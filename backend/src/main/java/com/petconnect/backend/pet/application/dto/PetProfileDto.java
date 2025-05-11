@@ -9,27 +9,25 @@ import java.time.LocalDate;
 import java.util.Set;
 
 /**
- * Data Transfer Object representing the full profile of a Pet,
- * including details about its owner, breed, and associated veterinarians.
- * Used for displaying detailed pet information.
+ * Data Transfer Object representing the complete profile of a pet within the system.
+ * Includes a combination of owner-provided data, clinic-verified details, and associated metadata.
  *
  * @param id The unique identifier of the pet.
  * @param name The name of the pet.
- * @param specie The species of the pet (derived from Breed).
- * @param color Optional color description.
- * @param gender Optional gender of the pet.
- * @param birthDate Optional date of birth.
- * @param microchip Optional microchip number.
- * @param image URL/path to the pet's image (will always have a value, potentially default).
- * @param status The current status (PENDING, ACTIVE, INACTIVE).
- * @param ownerId The ID of the owner user.
- * @param ownerUsername The username of the owner.
- * @param breedId Optional ID of the breed.
- * @param breedName Optional name of the breed.
- * @param pendingActivationClinicId Optional ID of the clinic where activation is pending.
- * @param associatedVets A set containing summary information of veterinarians associated with the pet.
- *
- * @author ibosquet
+ * @param specie The species of the pet (e.g., Dog, Cat, Rabbit, etc.).
+ * @param color The color description of the pet.
+ * @param gender The gender of the pet.
+ * @param birthDate The date of birth of the pet.
+ * @param microchip The microchip number of the pet.
+ * @param image The URL or path to the pet's image on the system.
+ * @param status The current status of the pet (e.g., Pending, Active, Inactive).
+ * @param ownerId The unique identifier of the owner linked to the pet.
+ * @param ownerUsername The username of the pet owner.
+ * @param breedId The unique identifier of the breed associated with the pet.
+ * @param breedName The descriptive name of the breed associated with the pet.
+ * @param pendingActivationClinicId The unique ID of the clinic handling the pending activation of the pet (if applicable).
+ * @param pendingActivationClinicName The name of the clinic handling the pending activation of the pet (if applicable).
+ * @param associatedVets A set of veterinarians associated with the pet, providing summary details.
  */
 public record PetProfileDto(
         Long id,
@@ -46,6 +44,7 @@ public record PetProfileDto(
         Long breedId,
         String breedName,
         Long pendingActivationClinicId,
+        String pendingActivationClinicName,
         Set<VetSummaryDto> associatedVets
 ) {
 }

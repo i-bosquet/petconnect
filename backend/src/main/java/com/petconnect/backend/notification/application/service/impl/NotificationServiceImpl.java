@@ -85,7 +85,7 @@ public class NotificationServiceImpl implements NotificationService {
         if (targetVet == null) return;
 
         log.info("--> NOTIFICATION SIMULATION (to Vet: {} {}): Owner ID {} requested a certificate generation for Pet ID {}.",
-                targetVet.getName(), targetVet.getSurname(), // Usamos nombre/apellido
+                targetVet.getName(), targetVet.getSurname(),
                 event.ownerId(),
                 event.petId());
     }

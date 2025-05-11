@@ -68,12 +68,12 @@ public class PetMapper {
         String breedName = pet.getBreed().getName();
         Specie specie = pet.getBreed().getSpecie();
         Long pendingClinicId = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getId() : null;
+        String pendingClinicName = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getName() : null;
         Set<VetSummaryDto> vetSummaries = userMapper.toVetSummaryDtoSet(pet.getAssociatedVets());
 
         String fallbackPetAvatarUrl = (backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/") +
-                DEFAULT_PET_AVATAR_URL_PREFIX.substring(1) + // quitar barra inicial
+                DEFAULT_PET_AVATAR_URL_PREFIX.substring(1) +
                 (pet.getBreed() != null ? pet.getBreed().getSpecie().name().toLowerCase() + ".png" : "default_pet.png");
-
 
         String fullImageUrl = imageUrlHelper.buildFullImageUrl(
                 pet.getImage(),
@@ -101,6 +101,7 @@ public class PetMapper {
                 breedId,
                 breedName,
                 pendingClinicId,
+                pendingClinicName,
                 vetSummaries
         );
     }

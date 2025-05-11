@@ -22,7 +22,7 @@ const PetCard = ({ pet, onSelect }: PetCardProps): JSX.Element => {
     return (
         <button
             onClick={onSelect}
-            className={`flex flex-col items-center p-3 rounded-xl transition-all border border-[#FFECAB] hover:opacity-80 cursor-pointer ${
+            className={`flex flex-col items-center p-3 rounded-xl transition-all border border-[#FFECAB] hover:opacity-80 min-w-28 cursor-pointer ${
                 isInactive ? 'opacity-50 filter grayscale' : '' 
             }`}
             //disabled={isInactive} 

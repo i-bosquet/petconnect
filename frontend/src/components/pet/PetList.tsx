@@ -50,7 +50,7 @@ const PetList = ({ pets, onSelectPet, onAddPet, showInactive, onToggleShowInacti
         {/* Grid of pet cards */}
         <CardContent>
           {pets.length > 0 ? (
-            <div className="flex flex-wrap justify-evenly gap-3">
+            <div className="flex flex-wrap justify-center gap-8">
               {pets.map((pet) => (
                 <PetCard
                   key={pet.id}

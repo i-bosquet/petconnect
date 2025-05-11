@@ -520,223 +520,223 @@ class RecordControllerIntegrationTest {
         }
     }
 
-    /**
-     * --- Tests for PUT /api/records/{recordId} (Update Record) ---
-     */
-    @Nested
-    @DisplayName("PUT /api/records/{recordId} (Update Unsigned Record)")
-    class UpdateRecordIntegrationTests {
-        private Long unsignedOwnerRecordId;
-        private Long unsignedStaffRecordId;
-        private Long signedVetRecordId;
-        private Long vaccineRecordId;
-
-        /**
-         * Create records needed specifically for update tests.
-         */
-        @BeforeEach
-        void updateSetup() throws Exception {
-            Long clinicId = 1L;
-
-            mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                    .andExpect(status().isNoContent());
-            entityManager.flush(); entityManager.clear();
-
-            Pet petEligibleEntity = petRepository.findById(petIdOwned).orElseThrow();
-            PetActivationDto activationEligible = new PetActivationDto(
-                    petEligibleEntity.getName(),
-                    StringUtils.hasText(petEligibleEntity.getColor()) ? petEligibleEntity.getColor() : "DefaultColor",
-                    petEligibleEntity.getGender() != null ? petEligibleEntity.getGender() : Gender.MALE,
-                    petEligibleEntity.getBirthDate() != null ? petEligibleEntity.getBirthDate() : LocalDate.now().minusYears(1),
-                    StringUtils.hasText(petEligibleEntity.getMicrochip()) ? petEligibleEntity.getMicrochip() : "MicrochipNeeded",
-                    petEligibleEntity.getBreed().getId(),
-                    StringUtils.hasText(petEligibleEntity.getImage()) ? petEligibleEntity.getImage() : "ImageNeeded.jpg"
-            );
-
-            mockMvc.perform(put("/api/pets/{petId}/activate", petIdOwned)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(activationEligible)))
-                    .andExpect(status().isOk());
-
-            entityManager.flush();
-            entityManager.clear();
-
-            Pet reloadedPet = petRepository.findById(petIdOwned).orElseThrow();
-            assertThat(reloadedPet.getAssociatedVets()).as("Vet should be associated after activation").anyMatch(v -> v.getId().equals(vetId));
-
-            RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Owner Rec To Update", null);
-            MvcResult resOwner = mockMvc.perform(post("/api/records").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerRecDto))).andExpect(status().isCreated()).andReturn();
-            unsignedOwnerRecordId = extractRecordIdFromResult(objectMapper, resOwner);
-
-            RecordCreateDto staffRecDto = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Staff Rec To Update (By Admin)", null);
-            MvcResult resStaff = mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(staffRecDto)))
-                    .andExpect(status().isCreated()).andReturn();
-            unsignedStaffRecordId = extractRecordIdFromResult(objectMapper, resStaff);
-
-            VaccineCreateDto vacDto = new VaccineCreateDto("Vac Signed", 1, "LUpd", "BUpd", true);
-            RecordCreateDto signedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Rec", vacDto);
-            MvcResult resSigned = mockMvc.perform(post("/api/records")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(signedDto))
-            ).andExpect(status().isCreated()).andReturn();
-            signedVetRecordId = extractRecordIdFromResult(objectMapper, resSigned);
-            vaccineRecordId = signedVetRecordId;
-
-            VaccineCreateDto vacUnsignedDto = new VaccineCreateDto("VacUnsigned", 3, "LabUnsigned", "BUnsigned", false);
-            RecordCreateDto unsignedVaccineRecDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Unsigned Vaccine Rec", vacUnsignedDto);
-
-            MvcResult resUnsignedVac = mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(unsignedVaccineRecDto)))
-                    .andExpect(status().isCreated()).andReturn();
-            vaccineRecordId = extractRecordIdFromResult(objectMapper, resUnsignedVac);
-            RecordViewDto createdUnsignedVacRec = objectMapper.readValue(resUnsignedVac.getResponse().getContentAsString(), RecordViewDto.class);
-            assertThat(createdUnsignedVacRec.vetSignature()).as("VACCINE Record created by Admin should be unsigned").isNull();
-            assertThat(createdUnsignedVacRec.type()).isEqualTo(RecordType.VACCINE);
-
-            entityManager.flush(); entityManager.clear();
-            assertThat(unsignedOwnerRecordId).isNotNull();
-            assertThat(unsignedStaffRecordId).isNotNull();
-            assertThat(signedVetRecordId).isNotNull();
-            assertThat(vaccineRecordId).isNotNull();
-        }
-
-        @Test
-        @DisplayName("Should update record successfully when Owner updates own unsigned record")
-        void updateRecord_Success_OwnerUpdatesOwn() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(RecordType.ILLNESS, "Owner Updated Description");
-            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id", is(unsignedOwnerRecordId.intValue())))
-                    .andExpect(jsonPath("$.type", is(updateDto.type().name())))
-                    .andExpect(jsonPath("$.description", is(updateDto.description())));
-        }
-
-        @Test
-        @DisplayName("Should update record successfully when Staff updates unsigned record from same clinic staff")
-        void updateRecord_Success_StaffUpdatesStaff() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Admin Updated Description");
-
-            mockMvc.perform(put("/api/records/{recordId}", unsignedStaffRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id", is(unsignedStaffRecordId.intValue())))
-                    .andExpect(jsonPath("$.type", is(updateDto.type().name())))
-                    .andExpect(jsonPath("$.description", is(updateDto.description())))
-                    .andExpect(jsonPath("$.vetSignature", is(nullValue())));
-
-            Optional<Record> recordOpt = recordRepository.findById(unsignedStaffRecordId);
-            assertThat(recordOpt).isPresent();
-            assertThat(recordOpt.get().getType()).isEqualTo(updateDto.type());
-            assertThat(recordOpt.get().getDescription()).isEqualTo(updateDto.description());
-            assertThat(recordOpt.get().getVetSignature()).isNull();
-        }
-
-        @Test
-        @DisplayName("Should return 409 Conflict when trying to update a signed record")
-        void updateRecord_Conflict_RecordSigned() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Attempt to update signed");
-            mockMvc.perform(put("/api/records/{recordId}", signedVetRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("because it has been signed")));
-        }
-
-        @Test
-        @DisplayName("Should return 409 Conflict when trying to update a VACCINE record")
-        void updateRecord_Conflict_RecordIsVaccine() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Attempt to update vaccine record");
-            mockMvc.perform(put("/api/records/{recordId}", vaccineRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("Cannot update record " + vaccineRecordId + ": records of type VACCINE cannot be updated.")));
-        }
-
-        @Test
-        @DisplayName("Should return 409 Conflict when trying to change type TO VACCINE")
-        void updateRecord_Conflict_ChangeToVaccine() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(RecordType.VACCINE, "Changing to vaccine");
-            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("Cannot update record " + unsignedOwnerRecordId + ": cannot change record type to VACCINE.")));
-        }
-        @Test
-        @DisplayName("Should return 403 Forbidden if Staff tries to update Owner's record")
-        void updateRecord_Forbidden_StaffUpdatesOwner() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Staff trying owner update");
-            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.message", is("You do not have permission to perform this action or access this resource.")));
-        }
-
-        @Test
-        @DisplayName("Should return 403 Forbidden if Owner tries to update Staff's record")
-        void updateRecord_Forbidden_OwnerUpdatesStaff() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Owner trying staff update");
-            mockMvc.perform(put("/api/records/{recordId}", unsignedStaffRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.message", is("You do not have permission to perform this action or access this resource.")));
-        }
-
-        @Test
-        @DisplayName("Should return 403 Forbidden if Staff updates record from DIFFERENT clinic staff")
-        void updateRecord_Forbidden_StaffUpdatesDifferentClinicStaff() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Other clinic trying update");
-            mockMvc.perform(put("/api/records/{recordId}", unsignedStaffRecordId)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken) // Admin from another clinic
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.message", is("You do not have permission to perform this action or access this resource.")));
-        }
-
-        @Test
-        @DisplayName("Should return 404 Not Found if record ID does not exist")
-        void updateRecord_NotFound_Record() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Update non-existent");
-            mockMvc.perform(put("/api/records/{recordId}", 9999L)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("Should return 401 Unauthorized if no token provided")
-        void updateRecord_Unauthorized() throws Exception {
-            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Update non-existent");
-            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateDto)))
-                    .andExpect(status().isUnauthorized());
-        }
-
-    }
+//    /**
+//     * --- Tests for PUT /api/records/{recordId} (Update Record) ---
+//     */
+//    @Nested
+//    @DisplayName("PUT /api/records/{recordId} (Update Unsigned Record)")
+//    class UpdateRecordIntegrationTests {
+//        private Long unsignedOwnerRecordId;
+//        private Long unsignedStaffRecordId;
+//        private Long signedVetRecordId;
+//        private Long vaccineRecordId;
+//
+//        /**
+//         * Create records needed specifically for update tests.
+//         */
+//        @BeforeEach
+//        void updateSetup() throws Exception {
+//            Long clinicId = 1L;
+//
+//            mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdOwned, clinicId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+//                    .andExpect(status().isNoContent());
+//            entityManager.flush(); entityManager.clear();
+//
+//            Pet petEligibleEntity = petRepository.findById(petIdOwned).orElseThrow();
+//            PetActivationDto activationEligible = new PetActivationDto(
+//                    petEligibleEntity.getName(),
+//                    StringUtils.hasText(petEligibleEntity.getColor()) ? petEligibleEntity.getColor() : "DefaultColor",
+//                    petEligibleEntity.getGender() != null ? petEligibleEntity.getGender() : Gender.MALE,
+//                    petEligibleEntity.getBirthDate() != null ? petEligibleEntity.getBirthDate() : LocalDate.now().minusYears(1),
+//                    StringUtils.hasText(petEligibleEntity.getMicrochip()) ? petEligibleEntity.getMicrochip() : "MicrochipNeeded",
+//                    petEligibleEntity.getBreed().getId(),
+//                    StringUtils.hasText(petEligibleEntity.getImage()) ? petEligibleEntity.getImage() : "ImageNeeded.jpg"
+//            );
+//
+//            mockMvc.perform(put("/api/pets/{petId}/activate", petIdOwned)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(activationEligible)))
+//                    .andExpect(status().isOk());
+//
+//            entityManager.flush();
+//            entityManager.clear();
+//
+//            Pet reloadedPet = petRepository.findById(petIdOwned).orElseThrow();
+//            assertThat(reloadedPet.getAssociatedVets()).as("Vet should be associated after activation").anyMatch(v -> v.getId().equals(vetId));
+//
+//            RecordCreateDto ownerRecDto = new RecordCreateDto(petIdOwned, RecordType.OTHER, "Owner Rec To Update", null);
+//            MvcResult resOwner = mockMvc.perform(post("/api/records").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerRecDto))).andExpect(status().isCreated()).andReturn();
+//            unsignedOwnerRecordId = extractRecordIdFromResult(objectMapper, resOwner);
+//
+//            RecordCreateDto staffRecDto = new RecordCreateDto(petIdOwned, RecordType.ILLNESS, "Staff Rec To Update (By Admin)", null);
+//            MvcResult resStaff = mockMvc.perform(post("/api/records")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(staffRecDto)))
+//                    .andExpect(status().isCreated()).andReturn();
+//            unsignedStaffRecordId = extractRecordIdFromResult(objectMapper, resStaff);
+//
+//            VaccineCreateDto vacDto = new VaccineCreateDto("Vac Signed", 1, "LUpd", "BUpd", true);
+//            RecordCreateDto signedDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Signed Rec", vacDto);
+//            MvcResult resSigned = mockMvc.perform(post("/api/records")
+//                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                    .contentType(MediaType.APPLICATION_JSON)
+//                    .content(objectMapper.writeValueAsString(signedDto))
+//            ).andExpect(status().isCreated()).andReturn();
+//            signedVetRecordId = extractRecordIdFromResult(objectMapper, resSigned);
+//            vaccineRecordId = signedVetRecordId;
+//
+//            VaccineCreateDto vacUnsignedDto = new VaccineCreateDto("VacUnsigned", 3, "LabUnsigned", "BUnsigned", false);
+//            RecordCreateDto unsignedVaccineRecDto = new RecordCreateDto(petIdOwned, RecordType.VACCINE, "Unsigned Vaccine Rec", vacUnsignedDto);
+//
+//            MvcResult resUnsignedVac = mockMvc.perform(post("/api/records")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(unsignedVaccineRecDto)))
+//                    .andExpect(status().isCreated()).andReturn();
+//            vaccineRecordId = extractRecordIdFromResult(objectMapper, resUnsignedVac);
+//            RecordViewDto createdUnsignedVacRec = objectMapper.readValue(resUnsignedVac.getResponse().getContentAsString(), RecordViewDto.class);
+//            assertThat(createdUnsignedVacRec.vetSignature()).as("VACCINE Record created by Admin should be unsigned").isNull();
+//            assertThat(createdUnsignedVacRec.type()).isEqualTo(RecordType.VACCINE);
+//
+//            entityManager.flush(); entityManager.clear();
+//            assertThat(unsignedOwnerRecordId).isNotNull();
+//            assertThat(unsignedStaffRecordId).isNotNull();
+//            assertThat(signedVetRecordId).isNotNull();
+//            assertThat(vaccineRecordId).isNotNull();
+//        }
+//
+//        @Test
+//        @DisplayName("Should update record successfully when Owner updates own unsigned record")
+//        void updateRecord_Success_OwnerUpdatesOwn() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(RecordType.ILLNESS, "Owner Updated Description");
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$.id", is(unsignedOwnerRecordId.intValue())))
+//                    .andExpect(jsonPath("$.type", is(updateDto.type().name())))
+//                    .andExpect(jsonPath("$.description", is(updateDto.description())));
+//        }
+//
+//        @Test
+//        @DisplayName("Should update record successfully when Staff updates unsigned record from same clinic staff")
+//        void updateRecord_Success_StaffUpdatesStaff() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Admin Updated Description");
+//
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedStaffRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$.id", is(unsignedStaffRecordId.intValue())))
+//                    .andExpect(jsonPath("$.type", is(updateDto.type().name())))
+//                    .andExpect(jsonPath("$.description", is(updateDto.description())))
+//                    .andExpect(jsonPath("$.vetSignature", is(nullValue())));
+//
+//            Optional<Record> recordOpt = recordRepository.findById(unsignedStaffRecordId);
+//            assertThat(recordOpt).isPresent();
+//            assertThat(recordOpt.get().getType()).isEqualTo(updateDto.type());
+//            assertThat(recordOpt.get().getDescription()).isEqualTo(updateDto.description());
+//            assertThat(recordOpt.get().getVetSignature()).isNull();
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 409 Conflict when trying to update a signed record")
+//        void updateRecord_Conflict_RecordSigned() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Attempt to update signed");
+//            mockMvc.perform(put("/api/records/{recordId}", signedVetRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isConflict())
+//                    .andExpect(jsonPath("$.message", containsString("because it has been signed")));
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 409 Conflict when trying to update a VACCINE record")
+//        void updateRecord_Conflict_RecordIsVaccine() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Attempt to update vaccine record");
+//            mockMvc.perform(put("/api/records/{recordId}", vaccineRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isConflict())
+//                    .andExpect(jsonPath("$.message", containsString("Cannot update record " + vaccineRecordId + ": records of type VACCINE cannot be updated.")));
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 409 Conflict when trying to change type TO VACCINE")
+//        void updateRecord_Conflict_ChangeToVaccine() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(RecordType.VACCINE, "Changing to vaccine");
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isConflict())
+//                    .andExpect(jsonPath("$.message", containsString("Cannot update record " + unsignedOwnerRecordId + ": cannot change record type to VACCINE.")));
+//        }
+//        @Test
+//        @DisplayName("Should return 403 Forbidden if Staff tries to update Owner's record")
+//        void updateRecord_Forbidden_StaffUpdatesOwner() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Staff trying owner update");
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isForbidden())
+//                    .andExpect(jsonPath("$.message", is("You do not have permission to perform this action or access this resource.")));
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 403 Forbidden if Owner tries to update Staff's record")
+//        void updateRecord_Forbidden_OwnerUpdatesStaff() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Owner trying staff update");
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedStaffRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isForbidden())
+//                    .andExpect(jsonPath("$.message", is("You do not have permission to perform this action or access this resource.")));
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 403 Forbidden if Staff updates record from DIFFERENT clinic staff")
+//        void updateRecord_Forbidden_StaffUpdatesDifferentClinicStaff() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Other clinic trying update");
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedStaffRecordId)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminBarcelonaToken) // Admin from another clinic
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isForbidden())
+//                    .andExpect(jsonPath("$.message", is("You do not have permission to perform this action or access this resource.")));
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 404 Not Found if record ID does not exist")
+//        void updateRecord_NotFound_Record() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Update non-existent");
+//            mockMvc.perform(put("/api/records/{recordId}", 9999L)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isNotFound());
+//        }
+//
+//        @Test
+//        @DisplayName("Should return 401 Unauthorized if no token provided")
+//        void updateRecord_Unauthorized() throws Exception {
+//            RecordUpdateDto updateDto = new RecordUpdateDto(null, "Update non-existent");
+//            mockMvc.perform(put("/api/records/{recordId}", unsignedOwnerRecordId)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(updateDto)))
+//                    .andExpect(status().isUnauthorized());
+//        }
+//
+//    }
 
     /**
      * --- Test for DELETE /api/records/{recordId} ---

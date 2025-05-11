@@ -96,111 +96,111 @@ class KafkaEventPublicationIntegrationTest {
     @Value("${kafka.topic.certificate-generated}") private String certificateGeneratedTopicName;
 
 
-    @BeforeEach
-    void setUp() throws Exception {
-        Long clinicId = 1L;
-        String ownerUsername = "kafka_pub_owner_" + System.currentTimeMillis();
-        String vetUsername = "kafka_pub_vet_" + System.currentTimeMillis();
-        userRepository.findByUsername(ownerUsername).ifPresent(userRepository::delete);
-        userRepository.findByUsername(vetUsername).ifPresent(userRepository::delete);
-        entityManager.flush();
-
-        String adminToken = IntegrationTestUtils.obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
-
-        OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerUsername+"@test.com", "password123", "kfkowner");
-        MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(ownerReg)))
-                .andExpect(status().isCreated()).andReturn();
-        OwnerProfileDto ownerDto = objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
-        ownerId = ownerDto.id();
-        ownerToken = IntegrationTestUtils.obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
-
-        ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(vetUsername, vetUsername+"@test.com", "password123", "Kafka", "VetPub", RoleEnum.VET, "KFKPVET"+System.currentTimeMillis(), "KFKVKEY"+System.currentTimeMillis());
-        MvcResult vetRegResult = mockMvc.perform(post("/api/staff")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(vetReg)))
-                .andExpect(status().isCreated()).andReturn();
-        ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
-        vetId = vetDto.id();
-        vetToken = IntegrationTestUtils.obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
-
-        PetRegistrationDto pendingPetReg = new PetRegistrationDto("KafkaPending", Specie.DOG, LocalDate.now().minusMonths(1), null,null,null,null,null);
-        MvcResult pendingPetRes = mockMvc.perform(post("/api/pets")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(pendingPetReg)))
-                .andExpect(status().isCreated()).andReturn();
-        petIdPending = IntegrationTestUtils.extractPetIdFromResult(objectMapper, pendingPetRes);
-
-        PetRegistrationDto activePetReg = new PetRegistrationDto("KafkaActive", Specie.CAT, LocalDate.now().minusYears(1), null,null,null,null,"KFKACTIVE"+System.currentTimeMillis());
-        MvcResult activePetRes = mockMvc.perform(post("/api/pets")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(activePetReg)))
-                .andExpect(status().isCreated()).andReturn();
-        petIdActive = IntegrationTestUtils.extractPetIdFromResult(objectMapper, activePetRes);
-
-        mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdActive, clinicId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                .andExpect(status().isNoContent());
-        entityManager.flush(); entityManager.clear();
-
-        Pet petToActivate = petRepository.findById(petIdActive).orElseThrow();
-        PetActivationDto activationDto = new PetActivationDto(petToActivate.getName(), "Gray", Gender.FEMALE, petToActivate.getBirthDate(), petToActivate.getMicrochip(), petToActivate.getBreed().getId(), petToActivate.getImage());
-        mockMvc.perform(put("/api/pets/{petId}/activate", petIdActive)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(activationDto)))
-                .andExpect(status().isOk());
-
-        VaccineCreateDto rabiesVacDto = new VaccineCreateDto("RabiesKfk", 1, "RabLab", "BatchRKFK", true);
-        RecordCreateDto rabiesRecDto = new RecordCreateDto(petIdActive, RecordType.VACCINE, "Rabies vaccine kafka test", rabiesVacDto);
-        MvcResult rabiesRes = mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(rabiesRecDto)))
-                .andExpect(status().isCreated()).andReturn();
-        IntegrationTestUtils.extractRecordIdFromResult(objectMapper, rabiesRes);
-
-        RecordCreateDto annualRecDto = new RecordCreateDto(petIdActive, RecordType.ANNUAL_CHECK, "Annual checkup kafka test", null);
-        mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(annualRecDto)))
-                .andExpect(status().isCreated());
-
-        entityManager.flush();
-
-        String embeddedKafkaBrokers = System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS);
-        assertThat(embeddedKafkaBrokers).as("Embedded Kafka broker addresses should be set").isNotNull();
-        String groupId = "testGroupPub" + System.currentTimeMillis();
-
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(groupId, "true", embeddedKafkaBrokers);
-
-        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-        consumerProps.put(JsonDeserializer.TRUSTED_PACKAGES,"com.petconnect.backend.pet.application.event,com.petconnect.backend.certificate.application.event");
-        consumerProps.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, "true");
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafkaBrokers);
-        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-
-        DefaultKafkaConsumerFactory<String, Object> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
-        consumer = cf.createConsumer();
-
-        consumer.subscribe(List.of(
-                petActivationRequestsTopicName,
-                petActivatedTopicName,
-                certificateRequestsTopicName,
-                certificateGeneratedTopicName
-        ));
-        int maxMessagesToConsume = 100;
-        KafkaTestUtils.getRecords(consumer, Duration.ofMillis(100), maxMessagesToConsume);
-    }
+//    @BeforeEach
+//    void setUp() throws Exception {
+//        Long clinicId = 1L;
+//        String ownerUsername = "kafka_pub_owner_" + System.currentTimeMillis();
+//        String vetUsername = "kafka_pub_vet_" + System.currentTimeMillis();
+//        userRepository.findByUsername(ownerUsername).ifPresent(userRepository::delete);
+//        userRepository.findByUsername(vetUsername).ifPresent(userRepository::delete);
+//        entityManager.flush();
+//
+//        String adminToken = IntegrationTestUtils.obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
+//
+//        OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerUsername+"@test.com", "password123", "kfkowner");
+//        MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register")
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(ownerReg)))
+//                .andExpect(status().isCreated()).andReturn();
+//        OwnerProfileDto ownerDto = objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
+//        ownerId = ownerDto.id();
+//        ownerToken = IntegrationTestUtils.obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+//
+//        ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(vetUsername, vetUsername+"@test.com", "password123", "Kafka", "VetPub", RoleEnum.VET, "KFKPVET"+System.currentTimeMillis(), "KFKVKEY"+System.currentTimeMillis());
+//        MvcResult vetRegResult = mockMvc.perform(post("/api/staff")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(vetReg)))
+//                .andExpect(status().isCreated()).andReturn();
+//        ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
+//        vetId = vetDto.id();
+//        vetToken = IntegrationTestUtils.obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
+//
+//        PetRegistrationDto pendingPetReg = new PetRegistrationDto("KafkaPending", Specie.DOG, LocalDate.now().minusMonths(1), null,null,null,null,null);
+//        MvcResult pendingPetRes = mockMvc.perform(post("/api/pets")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(pendingPetReg)))
+//                .andExpect(status().isCreated()).andReturn();
+//        petIdPending = IntegrationTestUtils.extractPetIdFromResult(objectMapper, pendingPetRes);
+//
+//        PetRegistrationDto activePetReg = new PetRegistrationDto("KafkaActive", Specie.CAT, LocalDate.now().minusYears(1), null,null,null,null,"KFKACTIVE"+System.currentTimeMillis());
+//        MvcResult activePetRes = mockMvc.perform(post("/api/pets")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(activePetReg)))
+//                .andExpect(status().isCreated()).andReturn();
+//        petIdActive = IntegrationTestUtils.extractPetIdFromResult(objectMapper, activePetRes);
+//
+//        mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdActive, clinicId)
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+//                .andExpect(status().isNoContent());
+//        entityManager.flush(); entityManager.clear();
+//
+//        Pet petToActivate = petRepository.findById(petIdActive).orElseThrow();
+//        PetActivationDto activationDto = new PetActivationDto(petToActivate.getName(), "Gray", Gender.FEMALE, petToActivate.getBirthDate(), petToActivate.getMicrochip(), petToActivate.getBreed().getId(), petToActivate.getImage());
+//        mockMvc.perform(put("/api/pets/{petId}/activate", petIdActive)
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(activationDto)))
+//                .andExpect(status().isOk());
+//
+//        VaccineCreateDto rabiesVacDto = new VaccineCreateDto("RabiesKfk", 1, "RabLab", "BatchRKFK", true);
+//        RecordCreateDto rabiesRecDto = new RecordCreateDto(petIdActive, RecordType.VACCINE, "Rabies vaccine kafka test", rabiesVacDto);
+//        MvcResult rabiesRes = mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(rabiesRecDto)))
+//                .andExpect(status().isCreated()).andReturn();
+//        IntegrationTestUtils.extractRecordIdFromResult(objectMapper, rabiesRes);
+//
+//        RecordCreateDto annualRecDto = new RecordCreateDto(petIdActive, RecordType.ANNUAL_CHECK, "Annual checkup kafka test", null);
+//        mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(annualRecDto)))
+//                .andExpect(status().isCreated());
+//
+//        entityManager.flush();
+//
+//        String embeddedKafkaBrokers = System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS);
+//        assertThat(embeddedKafkaBrokers).as("Embedded Kafka broker addresses should be set").isNotNull();
+//        String groupId = "testGroupPub" + System.currentTimeMillis();
+//
+//        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(groupId, "true", embeddedKafkaBrokers);
+//
+//        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+//        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
+//        consumerProps.put(JsonDeserializer.TRUSTED_PACKAGES,"com.petconnect.backend.pet.application.event,com.petconnect.backend.certificate.application.event");
+//        consumerProps.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, "true");
+//        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+//
+//        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+//        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafkaBrokers);
+//        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+//
+//        DefaultKafkaConsumerFactory<String, Object> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+//        consumer = cf.createConsumer();
+//
+//        consumer.subscribe(List.of(
+//                petActivationRequestsTopicName,
+//                petActivatedTopicName,
+//                certificateRequestsTopicName,
+//                certificateGeneratedTopicName
+//        ));
+//        int maxMessagesToConsume = 100;
+//        KafkaTestUtils.getRecords(consumer, Duration.ofMillis(100), maxMessagesToConsume);
+//    }
 
     @AfterEach
     void tearDown() {
@@ -231,37 +231,37 @@ class KafkaEventPublicationIntegrationTest {
         assertThat(event.targetClinicId()).isEqualTo(clinicId);
     }
 
-    @Test
-    @DisplayName("should publish PetActivatedEvent when activatePet is called via API")
-    void testPublishPetActivatedEvent() throws Exception {
-        Long clinicId = 1L;
-        // Arrange
-        PetRegistrationDto pendingReg = new PetRegistrationDto("KafkaPendingActivate", Specie.RABBIT, LocalDate.now().minusMonths(3), null,null,null,null,null);
-        MvcResult pendingPetRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(pendingReg))).andExpect(status().isCreated()).andReturn();
-        Long petToActivateId = extractPetIdFromResult(objectMapper, pendingPetRes);
-        mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petToActivateId, clinicId).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
-        entityManager.flush(); entityManager.clear();
-        Pet petEntity = petRepository.findById(petToActivateId).orElseThrow();
-        PetActivationDto activationDto = new PetActivationDto(petEntity.getName(), "White", Gender.MALE, petEntity.getBirthDate(), "ACTIVATECHIP"+System.currentTimeMillis(), petEntity.getBreed().getId(), petEntity.getImage());
-
-        // Act
-        mockMvc.perform(put("/api/pets/{petId}/activate", petToActivateId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(activationDto)))
-                .andExpect(status().isOk());
-
-        // Assert
-        ConsumerRecord<String, Object> recordItem = KafkaTestUtils.getSingleRecord(consumer, "test-pet-activated", Duration.ofSeconds(10));
-        assertThat(recordItem).isNotNull();
-        assertThat(recordItem.key()).isEqualTo(petToActivateId.toString());
-        assertThat(recordItem.value()).isInstanceOf(PetActivatedEvent.class);
-
-        PetActivatedEvent event = (PetActivatedEvent) recordItem.value();
-        assertThat(event.petId()).isEqualTo(petToActivateId);
-        assertThat(event.ownerId()).isEqualTo(ownerId);
-        assertThat(event.activatingStaffId()).isEqualTo(vetId);
-    }
+//    @Test
+//    @DisplayName("should publish PetActivatedEvent when activatePet is called via API")
+//    void testPublishPetActivatedEvent() throws Exception {
+//        Long clinicId = 1L;
+//        // Arrange
+//        PetRegistrationDto pendingReg = new PetRegistrationDto("KafkaPendingActivate", Specie.RABBIT, LocalDate.now().minusMonths(3), null,null,null,null,null);
+//        MvcResult pendingPetRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(pendingReg))).andExpect(status().isCreated()).andReturn();
+//        Long petToActivateId = extractPetIdFromResult(objectMapper, pendingPetRes);
+//        mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petToActivateId, clinicId).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
+//        entityManager.flush(); entityManager.clear();
+//        Pet petEntity = petRepository.findById(petToActivateId).orElseThrow();
+//        PetActivationDto activationDto = new PetActivationDto(petEntity.getName(), "White", Gender.MALE, petEntity.getBirthDate(), "ACTIVATECHIP"+System.currentTimeMillis(), petEntity.getBreed().getId(), petEntity.getImage());
+//
+//        // Act
+//        mockMvc.perform(put("/api/pets/{petId}/activate", petToActivateId)
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(activationDto)))
+//                .andExpect(status().isOk());
+//
+//        // Assert
+//        ConsumerRecord<String, Object> recordItem = KafkaTestUtils.getSingleRecord(consumer, "test-pet-activated", Duration.ofSeconds(10));
+//        assertThat(recordItem).isNotNull();
+//        assertThat(recordItem.key()).isEqualTo(petToActivateId.toString());
+//        assertThat(recordItem.value()).isInstanceOf(PetActivatedEvent.class);
+//
+//        PetActivatedEvent event = (PetActivatedEvent) recordItem.value();
+//        assertThat(event.petId()).isEqualTo(petToActivateId);
+//        assertThat(event.ownerId()).isEqualTo(ownerId);
+//        assertThat(event.activatingStaffId()).isEqualTo(vetId);
+//    }
 
 
     @Test

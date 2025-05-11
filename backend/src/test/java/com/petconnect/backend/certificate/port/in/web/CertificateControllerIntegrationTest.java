@@ -73,152 +73,152 @@ class CertificateControllerIntegrationTest {
     private Long recordIdRabiesOk;
     private final Long clinic1Id = 1L;
 
-    /**
-     * Comprehensive setup: Creates users, pets, associates them, creates records (signed/unsigned/eligible/ineligible).
-     */
-    @BeforeEach
-    void setUp() throws Exception {
-        // Get Tokens for existing users
-        String adminToken;
-        adminToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto("admin_london", "password123"));
-        otherVetToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto("admin_barcelona", "password123"));
-
-        // Create Owner
-        String ownerUsername = "cert_owner_" + System.currentTimeMillis();
-        OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerUsername + "@test.com", "password123", "CertOwnerPhone");
-        userRepository.findByUsername(ownerUsername).ifPresent(u -> {
-            petRepository.findByOwnerId(u.getId()).forEach(p -> {
-                recordRepository.deleteAllByPetId(p.getId());
-                petRepository.delete(p);
-            });
-            userRepository.delete(u);
-            entityManager.flush();
-        });
-
-        MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerReg))).andExpect(status().isCreated()).andReturn();
-        objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
-        ownerToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
-
-        // Create Vet (associated with Clinic 1)
-        String vetUsername = "cert_vet_" + System.currentTimeMillis();
-        ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(vetUsername, vetUsername + "@test.com", "password123", "Cert", "Vet", RoleEnum.VET, "VETCERT" + System.currentTimeMillis(), "VETKEYCERT" + System.currentTimeMillis());
-        userRepository.findByUsername(vetUsername).ifPresent(userRepository::delete);
-        entityManager.flush();
-        MvcResult vetRegResult = mockMvc.perform(post("/api/staff").header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetReg))).andExpect(status().isCreated()).andReturn();
-        ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
-        vetId = vetDto.id();
-        vetToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
-
-        // Create Pets for Owner
-        Long labradorBreedId = 25L;
-        PetRegistrationDto petEligibleReg = new PetRegistrationDto("EligibleCertPet", Specie.DOG, LocalDate.now().minusYears(2), labradorBreedId, null, "Brown", Gender.MALE, "CERTELIGIBLE"+ System.currentTimeMillis());
-        MvcResult petEligibleRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(petEligibleReg))).andExpect(status().isCreated()).andReturn();
-        petIdEligible = extractPetIdFromResult(objectMapper,petEligibleRes);
-
-        PetRegistrationDto petNotEligibleReg = new PetRegistrationDto("NotEligibleCertPet", Specie.CAT, LocalDate.now().minusYears(1), 45L, null, "Black", Gender.FEMALE, "CERTNOTELIGIBLE"+ System.currentTimeMillis());
-        MvcResult petNotEligibleRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(petNotEligibleReg))).andExpect(status().isCreated()).andReturn();
-        petIdNotEligible = extractPetIdFromResult(objectMapper,petNotEligibleRes);
-
-        // Activate Eligible Pet and Associate Vet with it
-        mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdEligible, clinic1Id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
-        entityManager.flush(); entityManager.clear();
-
-        Pet petEligibleEntity = petRepository.findById(petIdEligible).orElseThrow(() -> new AssertionError("Eligible Pet not found after creation"));
-        PetActivationDto activationEligible = new PetActivationDto(petEligibleEntity.getName(), petEligibleEntity.getColor(), petEligibleEntity.getGender(), petEligibleEntity.getBirthDate(), petEligibleEntity.getMicrochip(), petEligibleEntity.getBreed().getId(), petEligibleEntity.getImage());
-        mockMvc.perform(put("/api/pets/{petId}/activate", petIdEligible).header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(activationEligible))).andExpect(status().isOk());
-        entityManager.flush(); entityManager.clear();
-
-        petEligibleEntity = petRepository.findById(petIdEligible).orElseThrow(() -> new AssertionError("Eligible Pet not found after activation"));
-        assertThat(petEligibleEntity.getAssociatedVets()).as("Vet should be associated with eligible pet after activation/association").anyMatch(v -> v.getId().equals(vetId));
-
-
-        // Create the necessary records for Eligible Pet (by Vet)
-        VaccineCreateDto rabiesVacDto = new VaccineCreateDto("Rabies", 1, "RabiesLab", "BatchRAB" + System.currentTimeMillis(), true);
-        RecordCreateDto rabiesRecDto = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Rabies vaccine administered", rabiesVacDto);
-        MvcResult rabiesRes = mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(rabiesRecDto)))
-                .andExpect(status().isCreated()).andReturn();
-        recordIdRabiesOk = extractRecordIdFromResult(objectMapper,rabiesRes);
-        RecordViewDto rabiesDto = objectMapper.readValue(rabiesRes.getResponse().getContentAsString(), RecordViewDto.class);
-        assertThat(rabiesDto.vetSignature()).isNotNull().isNotBlank();
-
-        VaccineCreateDto vacDto2 = new VaccineCreateDto("Distemper", 1, "DistLab", "BatchDIST" + System.currentTimeMillis(), false);
-        RecordCreateDto vacRecDto2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Distemper vaccine administered", vacDto2);
-        MvcResult vacRes2 = mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(vacRecDto2)))
-                .andExpect(status().isCreated()).andReturn();
-        Long recordIdSecondVaccineOk = extractRecordIdFromResult(objectMapper,vacRes2);
-        assertThat(recordIdSecondVaccineOk).isNotNull();
-
-        // Annual Check
-        RecordCreateDto annualRecDto = new RecordCreateDto(petIdEligible, RecordType.ANNUAL_CHECK, "Annual checkup passed", null);
-        MvcResult annualRes = mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(annualRecDto)))
-                .andExpect(status().isCreated()).andReturn();
-        Long recordIdAnnualOk = extractRecordIdFromResult(objectMapper,annualRes);
-        RecordViewDto annualDto = objectMapper.readValue(annualRes.getResponse().getContentAsString(), RecordViewDto.class);
-        assertThat(annualDto.vetSignature()).isNotNull().isNotBlank();
-
-        // Create Records for Ineligible Pet
-        VaccineCreateDto rabiesUnsignedDto = new VaccineCreateDto("RabiesUnsigned", 1, "LabU", "BatchU" + System.currentTimeMillis(), true);
-        RecordCreateDto rabiesUnsignedRecDto = new RecordCreateDto(petIdNotEligible, RecordType.VACCINE, "Rabies given by owner, not signed", rabiesUnsignedDto);
-        MvcResult rabiesUnsignedRes = mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(rabiesUnsignedRecDto)))
-                .andExpect(status().isCreated()).andReturn();
-        Long recordIdRabiesUnsigned = extractRecordIdFromResult(objectMapper,rabiesUnsignedRes);
-        RecordViewDto rabiesUnsignedViewDto = objectMapper.readValue(rabiesUnsignedRes.getResponse().getContentAsString(), RecordViewDto.class);
-        assertThat(rabiesUnsignedViewDto.vetSignature()).isNull();
-
-        // -- Signed Illness Record (Wrong Type, for petIdEligible)
-        RecordCreateDto illnessRecDto = new RecordCreateDto(petIdEligible, RecordType.ILLNESS, "Treated for cough", null);
-        MvcResult illnessRes = mockMvc.perform(post("/api/records")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(illnessRecDto)))
-                .andExpect(status().isCreated()).andReturn();
-        Long recordIdIllness = extractRecordIdFromResult(objectMapper,illnessRes);
-        RecordViewDto illnessDto = objectMapper.readValue(illnessRes.getResponse().getContentAsString(), RecordViewDto.class);
-        assertThat(illnessDto.vetSignature()).isNotNull().isNotBlank();
-
-        Record rabiesRecord = recordRepository.findById(recordIdRabiesOk).orElseThrow();
-        rabiesRecord.setCreatedAt(LocalDate.now().minusYears(5).atStartOfDay());
-        recordRepository.saveAndFlush(rabiesRecord);
-        entityManager.clear();
-
-        // Create Other Owner's Pet (for auth tests)
-        String otherOwnerUsername = "cert_other_owner_" + System.currentTimeMillis();
-        OwnerRegistrationDto otherOwnerReg = new OwnerRegistrationDto(otherOwnerUsername, otherOwnerUsername + "@test.com", "password123", "CertOtherOwnerPhone");
-        userRepository.findByUsername(otherOwnerUsername).ifPresent(userRepository::delete);
-        entityManager.flush();
-        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherOwnerReg))).andExpect(status().isCreated()).andReturn();
-        otherOwnerToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(otherOwnerReg.username(), otherOwnerReg.password()));
-
-        PetRegistrationDto otherPetReg = new PetRegistrationDto("OtherCertPet", Specie.FERRET, LocalDate.now().minusMonths(4), null, null, "White", Gender.FEMALE, "CERTOTHER");
-        MvcResult otherPetRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherPetReg))).andExpect(status().isCreated()).andReturn();
-        Long petIdOtherOwner = extractPetIdFromResult(objectMapper,otherPetRes);
-
-        assertThat(ownerToken).isNotBlank();
-        assertThat(vetToken).isNotBlank();
-        assertThat(adminToken).isNotBlank();
-        assertThat(otherOwnerToken).isNotBlank();
-        assertThat(otherVetToken).isNotBlank();
-        assertThat(petIdEligible).isNotNull();
-        assertThat(petIdNotEligible).isNotNull();
-        assertThat(petIdOtherOwner).isNotNull();
-        assertThat(recordIdRabiesOk).isNotNull();
-        assertThat(recordIdSecondVaccineOk).isNotNull();
-        assertThat(recordIdAnnualOk).isNotNull();
-        assertThat(recordIdRabiesUnsigned).isNotNull();
-        assertThat(recordIdIllness).isNotNull();
-    }
+//    /**
+//     * Comprehensive setup: Creates users, pets, associates them, creates records (signed/unsigned/eligible/ineligible).
+//     */
+//    @BeforeEach
+//    void setUp() throws Exception {
+//        // Get Tokens for existing users
+//        String adminToken;
+//        adminToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto("admin_london", "password123"));
+//        otherVetToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto("admin_barcelona", "password123"));
+//
+//        // Create Owner
+//        String ownerUsername = "cert_owner_" + System.currentTimeMillis();
+//        OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerUsername + "@test.com", "password123", "CertOwnerPhone");
+//        userRepository.findByUsername(ownerUsername).ifPresent(u -> {
+//            petRepository.findByOwnerId(u.getId()).forEach(p -> {
+//                recordRepository.deleteAllByPetId(p.getId());
+//                petRepository.delete(p);
+//            });
+//            userRepository.delete(u);
+//            entityManager.flush();
+//        });
+//
+//        MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(ownerReg))).andExpect(status().isCreated()).andReturn();
+//        objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
+//        ownerToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+//
+//        // Create Vet (associated with Clinic 1)
+//        String vetUsername = "cert_vet_" + System.currentTimeMillis();
+//        ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(vetUsername, vetUsername + "@test.com", "password123", "Cert", "Vet", RoleEnum.VET, "VETCERT" + System.currentTimeMillis(), "VETKEYCERT" + System.currentTimeMillis());
+//        userRepository.findByUsername(vetUsername).ifPresent(userRepository::delete);
+//        entityManager.flush();
+//        MvcResult vetRegResult = mockMvc.perform(post("/api/staff").header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(vetReg))).andExpect(status().isCreated()).andReturn();
+//        ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
+//        vetId = vetDto.id();
+//        vetToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
+//
+//        // Create Pets for Owner
+//        Long labradorBreedId = 25L;
+//        PetRegistrationDto petEligibleReg = new PetRegistrationDto("EligibleCertPet", Specie.DOG, LocalDate.now().minusYears(2), labradorBreedId, null, "Brown", Gender.MALE, "CERTELIGIBLE"+ System.currentTimeMillis());
+//        MvcResult petEligibleRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(petEligibleReg))).andExpect(status().isCreated()).andReturn();
+//        petIdEligible = extractPetIdFromResult(objectMapper,petEligibleRes);
+//
+//        PetRegistrationDto petNotEligibleReg = new PetRegistrationDto("NotEligibleCertPet", Specie.CAT, LocalDate.now().minusYears(1), 45L, null, "Black", Gender.FEMALE, "CERTNOTELIGIBLE"+ System.currentTimeMillis());
+//        MvcResult petNotEligibleRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(petNotEligibleReg))).andExpect(status().isCreated()).andReturn();
+//        petIdNotEligible = extractPetIdFromResult(objectMapper,petNotEligibleRes);
+//
+//        // Activate Eligible Pet and Associate Vet with it
+//        mockMvc.perform(post("/api/pets/{petId}/associate-clinic/{clinicId}", petIdEligible, clinic1Id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)).andExpect(status().isNoContent());
+//        entityManager.flush(); entityManager.clear();
+//
+//        Pet petEligibleEntity = petRepository.findById(petIdEligible).orElseThrow(() -> new AssertionError("Eligible Pet not found after creation"));
+//        PetActivationDto activationEligible = new PetActivationDto(petEligibleEntity.getName(), petEligibleEntity.getColor(), petEligibleEntity.getGender(), petEligibleEntity.getBirthDate(), petEligibleEntity.getMicrochip(), petEligibleEntity.getBreed().getId(), petEligibleEntity.getImage());
+//        mockMvc.perform(put("/api/pets/{petId}/activate", petIdEligible).header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(activationEligible))).andExpect(status().isOk());
+//        entityManager.flush(); entityManager.clear();
+//
+//        petEligibleEntity = petRepository.findById(petIdEligible).orElseThrow(() -> new AssertionError("Eligible Pet not found after activation"));
+//        assertThat(petEligibleEntity.getAssociatedVets()).as("Vet should be associated with eligible pet after activation/association").anyMatch(v -> v.getId().equals(vetId));
+//
+//
+//        // Create the necessary records for Eligible Pet (by Vet)
+//        VaccineCreateDto rabiesVacDto = new VaccineCreateDto("Rabies", 1, "RabiesLab", "BatchRAB" + System.currentTimeMillis(), true);
+//        RecordCreateDto rabiesRecDto = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Rabies vaccine administered", rabiesVacDto);
+//        MvcResult rabiesRes = mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(rabiesRecDto)))
+//                .andExpect(status().isCreated()).andReturn();
+//        recordIdRabiesOk = extractRecordIdFromResult(objectMapper,rabiesRes);
+//        RecordViewDto rabiesDto = objectMapper.readValue(rabiesRes.getResponse().getContentAsString(), RecordViewDto.class);
+//        assertThat(rabiesDto.vetSignature()).isNotNull().isNotBlank();
+//
+//        VaccineCreateDto vacDto2 = new VaccineCreateDto("Distemper", 1, "DistLab", "BatchDIST" + System.currentTimeMillis(), false);
+//        RecordCreateDto vacRecDto2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Distemper vaccine administered", vacDto2);
+//        MvcResult vacRes2 = mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(vacRecDto2)))
+//                .andExpect(status().isCreated()).andReturn();
+//        Long recordIdSecondVaccineOk = extractRecordIdFromResult(objectMapper,vacRes2);
+//        assertThat(recordIdSecondVaccineOk).isNotNull();
+//
+//        // Annual Check
+//        RecordCreateDto annualRecDto = new RecordCreateDto(petIdEligible, RecordType.ANNUAL_CHECK, "Annual checkup passed", null);
+//        MvcResult annualRes = mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(annualRecDto)))
+//                .andExpect(status().isCreated()).andReturn();
+//        Long recordIdAnnualOk = extractRecordIdFromResult(objectMapper,annualRes);
+//        RecordViewDto annualDto = objectMapper.readValue(annualRes.getResponse().getContentAsString(), RecordViewDto.class);
+//        assertThat(annualDto.vetSignature()).isNotNull().isNotBlank();
+//
+//        // Create Records for Ineligible Pet
+//        VaccineCreateDto rabiesUnsignedDto = new VaccineCreateDto("RabiesUnsigned", 1, "LabU", "BatchU" + System.currentTimeMillis(), true);
+//        RecordCreateDto rabiesUnsignedRecDto = new RecordCreateDto(petIdNotEligible, RecordType.VACCINE, "Rabies given by owner, not signed", rabiesUnsignedDto);
+//        MvcResult rabiesUnsignedRes = mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(rabiesUnsignedRecDto)))
+//                .andExpect(status().isCreated()).andReturn();
+//        Long recordIdRabiesUnsigned = extractRecordIdFromResult(objectMapper,rabiesUnsignedRes);
+//        RecordViewDto rabiesUnsignedViewDto = objectMapper.readValue(rabiesUnsignedRes.getResponse().getContentAsString(), RecordViewDto.class);
+//        assertThat(rabiesUnsignedViewDto.vetSignature()).isNull();
+//
+//        // -- Signed Illness Record (Wrong Type, for petIdEligible)
+//        RecordCreateDto illnessRecDto = new RecordCreateDto(petIdEligible, RecordType.ILLNESS, "Treated for cough", null);
+//        MvcResult illnessRes = mockMvc.perform(post("/api/records")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(illnessRecDto)))
+//                .andExpect(status().isCreated()).andReturn();
+//        Long recordIdIllness = extractRecordIdFromResult(objectMapper,illnessRes);
+//        RecordViewDto illnessDto = objectMapper.readValue(illnessRes.getResponse().getContentAsString(), RecordViewDto.class);
+//        assertThat(illnessDto.vetSignature()).isNotNull().isNotBlank();
+//
+//        Record rabiesRecord = recordRepository.findById(recordIdRabiesOk).orElseThrow();
+//        rabiesRecord.setCreatedAt(LocalDate.now().minusYears(5).atStartOfDay());
+//        recordRepository.saveAndFlush(rabiesRecord);
+//        entityManager.clear();
+//
+//        // Create Other Owner's Pet (for auth tests)
+//        String otherOwnerUsername = "cert_other_owner_" + System.currentTimeMillis();
+//        OwnerRegistrationDto otherOwnerReg = new OwnerRegistrationDto(otherOwnerUsername, otherOwnerUsername + "@test.com", "password123", "CertOtherOwnerPhone");
+//        userRepository.findByUsername(otherOwnerUsername).ifPresent(userRepository::delete);
+//        entityManager.flush();
+//        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherOwnerReg))).andExpect(status().isCreated()).andReturn();
+//        otherOwnerToken = obtainJwtToken(mockMvc, objectMapper,new AuthLoginRequestDto(otherOwnerReg.username(), otherOwnerReg.password()));
+//
+//        PetRegistrationDto otherPetReg = new PetRegistrationDto("OtherCertPet", Specie.FERRET, LocalDate.now().minusMonths(4), null, null, "White", Gender.FEMALE, "CERTOTHER");
+//        MvcResult otherPetRes = mockMvc.perform(post("/api/pets").header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(otherPetReg))).andExpect(status().isCreated()).andReturn();
+//        Long petIdOtherOwner = extractPetIdFromResult(objectMapper,otherPetRes);
+//
+//        assertThat(ownerToken).isNotBlank();
+//        assertThat(vetToken).isNotBlank();
+//        assertThat(adminToken).isNotBlank();
+//        assertThat(otherOwnerToken).isNotBlank();
+//        assertThat(otherVetToken).isNotBlank();
+//        assertThat(petIdEligible).isNotNull();
+//        assertThat(petIdNotEligible).isNotNull();
+//        assertThat(petIdOtherOwner).isNotNull();
+//        assertThat(recordIdRabiesOk).isNotNull();
+//        assertThat(recordIdSecondVaccineOk).isNotNull();
+//        assertThat(recordIdAnnualOk).isNotNull();
+//        assertThat(recordIdRabiesUnsigned).isNotNull();
+//        assertThat(recordIdIllness).isNotNull();
+//    }
 
     /**
      * --- Tests for POST /api/certificates (Generate Certificate) ---

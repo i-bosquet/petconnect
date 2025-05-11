@@ -564,12 +564,12 @@ public class PetServiceImpl implements PetService {
      * This ensures the pet record reflects the data confirmed during activation.
      */
     private void updatePetEntityFromActivationDto(Pet pet, PetActivationDto dto, Breed resolvedBreed) {
-        pet.setName(dto.name());
+        log.debug("Updating pet {} from activation DTO. . Name: {}. Current image: '{}'", pet.getId(),pet.getName(), pet.getImage());
         pet.setColor(dto.color());
         pet.setGender(dto.gender());
         pet.setBirthDate(dto.birthDate());
         pet.setMicrochip(dto.microchip());
         pet.setBreed(resolvedBreed);
-        pet.setImage(dto.image());
+        log.debug("Pet {} details (color, gender, birthDate, microchip, breed) updated from activation DTO. Image remains: '{}'", pet.getId(), pet.getImage());
     }
 }

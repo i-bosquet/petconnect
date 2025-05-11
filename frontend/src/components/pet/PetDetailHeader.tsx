@@ -1,5 +1,5 @@
 import { JSX } from 'react'; 
-import { Edit,  ArrowRight, ShieldX  } from 'lucide-react';
+import { Edit,  ArrowRight, ShieldX, Send   } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { PetProfileDto, PetStatus } from '@/types/apiTypes';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,14 @@ interface PetDetailHeaderProps {
     onBack: () => void;
     onEdit: () => void;
     onDeactivate: () => void;  
+    onRequestActivation: () => void;
 }
 
 /**
  * PetDetailHeader - Displays the pet's profile header information
  * with actions to go back or edit pet details.
  */
-const PetDetailHeader = ({ pet, onBack, onEdit, onDeactivate }: PetDetailHeaderProps): JSX.Element => {
+const PetDetailHeader = ({pet, onBack, onEdit, onDeactivate, onRequestActivation }: PetDetailHeaderProps): JSX.Element => {
     if (!pet) {
         return (
             <Card >
@@ -41,6 +42,7 @@ const PetDetailHeader = ({ pet, onBack, onEdit, onDeactivate }: PetDetailHeaderP
     };
 
     const isPetActiveOrPending = pet.status === PetStatus.ACTIVE || pet.status === PetStatus.PENDING
+    const canRequestActivation = pet.status === PetStatus.PENDING && !pet.pendingActivationClinicId;
 
     return (
       <Card className="border-2 border-[#FFECAB] bg-[#090D1A]">
@@ -99,11 +101,34 @@ const PetDetailHeader = ({ pet, onBack, onEdit, onDeactivate }: PetDetailHeaderP
               <p className="text-sm text-gray-300">
                 Born: {formatDate(pet.birthDate)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">Status: <span className={
+              <div className="text-xs text-gray-400 mt-1">Status: <span className={
                                 pet.status === PetStatus.ACTIVE ? "text-green-400 font-semibold" :
                                 pet.status === PetStatus.PENDING ? "text-yellow-400 font-semibold" :
                                 "text-red-400 font-semibold"
-                            }>{pet.status}</span></p>
+                            }>{pet.status}</span>
+               {canRequestActivation && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                onClick={onRequestActivation}
+                                size="sm"
+                                className="text-cyan-400 bg-transparent hover:bg-cyan-800 hover:text-[#FFECAB] h-7 px-2 py-1 text-xs ml-4 border border-cyan-600 hover:border-cyan-400 mt-2.5"
+                                aria-label={`Request activation for ${pet.name}`}
+                            >
+                                <Send size={14} className="mr-1 sm:mr-1.5" />
+                                <span className="hidden sm:inline">Request Activation</span>
+                                <span className="sm:hidden">Activate</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-gray-950 text-white border border-cyan-700">
+                            <p>Request Activation at a Clinic</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+                {pet.status === PetStatus.PENDING && pet.pendingActivationClinicId && (
+                    <span className="text-xs text-cyan-400 ml-2 italic">(Pending at: {pet.pendingActivationClinicName || `Clinic ID ${pet.pendingActivationClinicId}`})</span>
+                )}
+             </div>
             </div>
               {/* back button */}
               <Tooltip>

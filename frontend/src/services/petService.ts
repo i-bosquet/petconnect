@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config';
-import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus,  } from '../types/apiTypes';
+import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto } from '../types/apiTypes';
 
 interface FindMyPetsParams {
 page: number;
@@ -226,7 +226,6 @@ export const getPetDetailsById = async (token: string, petId: number | string): 
  * @param {number | string} petId - The ID of the pet to deactivate.
  * @returns {Promise<PetProfileDto>} A promise resolving to the updated pet profile (now inactive).
  * @throws {Error} Throws an error if deactivation fails.
- * @author ibosquet
  */
 export const deactivatePet = async (
     token: string,
@@ -256,3 +255,156 @@ export const deactivatePet = async (
         }
     }
 };
+
+/**
+ * Associates a PENDING pet with a specific clinic for activation.
+ * This action is performed by the pet owner.
+ *
+ * @param {string} token - The JWT token of the authenticated owner.
+ * @param {number | string} petId - The ID of the pet to associate.
+ * @param {number | string} clinicId - The ID of the clinic to associate with.
+ * @returns {Promise<void>} A promise that resolves when the association is successful.
+ * @throws {Error} Throws an error if the association fails.
+ */
+export const associatePetToClinicForActivation = async (
+    token: string,
+    petId: number | string,
+    clinicId: number | string
+): Promise<void> => {
+    if (!token) {
+        throw new Error("Authentication token is required.");
+    }
+    if (!petId || !clinicId) {
+        throw new Error("Pet ID and Clinic ID are required for association.");
+    }
+
+    try {
+        await axios.post(`${API_BASE_URL}/pets/${petId}/associate-clinic/${clinicId}`, {}, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Associate Pet (${petId}) with Clinic (${clinicId}) Error:`, apiError);
+            const message = typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to associate pet with clinic.';
+            throw new Error(message);
+        } else {
+            console.error(`Network or unexpected associate pet error:`, error);
+            throw new Error('Failed to associate pet with clinic due to network or unexpected error.');
+        }
+    }
+};
+
+/**
+ * Fetches pets that are pending activation at the currently authenticated staff's clinic.
+ * Requires VET or ADMIN role and that the staff member is associated with a clinic.
+ *
+ * @param {string} token - The JWT token of the authenticated clinic staff.
+ * @returns {Promise<PetProfileDto[]>} A promise resolving to a list of pets pending activation.
+ * @throws {Error} Throws an error if fetching fails (e.g., not authorized, network issue).
+ */
+export const findMyClinicPendingPets = async (token: string): Promise<PetProfileDto[]> => {
+    if (!token) {
+        throw new Error("Authentication token is required to fetch pending pets.");
+    }
+    try {
+        const response = await axios.get<PetProfileDto[]>(`${API_BASE_URL}/pets/clinic/pending`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error('API Find My Clinic Pending Pets Error:', apiError);
+            const message = typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to fetch pending activation requests.';
+            throw new Error(message);
+        } else {
+            console.error('Network or unexpected find pending pets error:', error);
+            throw new Error('Failed to fetch pending activation requests due to network or unexpected error.');
+        }
+    }
+};
+
+/**
+ * Activates a PENDING pet by a clinic staff member (typically a Vet).
+ * Sends all required pet details for activation.
+ *
+ * @param {string} token - The JWT token of the authenticated clinic staff.
+ * @param {number | string} petId - The ID of the pet to activate.
+ * @param {PetActivationDto} activationData - The DTO containing all necessary data for activation.
+ * @returns {Promise<PetProfileDto>} A promise resolving to the profile of the activated pet.
+ * @throws {Error} Throws an error if activation fails.
+ */
+export const activatePet = async (
+    token: string,
+    petId: number | string,
+    activationData: PetActivationDto
+): Promise<PetProfileDto> => {
+    if (!token) {
+        throw new Error("Authentication token is required.");
+    }
+    if (!petId) {
+        throw new Error("Pet ID is required for activation.");
+    }
+
+    try {
+        const response = await axios.put<PetProfileDto>(`${API_BASE_URL}/pets/${petId}/activate`, activationData, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Activate Pet (${petId}) Error:`, apiError);
+            let errorMessage = 'Failed to activate pet.';
+            if (typeof apiError.message === 'string') {
+                errorMessage = apiError.message;
+            } else if (typeof apiError.message === 'object' && apiError.message !== null) {
+                errorMessage = Object.values(apiError.message).join(' ');
+            } else if (apiError.error) {
+                errorMessage = apiError.error;
+            }
+            throw new Error(errorMessage);
+        } else {
+            console.error(`Network or unexpected activate pet (${petId}) error:`, error);
+            throw new Error('Failed to activate pet due to network or unexpected error.');
+        }
+    }
+};
+
+/**
+ * Fetches pets associated with the currently authenticated staff's clinic.
+ * Supports pagination.
+ *
+ * @param {string} token - JWT token of clinic staff.
+ * @param {number} [page=0] - Page number.
+ * @param {number} [size=10] - Page size.
+ * @param {string} [sort='name,asc'] - Sort criteria.
+ * @returns {Promise<Page<PetProfileDto>>} Paginated list of clinic's pets.
+ */
+export const findPetsByClinic = async (
+    token: string,
+    page: number = 0,
+    size: number = 10,
+    sort: string = 'name,asc'
+): Promise<Page<PetProfileDto>> => {
+    if (!token) throw new Error("Authentication token required.");
+    try {
+        const response = await axios.get<Page<PetProfileDto>>(`${API_BASE_URL}/pets/clinic`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            params: { page, size, sort }
+        });
+        return response.data;
+    } catch (error) {
+        // ... manejo de error ...
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to fetch clinic pets.');
+        }
+        throw new Error('Failed to fetch clinic pets due to network or unexpected error.');
+    }
+};
+

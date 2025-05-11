@@ -1,6 +1,8 @@
 import { JSX } from 'react';
 import AppRouter from './routes/AppRouter'; 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
+
 
 
 /**
@@ -13,6 +15,7 @@ function App(): JSX.Element {
   return (
    <TooltipProvider> 
           <AppRouter />
+          <Toaster richColors position="top-right" /> 
     </TooltipProvider>
   );
 }

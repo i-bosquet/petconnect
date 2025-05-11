@@ -3,6 +3,7 @@ import {
   findMyPets,
   getPetDetailsById,
   deactivatePet,
+  associatePetToClinicForActivation,
 } from "@/services/petService";
 import { PetProfileDto, Page, PetStatus } from "@/types/apiTypes";
 import PetList from "@/components/pet/PetList";
@@ -14,6 +15,7 @@ import PetDetailTabs from "@/components/pet/PetDetailTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useOwnerLayoutContext } from "@/hooks/useOwnerLayoutContext";
 import { Loader2 } from "lucide-react";
+import RequestActivationModal from "@/components/pet/modals/RequestActivationModal";
 
 /**
  * OwnerDashboardPage - Main container for the owner's pet management view.
@@ -32,14 +34,13 @@ const OwnerDashboardPage = (): JSX.Element => {
   const [error, setError] = useState<string>("");
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [showDeactivateConfirmModal, setShowDeactivateConfirmModal] =
-    useState<boolean>(false);
-  const [petToDeactivate, setPetToDeactivate] = useState<PetProfileDto | null>(
-    null
-  );
+  const [showDeactivateConfirmModal, setShowDeactivateConfirmModal] =useState<boolean>(false);
+  const [petToDeactivate, setPetToDeactivate] = useState<PetProfileDto | null>(null);
   const [showInactivePets, setShowInactivePets] = useState<boolean>(false);
-  const [everLoadedInactive, setEverLoadedInactive] = useState<boolean>(false);
   const { setSelectedPetForTopBar } = useOwnerLayoutContext();
+  const [showRequestActivationModal, setShowRequestActivationModal] = useState<boolean>(false);
+  const [petToRequestActivation, setPetToRequestActivation] = useState<PetProfileDto | null>(null);
+  const [isRequestingActivation, setIsRequestingActivation] = useState<boolean>(false);
 
   /**
    * Fetches the owner's pets from the API.
@@ -48,49 +49,65 @@ const OwnerDashboardPage = (): JSX.Element => {
   const fetchOwnerPets = useCallback(async () => {
     if (!token) return;
     setIsLoadingPets(true);
-    setError('');
+    setError("");
     try {
-        const statusesToFetch: PetStatus[] = [PetStatus.ACTIVE, PetStatus.PENDING];
-        if (showInactivePets) {
-            statusesToFetch.push(PetStatus.INACTIVE);
-        }
-        const petsPage: Page<PetProfileDto> = await findMyPets(token, 0, 50, 'name,asc', statusesToFetch);
-        setPets(petsPage.content);
-
-        const hasAnyInactiveInResponse = petsPage.content.some(p => p.status === PetStatus.INACTIVE);
-
-        if (showInactivePets && hasAnyInactiveInResponse) {
-            setEverLoadedInactive(true);
-        }
+      const statusesToFetch: PetStatus[] = [
+        PetStatus.ACTIVE,
+        PetStatus.PENDING,
+      ];
+      if (showInactivePets) {
+        statusesToFetch.push(PetStatus.INACTIVE);
+      }
+      const petsPage: Page<PetProfileDto> = await findMyPets(
+        token,
+        0,
+        50,
+        "name,asc",
+        statusesToFetch
+      );
+      setPets(petsPage.content);
+    
     } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load pet data.');
+      setError(err instanceof Error ? err.message : "Could not load pet data.");
     } finally {
-        setIsLoadingPets(false);
+      setIsLoadingPets(false);
     }
-}, [token, showInactivePets]);
+  }, [token, showInactivePets]);
 
-useEffect(() => {
+  useEffect(() => {
     if (selectedPet) {
-        const petInCurrentList = pets.find(p => p.id === selectedPet.id);
+      const petInCurrentList = pets.find((p) => p.id === selectedPet.id);
 
-        if (petInCurrentList) {
-            if (petInCurrentList.status === PetStatus.INACTIVE && !showInactivePets) {
-                setSelectedPet(null);
-                setSelectedPetForTopBar(null);
-            }
-        } else {
-            setSelectedPet(null);
-            setSelectedPetForTopBar(null);
+      if (petInCurrentList) {
+        if (
+          petInCurrentList.status === PetStatus.INACTIVE &&
+          !showInactivePets
+        ) {
+          setSelectedPet(null);
+          setSelectedPetForTopBar(null);
         }
+      } else {
+        setSelectedPet(null);
+        setSelectedPetForTopBar(null);
+      }
     }
-}, [pets, selectedPet, showInactivePets, setSelectedPet, setSelectedPetForTopBar]);
+  }, [
+    pets,
+    selectedPet,
+    showInactivePets,
+    setSelectedPet,
+    setSelectedPetForTopBar,
+  ]);
 
   /**
    * Fetch pets when the component mounts.
    */
   useEffect(() => {
     if (token) {
-      console.log("[useEffect fetch initial/filter] Disparando fetchOwnerPets. showInactivePets:", showInactivePets);
+      console.log(
+        "[useEffect fetch initial/filter] Disparando fetchOwnerPets. showInactivePets:",
+        showInactivePets
+      );
       fetchOwnerPets();
     } else if (!isLoadingAuth && !token) {
       setError("User not authenticated.");
@@ -117,8 +134,8 @@ useEffect(() => {
       setError("");
       try {
         const petDetails = await getPetDetailsById(token, petId);
-          setSelectedPet(petDetails);
-          setSelectedPetForTopBar(petDetails);
+        setSelectedPet(petDetails);
+        setSelectedPetForTopBar(petDetails);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Could not load pet details."
@@ -184,24 +201,60 @@ useEffect(() => {
     }
   };
 
-    if (isLoadingAuth)
-    if (error && pets.length === 0 && !selectedPet) 
-        
-    return (
-      <div className="flex justify-center items-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
-        <span className="ml-2">Loading authentication...</span>
-      </div>
-    );
+  /**
+     * Opens the modal to request activation for a specific pet.
+     * @param {PetProfileDto} pet - The pet for which to request activation.
+     */
+    const handleOpenRequestActivationModal = (pet: PetProfileDto) => {
+        setPetToRequestActivation(pet);
+        setShowRequestActivationModal(true);
+    };
+
+    /**
+     * Closes the request activation modal.
+     */
+    const handleCloseRequestActivationModal = () => {
+        setShowRequestActivationModal(false);
+        setPetToRequestActivation(null);
+    };
+
+    /**
+     * Handles the confirmed request for pet activation at a selected clinic.
+     * @param {number | string} clinicId - The ID of the selected clinic.
+     */
+    const handleConfirmRequestActivation = async (clinicId: number | string) => {
+        if (!petToRequestActivation || !token) return;
+
+        setIsRequestingActivation(true);
+        setError('');
+        try {
+            await associatePetToClinicForActivation(token, petToRequestActivation.id, clinicId);
+            console.log(`Activation requested for pet ${petToRequestActivation.name} at clinic ${clinicId}.`);
+            handleCloseRequestActivationModal();
+            handleSelectPet(petToRequestActivation.id); 
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to request pet activation.");
+        } finally {
+            setIsRequestingActivation(false);
+        }
+    };
+
+
+
+  if (isLoadingAuth)
+    if (error && pets.length === 0 && !selectedPet)
+      return (
+        <div className="flex justify-center items-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+          <span className="ml-2">Loading authentication...</span>
+        </div>
+      );
   if (error && pets.length === 0 && !selectedPet)
     return (
       <div className="p-4 text-center text-red-400 bg-red-900/20 border border-red-500/50 rounded-lg">
         {error}
       </div>
     );
-
-    const calculatedHasInactivePets = everLoadedInactive || (pets.some(p => p.status === PetStatus.INACTIVE && !showInactivePets));
-console.log("[OwnerDashboardPage] Props to PetList - showInactive:", showInactivePets, "everLoadedInactive:", everLoadedInactive, "calculatedHasInactivePets:", calculatedHasInactivePets, "pets array:", pets); // LOG 5
 
   return (
     <div>
@@ -222,9 +275,9 @@ console.log("[OwnerDashboardPage] Props to PetList - showInactive:", showInactiv
           onSelectPet={(petId) => handleSelectPet(petId)}
           onAddPet={() => setShowAddModal(true)}
           showInactive={showInactivePets}
-         onToggleShowInactive={(checked) => {
+          onToggleShowInactive={(checked) => {
             setShowInactivePets(checked);
-       }}
+          }}
         />
       )}
 
@@ -242,6 +295,7 @@ console.log("[OwnerDashboardPage] Props to PetList - showInactive:", showInactiv
             onBack={() => handleSelectPet(null)}
             onEdit={() => setShowEditModal(true)}
             onDeactivate={() => handleOpenDeactivateModal(selectedPet)}
+            onRequestActivation={() => handleOpenRequestActivationModal(selectedPet)} 
           />
           <PetDetailTabs pet={selectedPet} />
         </div>
@@ -299,6 +353,17 @@ console.log("[OwnerDashboardPage] Props to PetList - showInactive:", showInactiv
           isLoading={isDeactivating}
         />
       )}
+
+      {petToRequestActivation && (
+         <RequestActivationModal
+            isOpen={showRequestActivationModal}
+                    onClose={handleCloseRequestActivationModal}
+                    pet={petToRequestActivation}
+                    onActivationRequested={handleConfirmRequestActivation}
+            isLoadingRequest={isRequestingActivation}
+        />
+      )}
+
     </div>
   );
 };

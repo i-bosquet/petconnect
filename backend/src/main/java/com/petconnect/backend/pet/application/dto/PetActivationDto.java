@@ -22,8 +22,6 @@ import java.time.LocalDate;
  * @author ibosquet
  */
 public record PetActivationDto(
-        @NotBlank(message = "Pet name cannot be blank")
-        @Size(max = 50) String name,
 
         @NotBlank(message = "Color description cannot be blank")
         @Size(max = 30) String color,
@@ -39,9 +37,6 @@ public record PetActivationDto(
         @Size(max = 50) String microchip,
 
         @NotNull(message = "Breed must be specified")
-        Long breedId,
-
-        @NotBlank(message = "Image path/URL cannot be blank")
-        String image
+        Long breedId
 ) {
 }

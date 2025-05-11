@@ -19,6 +19,7 @@ export interface PetProfileDto {
     breedId?: number | string | null;
     breedName?: string | null;
     pendingActivationClinicId?: number | string | null;
+    pendingActivationClinicName?: string | null;
     associatedVets: VetSummaryDto[];
     createdAt?: string | null; 
     updatedAt?: string | null;
@@ -86,4 +87,16 @@ export interface PetRegistrationData {
     color?: string | null;
     gender?: Gender | null;
     microchip?: string | null;
+}
+
+/**
+ * Data Transfer Object used by clinic staff to activate a pet.
+ * Must contain all required fields for an active pet.
+ */
+export interface PetActivationDto {
+    color: string; 
+    gender: Gender; 
+    birthDate: string;
+    microchip: string;
+    breedId: number; 
 }
