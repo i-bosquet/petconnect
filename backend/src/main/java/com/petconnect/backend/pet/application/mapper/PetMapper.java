@@ -8,6 +8,7 @@ import com.petconnect.backend.pet.application.dto.PetProfileDto;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.pet.domain.model.Specie;
+import com.petconnect.backend.user.application.dto.OwnerSummaryDto;
 import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +71,8 @@ public class PetMapper {
         Long pendingClinicId = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getId() : null;
         String pendingClinicName = (pet.getPendingActivationClinic() != null) ? pet.getPendingActivationClinic().getName() : null;
         Set<VetSummaryDto> vetSummaries = userMapper.toVetSummaryDtoSet(pet.getAssociatedVets());
+        OwnerSummaryDto ownerDetails = (pet.getOwner() != null) ?
+                new OwnerSummaryDto(pet.getOwner().getId(), pet.getOwner().getUsername(), pet.getOwner().getEmail(), pet.getOwner().getPhone()) : null;
 
         String fallbackPetAvatarUrl = (backendBaseUrl.endsWith("/") ? backendBaseUrl : backendBaseUrl + "/") +
                 DEFAULT_PET_AVATAR_URL_PREFIX.substring(1) +
@@ -102,7 +105,8 @@ public class PetMapper {
                 breedName,
                 pendingClinicId,
                 pendingClinicName,
-                vetSummaries
+                vetSummaries,
+                ownerDetails
         );
     }
 

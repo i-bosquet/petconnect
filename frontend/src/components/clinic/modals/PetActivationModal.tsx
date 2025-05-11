@@ -102,7 +102,7 @@ const PetActivationModal = ({
     if (isOpen && petToActivate) {
       setFormData({
         color: petToActivate.color || '',
-        gender: petToActivate.gender,
+        gender: petToActivate.gender ?? undefined,
         birthDate: petToActivate.birthDate || '',
         microchip: petToActivate.microchip || '',
         breedId: petToActivate.breedId ? Number(petToActivate.breedId) : undefined,
@@ -124,7 +124,7 @@ const PetActivationModal = ({
   };
 
   const handleBreedChange = (value: string) => {
-     setFormData((prev) => ({ ...prev, breedId: value }));
+     setFormData((prev) => ({ ...prev, breedId: Number(value) }));
   };
 
   const handleGenderChange = (value: string) => {

@@ -1,5 +1,6 @@
 import { Gender, PetStatus, Specie } from './enumTypes';
 import { VetSummaryDto } from './clinicTypes';
+import { OwnerSummaryDto } from './authTypes';
 
 /**
  * Detailed profile information for a Pet.
@@ -21,6 +22,7 @@ export interface PetProfileDto {
     pendingActivationClinicId?: number | string | null;
     pendingActivationClinicName?: string | null;
     associatedVets: VetSummaryDto[];
+    ownerDetails?: OwnerSummaryDto | null;
     createdAt?: string | null; 
     updatedAt?: string | null;
 }

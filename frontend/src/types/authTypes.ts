@@ -119,3 +119,14 @@ export interface ClinicStaffProfileUpdateResponseDto {
   profile: ClinicStaffProfile
   newToken: string | null;
 }
+
+/**
+ * Summary information for a Pet Owner.
+ * Used to embed owner details within other DTOs like PetProfileDto.
+ */
+export interface OwnerSummaryDto {
+    id: number | string;
+    username: string;
+    email: string;
+    phone: string | null; // El teléfono puede ser opcional o nulo
+}

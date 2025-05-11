@@ -3,6 +3,7 @@ package com.petconnect.backend.pet.application.dto;
 import com.petconnect.backend.pet.domain.model.Gender;
 import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
+import com.petconnect.backend.user.application.dto.OwnerSummaryDto;
 import com.petconnect.backend.user.application.dto.VetSummaryDto;
 
 import java.time.LocalDate;
@@ -45,7 +46,8 @@ public record PetProfileDto(
         String breedName,
         Long pendingActivationClinicId,
         String pendingActivationClinicName,
-        Set<VetSummaryDto> associatedVets
+        Set<VetSummaryDto> associatedVets,
+        OwnerSummaryDto ownerDetails
 ) {
 }
 

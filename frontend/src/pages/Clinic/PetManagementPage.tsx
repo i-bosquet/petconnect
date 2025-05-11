@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-// import ClinicPetDetailModal from "@/components/clinic/modals/ClinicPetDetailModal";
+import ClinicPetDetailModal from "@/components/clinic/modals/ClinicPetDetailModal";
 import { PetProfileDto, Page, PetStatus } from "@/types/apiTypes";
 import { findPetsByClinic } from "@/services/petService"; 
 import { useAuth } from "@/hooks/useAuth";
@@ -24,8 +24,8 @@ const PetManagementPage = (): JSX.Element => {
     const [allClinicPets, setAllClinicPets] = useState<PetProfileDto[]>([]); 
     const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
     const [error, setError] = useState<string>("");
-    // const [selectedPet, setSelectedPet] = useState<PetProfileDto | null>(null);
-    // const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
+    const [selectedPet, setSelectedPet] = useState<PetProfileDto | null>(null);
+    const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(0);
@@ -73,20 +73,20 @@ const PetManagementPage = (): JSX.Element => {
         fetchClinicPets(newPage);
     };
 
-    // const handleOpenDetailModal = (pet: PetProfileDto) => {
-    //     setSelectedPet(pet);
-    //     setShowDetailModal(true);
-    // };
+    const handleOpenDetailModal = (pet: PetProfileDto) => {
+        setSelectedPet(pet);
+        setShowDetailModal(true);
+    };
 
-    // const handleCloseDetailModal = () => {
-    //     setSelectedPet(null);
-    //     setShowDetailModal(false);
-    // };
+    const handleCloseDetailModal = () => {
+        setSelectedPet(null);
+        setShowDetailModal(false);
+    };
 
-    // const handlePetUpdateInModal = () => {
-    //     setShowDetailModal(false);
-    //     fetchClinicPets(currentPage); // Refrescar la página actual
-    // };
+    const handlePetUpdateInModal = () => {
+        setShowDetailModal(false);
+        fetchClinicPets(currentPage); // Refrescar la página actual
+    };
 
     /**
      * Memoized list of pets to be displayed in the table.
@@ -226,13 +226,12 @@ const PetManagementPage = (): JSX.Element => {
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button size="icon" className="text-cyan-400 hover:bg-cyan-800 hover:text-[#FFECAB] h-8 w-8 cursor-pointer"
-                                                        // onClick={() => handleOpenDetailModal(pet)}
-                                                        onClick={() => alert(`TODO: Open detail/edit modal for ${pet.name}`)}
+                                                        onClick={() => handleOpenDetailModal(pet)}
                                                     >
                                                         <Eye size={16} />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent><p>View/Edit Details</p></TooltipContent>
+                                                <TooltipContent><p>View Details</p></TooltipContent>
                                             </Tooltip>
                                         </TableCell>
                                     </TableRow>
@@ -248,14 +247,14 @@ const PetManagementPage = (): JSX.Element => {
                 )}
             </Card>
 
-            {/* {showDetailModal && selectedPet && (
+            {showDetailModal && selectedPet && (
                 <ClinicPetDetailModal
                     isOpen={showDetailModal}
                     onClose={handleCloseDetailModal}
                     petProfileInitial={selectedPet}
                     onPetUpdate={handlePetUpdateInModal} // Este hará la llamada al servicio de updatePetByClinicStaff
                 />
-            )} */}
+            )}
         </div>
     );
 };
