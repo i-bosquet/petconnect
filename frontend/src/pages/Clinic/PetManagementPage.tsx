@@ -165,7 +165,7 @@ const PetManagementPage = (): JSX.Element => {
                                 className="data-[state=checked]:bg-cyan-600 data-[state=checked]:text-white border-gray-500"
                             />
                             <Label htmlFor="show-all-clinic-pets-filter" className="text-sm font-medium text-gray-300 cursor-pointer whitespace-nowrap">
-                                Show All Pets 
+                                Show all pets 
                             </Label>
                         </div>
                     )}
@@ -180,7 +180,7 @@ const PetManagementPage = (): JSX.Element => {
 
             <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
                 <CardHeader>
-                    <CardTitle className="text-[#FFECAB]">Active Pets in Clinic</CardTitle>
+                    <CardTitle className="text-[#FFECAB]">Active pets in clinic</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoadingData ? (
@@ -195,7 +195,7 @@ const PetManagementPage = (): JSX.Element => {
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-b-[#FFECAB]/20">
-                                    <TableHead className="text-[#FFECAB]/80 pl-6">Pet Name</TableHead>
+                                    <TableHead className="text-[#FFECAB]/80 pl-6">Pet name</TableHead>
                                     <TableHead className="text-[#FFECAB]/80 hidden md:table-cell">Owner</TableHead>
                                     <TableHead className="text-[#FFECAB]/80 hidden lg:table-cell">Breed</TableHead>
                                     <TableHead className="text-[#FFECAB]/80">Associated Vet(s)</TableHead>
@@ -225,13 +225,13 @@ const PetManagementPage = (): JSX.Element => {
                                         <TableCell className="text-right space-x-1 pr-6">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <Button size="icon" className="text-cyan-400 hover:bg-cyan-800 hover:text-[#FFECAB] h-8 w-8 cursor-pointer"
+                                                    <Button size="icon" className="h-7 w-7 text-[#FFECAB] hover:text-[#090D1A]  hover:bg-[#FFECAB] cursor-pointer"
                                                         onClick={() => handleOpenDetailModal(pet)}
                                                     >
                                                         <Eye size={16} />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent><p>View Details</p></TooltipContent>
+                                                <TooltipContent className="bg-gray-950 text-white border border-cyan-700"><p>View Details</p></TooltipContent>
                                             </Tooltip>
                                         </TableCell>
                                     </TableRow>
@@ -252,7 +252,7 @@ const PetManagementPage = (): JSX.Element => {
                     isOpen={showDetailModal}
                     onClose={handleCloseDetailModal}
                     petProfileInitial={selectedPet}
-                    onPetUpdate={handlePetUpdateInModal} // Este hará la llamada al servicio de updatePetByClinicStaff
+                    onPetUpdate={handlePetUpdateInModal}
                 />
             )}
         </div>

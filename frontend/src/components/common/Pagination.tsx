@@ -52,7 +52,7 @@ const Pagination = ({
             <button
                 onClick={handlePrevious}
                 disabled={currentPage === 0 || isLoading}
-                className="px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-500 text-white flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-500 text-white flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Previous page"
             >
                 <ChevronLeft size={18} className="mr-1" />
@@ -64,7 +64,7 @@ const Pagination = ({
             <button
                 onClick={handleNext}
                 disabled={currentPage >= totalPages - 1 || isLoading}
-                className="px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-500 text-white flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-500 text-white flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Next page"
             >
                 Next

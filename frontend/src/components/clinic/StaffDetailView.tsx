@@ -1,5 +1,6 @@
 import { JSX } from 'react';
 import { ClinicStaffProfile } from '@/types/apiTypes';
+import { formatDateTime } from '@/utils/formatters';
 import {  Mail, Building, UserCheck, KeySquare, Hash, Calendar, Clock, UserCog } from 'lucide-react'; 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,7 @@ interface StaffDetailViewProps {
  */
 const StaffDetailView = ({ staffProfile, onEdit }: StaffDetailViewProps): JSX.Element => {
 
-    const formatDate = (dateString: string | null | undefined) => {
-        if (!dateString) return 'N/A';
-        try {
-            return new Date(dateString).toLocaleString('en-GB'); 
-        } catch {
-            return 'Invalid Date';
-        }
-    };
+   
 
      const formatRoles = (roles: string[] | undefined): JSX.Element => {
          if (!roles || roles.length === 0) return <Badge variant="outline">No Roles</Badge>;
@@ -82,9 +76,9 @@ const StaffDetailView = ({ staffProfile, onEdit }: StaffDetailViewProps): JSX.El
              {/* Right Column - Audit Info */}
              <div className="space-y-3 border-t md:border-t-0 md:border-l border-[#FFECAB]/20 pt-3 md:pt-0 md:pl-6">
                  <h4 className="font-medium text-gray-400 mb-2">Audit Info</h4>
-                 <div className="flex items-start gap-2"> <Calendar size={16} className="text-gray-500 mt-0.5"/> <div><span className="font-medium text-gray-400 block">Created At:</span> <span className="text-white">{formatDate(staffProfile.createdAt)}</span></div> </div>
+                 <div className="flex items-start gap-2"> <Calendar size={16} className="text-gray-500 mt-0.5"/> <div><span className="font-medium text-gray-400 block">Created At:</span> <span className="text-white">{formatDateTime(staffProfile.createdAt)}</span></div> </div>
                  <div className="flex items-start gap-2"> <UserCog size={16} className="text-gray-500 mt-0.5"/> <div><span className="font-medium text-gray-400 block">Created By:</span> <span className="text-white">{staffProfile.createdBy || 'N/A'}</span></div> </div>
-                 <div className="flex items-start gap-2"> <Clock size={16} className="text-gray-500 mt-0.5"/> <div><span className="font-medium text-gray-400 block">Last Updated:</span> <span className="text-white">{formatDate(staffProfile.updatedAt)}</span></div> </div>
+                 <div className="flex items-start gap-2"> <Clock size={16} className="text-gray-500 mt-0.5"/> <div><span className="font-medium text-gray-400 block">Last Updated:</span> <span className="text-white">{formatDateTime(staffProfile.updatedAt)}</span></div> </div>
                  <div className="flex items-start gap-2"> <UserCog size={16} className="text-gray-500 mt-0.5"/> <div><span className="font-medium text-gray-400 block">Updated By:</span> <span className="text-white">{staffProfile.updatedBy || 'N/A'}</span></div> </div>
              </div>
              </div>

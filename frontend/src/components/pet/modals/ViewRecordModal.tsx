@@ -1,5 +1,5 @@
-// frontend/src/components/pet/modals/ViewRecordModal.tsx
 import { JSX } from 'react';
+import { formatRecordCreatorDisplay, formatDateTime, getRecordTypeDisplay} from '@/utils/formatters';
 import Modal from '@/components/common/Modal';
 import { RecordViewDto, RecordType } from '@/types/apiTypes'; 
 import { Button } from '@/components/ui/button';
@@ -22,15 +22,6 @@ interface ViewRecordModalProps {
  */
 const ViewRecordModal = ({ isOpen, onClose, record, canEditRecord, onEditRequest }: ViewRecordModalProps): JSX.Element | null => {
 
-    const formatDate = (dateString: string | null | undefined): string => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    };
-
-    const getRecordTypeDisplay = (type: RecordType): string => {
-        return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    };
-
     const getRecordTypeIcon = (type: RecordType): JSX.Element => {
         switch (type) {
             case RecordType.VACCINE: return <Syringe size={18} className="text-blue-400" />;
@@ -43,7 +34,7 @@ const ViewRecordModal = ({ isOpen, onClose, record, canEditRecord, onEditRequest
         }
     };
 
-    const creatorDisplay = record.creator ? `${record.creator.username} (${record.creator.roles?.join(', ').toLowerCase() || 'user'})` : 'Unknown';
+    const creatorDisplay = formatRecordCreatorDisplay(record.creator);
 
     if (!isOpen) return null;
 
@@ -57,7 +48,7 @@ const ViewRecordModal = ({ isOpen, onClose, record, canEditRecord, onEditRequest
                         <h3 className="text-xl font-semibold text-white">{getRecordTypeDisplay(record.type)}</h3>
                     </div>
                     <p className="text-sm text-gray-400 flex items-center gap-1.5">
-                        <CalendarDays size={14}/> Created on: {formatDate(record.createdAt)}
+                        <CalendarDays size={14}/> Created on: {formatDateTime(record.createdAt)}
                     </p>
                     <p className="text-sm text-gray-400 flex items-center gap-1.5">
                         <UserCircle size={14}/> Created by: <span className="font-medium text-gray-300">{creatorDisplay}</span>

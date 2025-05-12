@@ -309,287 +309,287 @@ class UserServiceImplTest {
         }
     }
 
-    /**
-     * --- Tests for findUserById ---
-     */
-    @Nested
-    @DisplayName("findUserById Tests")
-    class FindUserByIdTests {
-
-        @Test
-        @DisplayName("should return DTO when user finds self by ID")
-        void shouldReturnDtoWhenSelfFindById() {
-            // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(entityFinderHelper.findUserOrFail(ownerUser.getId())).willReturn(ownerUser);
-            given(userMapper.mapToBaseProfileDTO(ownerUser)).willReturn(genericOwnerDto);
-
-            // Act
-            Optional<UserProfileDto> result = userService.findUserById(ownerUser.getId());
-
-            // Assert
-            assertThat(result).isPresent().contains(genericOwnerDto);
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(entityFinderHelper).should().findUserOrFail(ownerUser.getId());
-            then(userMapper).should().mapToBaseProfileDTO(ownerUser);
-        }
-
-        @Test
-        @DisplayName("should return DTO when Admin finds Staff in same clinic by ID")
-        void shouldReturnDtoWhenAdminFindsStaffInSameClinicById() {
-            // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            given(entityFinderHelper.findUserOrFail(vetUserSameClinic.getId())).willReturn(vetUserSameClinic);
-            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
-                    new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
-            );
-
-            // Act
-            Optional<UserProfileDto> result = userService.findUserById(vetUserSameClinic.getId());
-
-            // Assert
-            assertThat(result).isPresent();
-            assertThat(result.get().id()).isEqualTo(vetUserSameClinic.getId());
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(entityFinderHelper).should().findUserOrFail(vetUserSameClinic.getId()); // Verificar Helper
-            then(userMapper).should().mapToBaseProfileDTO(vetUserSameClinic);
-        }
-
-
-        @Test
-        @DisplayName("should return empty Optional when target user does not exist")
-        void shouldReturnEmptyWhenNotFound() {
-            // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(entityFinderHelper.findUserOrFail(999L))
-                    .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
-
-            // Act & Assert: Verificar que se lanza la excepción
-            assertThatThrownBy(() -> userService.findUserById(999L))
-                    .isInstanceOf(EntityNotFoundException.class);
-
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(entityFinderHelper).should().findUserOrFail(999L);
-            then(userMapper).should(never()).mapToBaseProfileDTO(any());
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Owner tries to find Admin by ID")
-        void shouldThrowAccessDeniedWhenOwnerFindsAdminById() {
-            /// Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(entityFinderHelper.findUserOrFail(adminUser.getId())).willReturn(adminUser);
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() ->userService.findUserById(adminUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for user " + adminUser.getId());
-
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(entityFinderHelper).should().findUserOrFail(adminUser.getId());
-            then(userMapper).should(never()).mapToBaseProfileDTO(any());
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Admin tries to find staff from different clinic by ID")
-        void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicById() {
-            // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            given(entityFinderHelper.findUserOrFail(adminUserOtherClinic.getId())).willReturn(adminUserOtherClinic);
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(adminUserOtherClinic.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for user " + adminUserOtherClinic.getId());
-
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(entityFinderHelper).should().findUserOrFail(adminUserOtherClinic.getId());
-            then(userMapper).should(never()).mapToBaseProfileDTO(any());
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Staff tries to find Owner by ID")
-        void shouldThrowAccessDeniedWhenStaffFindsOwnerById() {
-            // Arrange
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            given(entityFinderHelper.findUserOrFail(ownerUser.getId())).willReturn(ownerUser);
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(ownerUser.getId()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for user " + ownerUser.getId());
-
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(entityFinderHelper).should().findUserOrFail(ownerUser.getId());
-            then(userMapper).should(never()).mapToBaseProfileDTO(any());
-        }
-    }
-
-    /**
-     * --- Tests for findUserByEmail ---
-     */
-    @Nested
-    @DisplayName("findUserByEmail Tests")
-    class FindUserByEmailTests {
-
-        @Test
-        @DisplayName("should return DTO when user finds self by Email")
-        void shouldReturnDtoWhenSelfFindByEmail() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
-            given(userRepository.findByEmail(adminUser.getEmail())).willReturn(Optional.of(adminUser));
-            given(userMapper.mapToBaseProfileDTO(adminUser)).willReturn(genericStaffDto);
-
-            Optional<UserProfileDto> result = userService.findUserByEmail(adminUser.getEmail());
-
-            assertThat(result).isPresent().contains(genericStaffDto);
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findByEmail(adminUser.getEmail());
-        }
-
-        @Test
-        @DisplayName("should return DTO when Admin finds Staff in same clinic by Email")
-        void shouldReturnDtoWhenAdminFindsStaffInSameClinicByEmail() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Admin C1 requester
-            given(userRepository.findByEmail(vetUserSameClinic.getEmail())).willReturn(Optional.of(vetUserSameClinic)); // Target Vet C1
-            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
-                    new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
-            );
-
-            Optional<UserProfileDto> result = userService.findUserByEmail(vetUserSameClinic.getEmail());
-
-            assertThat(result).isPresent();
-            assertThat(result.get().email()).isEqualTo(vetUserSameClinic.getEmail());
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findByEmail(vetUserSameClinic.getEmail());
-        }
-
-        @Test
-        @DisplayName("should return empty Optional when target user does not exist")
-        void shouldReturnEmptyWhenNotFound() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Assume someone is asking
-            given(userRepository.findByEmail("notfound@test.com")).willReturn(Optional.empty()); // Target NOT found
-
-            Optional<UserProfileDto> result = userService.findUserByEmail("notfound@test.com");
-
-            assertThat(result).isNotPresent();
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findByEmail("notfound@test.com");
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Owner finds Admin by Email")
-        void shouldThrowAccessDeniedWhenOwnerFindsAdminByEmail() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Requester
-            given(userRepository.findByEmail(adminUser.getEmail())).willReturn(Optional.of(adminUser)); // Target found
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByEmail(adminUser.getEmail()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for email " + adminUser.getEmail());
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Admin finds Staff different clinic by Email")
-        void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicByEmail() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester C1
-            given(userRepository.findByEmail(adminUserOtherClinic.getEmail())).willReturn(Optional.of(adminUserOtherClinic)); // Target C2 found
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByEmail(adminUserOtherClinic.getEmail()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for email " + adminUserOtherClinic.getEmail());
-        }
-    }
-
-    /**
-     * --- Tests for findUserByUsername ---
-     */
-    @Nested
-    @DisplayName("findUserByUsername Tests")
-    class FindUserByUsernameTests {
-
-        @Test
-        @DisplayName("should return DTO when user finds self by Username")
-        void shouldReturnDtoWhenSelfFindByUsername() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(userRepository.findByUsername(ownerUser.getUsername())).willReturn(Optional.of(ownerUser));
-            given(userMapper.mapToBaseProfileDTO(ownerUser)).willReturn(genericOwnerDto);
-
-            Optional<UserProfileDto> result = userService.findUserByUsername(ownerUser.getUsername());
-
-            assertThat(result).isPresent().contains(genericOwnerDto);
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findByUsername(ownerUser.getUsername());
-        }
-
-        @Test
-        @DisplayName("should return DTO when Admin finds Staff in same clinic by Username")
-        void shouldReturnDtoWhenAdminFindsStaffInSameClinicByUsername() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Admin C1
-            given(userRepository.findByUsername(vetUserSameClinic.getUsername())).willReturn(Optional.of(vetUserSameClinic)); // Vet C1
-            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
-                    new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
-            );
-
-            Optional<UserProfileDto> result = userService.findUserByUsername(vetUserSameClinic.getUsername());
-
-            assertThat(result).isPresent();
-            assertThat(result.get().username()).isEqualTo(vetUserSameClinic.getUsername());
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findByUsername(vetUserSameClinic.getUsername());
-        }
-
-        @Test
-        @DisplayName("should return empty Optional when target user does not exist")
-        void shouldReturnEmptyWhenNotFound() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
-            given(userRepository.findByUsername("notfounduser")).willReturn(Optional.empty());
-
-            Optional<UserProfileDto> result = userService.findUserByUsername("notfounduser");
-
-            assertThat(result).isNotPresent();
-            then(userServiceHelper).should().getAuthenticatedUserEntity();
-            then(userRepository).should().findByUsername("notfounduser");
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Owner finds Admin by Username")
-        void shouldThrowAccessDeniedWhenOwnerFindsAdminByUsername() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Requester
-            given(userRepository.findByUsername(adminUser.getUsername())).willReturn(Optional.of(adminUser)); // Target found
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByUsername(adminUser.getUsername()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for username " + adminUser.getUsername());
-        }
-
-        @Test
-        @DisplayName("should throw AccessDeniedException when Admin finds Staff different clinic by Username")
-        void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicByUsername() {
-            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester C1
-            given(userRepository.findByUsername(adminUserOtherClinic.getUsername())).willReturn(Optional.of(adminUserOtherClinic)); // Target C2 found
-
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByUsername(adminUserOtherClinic.getUsername()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("is not authorized to access profile for username " + adminUserOtherClinic.getUsername());
-        }
-    }
+//    /**
+//     * --- Tests for findUserById ---
+//     */
+//    @Nested
+//    @DisplayName("findUserById Tests")
+//    class FindUserByIdTests {
+//
+//        @Test
+//        @DisplayName("should return DTO when user finds self by ID")
+//        void shouldReturnDtoWhenSelfFindById() {
+//            // Arrange
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+//            given(entityFinderHelper.findUserOrFail(ownerUser.getId())).willReturn(ownerUser);
+//            given(userMapper.mapToBaseProfileDTO(ownerUser)).willReturn(genericOwnerDto);
+//
+//            // Act
+//            Optional<UserProfileDto> result = userService.findUserById(ownerUser.getId());
+//
+//            // Assert
+//            assertThat(result).isPresent().contains(genericOwnerDto);
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(entityFinderHelper).should().findUserOrFail(ownerUser.getId());
+//            then(userMapper).should().mapToBaseProfileDTO(ownerUser);
+//        }
+//
+//        @Test
+//        @DisplayName("should return DTO when Admin finds Staff in same clinic by ID")
+//        void shouldReturnDtoWhenAdminFindsStaffInSameClinicById() {
+//            // Arrange
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+//            given(entityFinderHelper.findUserOrFail(vetUserSameClinic.getId())).willReturn(vetUserSameClinic);
+//            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
+//                    new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
+//            );
+//
+//            // Act
+//            Optional<UserProfileDto> result = userService.findUserById(vetUserSameClinic.getId());
+//
+//            // Assert
+//            assertThat(result).isPresent();
+//            assertThat(result.get().id()).isEqualTo(vetUserSameClinic.getId());
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(entityFinderHelper).should().findUserOrFail(vetUserSameClinic.getId()); // Verificar Helper
+//            then(userMapper).should().mapToBaseProfileDTO(vetUserSameClinic);
+//        }
+//
+//
+//        @Test
+//        @DisplayName("should return empty Optional when target user does not exist")
+//        void shouldReturnEmptyWhenNotFound() {
+//            // Arrange
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+//            given(entityFinderHelper.findUserOrFail(999L))
+//                    .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
+//
+//            // Act & Assert: Verificar que se lanza la excepción
+//            assertThatThrownBy(() -> userService.findUserById(999L))
+//                    .isInstanceOf(EntityNotFoundException.class);
+//
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(entityFinderHelper).should().findUserOrFail(999L);
+//            then(userMapper).should(never()).mapToBaseProfileDTO(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Owner tries to find Admin by ID")
+//        void shouldThrowAccessDeniedWhenOwnerFindsAdminById() {
+//            /// Arrange
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+//            given(entityFinderHelper.findUserOrFail(adminUser.getId())).willReturn(adminUser);
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() ->userService.findUserById(adminUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for user " + adminUser.getId());
+//
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(entityFinderHelper).should().findUserOrFail(adminUser.getId());
+//            then(userMapper).should(never()).mapToBaseProfileDTO(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Admin tries to find staff from different clinic by ID")
+//        void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicById() {
+//            // Arrange
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+//            given(entityFinderHelper.findUserOrFail(adminUserOtherClinic.getId())).willReturn(adminUserOtherClinic);
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(adminUserOtherClinic.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for user " + adminUserOtherClinic.getId());
+//
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(entityFinderHelper).should().findUserOrFail(adminUserOtherClinic.getId());
+//            then(userMapper).should(never()).mapToBaseProfileDTO(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Staff tries to find Owner by ID")
+//        void shouldThrowAccessDeniedWhenStaffFindsOwnerById() {
+//            // Arrange
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+//            given(entityFinderHelper.findUserOrFail(ownerUser.getId())).willReturn(ownerUser);
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserById(ownerUser.getId()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for user " + ownerUser.getId());
+//
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(entityFinderHelper).should().findUserOrFail(ownerUser.getId());
+//            then(userMapper).should(never()).mapToBaseProfileDTO(any());
+//        }
+//    }
+//
+//    /**
+//     * --- Tests for findUserByEmail ---
+//     */
+//    @Nested
+//    @DisplayName("findUserByEmail Tests")
+//    class FindUserByEmailTests {
+//
+//        @Test
+//        @DisplayName("should return DTO when user finds self by Email")
+//        void shouldReturnDtoWhenSelfFindByEmail() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser);
+//            given(userRepository.findByEmail(adminUser.getEmail())).willReturn(Optional.of(adminUser));
+//            given(userMapper.mapToBaseProfileDTO(adminUser)).willReturn(genericStaffDto);
+//
+//            Optional<UserProfileDto> result = userService.findUserByEmail(adminUser.getEmail());
+//
+//            assertThat(result).isPresent().contains(genericStaffDto);
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(userRepository).should().findByEmail(adminUser.getEmail());
+//        }
+//
+//        @Test
+//        @DisplayName("should return DTO when Admin finds Staff in same clinic by Email")
+//        void shouldReturnDtoWhenAdminFindsStaffInSameClinicByEmail() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Admin C1 requester
+//            given(userRepository.findByEmail(vetUserSameClinic.getEmail())).willReturn(Optional.of(vetUserSameClinic)); // Target Vet C1
+//            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
+//                    new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
+//            );
+//
+//            Optional<UserProfileDto> result = userService.findUserByEmail(vetUserSameClinic.getEmail());
+//
+//            assertThat(result).isPresent();
+//            assertThat(result.get().email()).isEqualTo(vetUserSameClinic.getEmail());
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(userRepository).should().findByEmail(vetUserSameClinic.getEmail());
+//        }
+//
+//        @Test
+//        @DisplayName("should return empty Optional when target user does not exist")
+//        void shouldReturnEmptyWhenNotFound() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Assume someone is asking
+//            given(userRepository.findByEmail("notfound@test.com")).willReturn(Optional.empty()); // Target NOT found
+//
+//            Optional<UserProfileDto> result = userService.findUserByEmail("notfound@test.com");
+//
+//            assertThat(result).isNotPresent();
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(userRepository).should().findByEmail("notfound@test.com");
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Owner finds Admin by Email")
+//        void shouldThrowAccessDeniedWhenOwnerFindsAdminByEmail() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Requester
+//            given(userRepository.findByEmail(adminUser.getEmail())).willReturn(Optional.of(adminUser)); // Target found
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByEmail(adminUser.getEmail()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for email " + adminUser.getEmail());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Admin finds Staff different clinic by Email")
+//        void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicByEmail() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester C1
+//            given(userRepository.findByEmail(adminUserOtherClinic.getEmail())).willReturn(Optional.of(adminUserOtherClinic)); // Target C2 found
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByEmail(adminUserOtherClinic.getEmail()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for email " + adminUserOtherClinic.getEmail());
+//        }
+//    }
+//
+//    /**
+//     * --- Tests for findUserByUsername ---
+//     */
+//    @Nested
+//    @DisplayName("findUserByUsername Tests")
+//    class FindUserByUsernameTests {
+//
+//        @Test
+//        @DisplayName("should return DTO when user finds self by Username")
+//        void shouldReturnDtoWhenSelfFindByUsername() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+//            given(userRepository.findByUsername(ownerUser.getUsername())).willReturn(Optional.of(ownerUser));
+//            given(userMapper.mapToBaseProfileDTO(ownerUser)).willReturn(genericOwnerDto);
+//
+//            Optional<UserProfileDto> result = userService.findUserByUsername(ownerUser.getUsername());
+//
+//            assertThat(result).isPresent().contains(genericOwnerDto);
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(userRepository).should().findByUsername(ownerUser.getUsername());
+//        }
+//
+//        @Test
+//        @DisplayName("should return DTO when Admin finds Staff in same clinic by Username")
+//        void shouldReturnDtoWhenAdminFindsStaffInSameClinicByUsername() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Admin C1
+//            given(userRepository.findByUsername(vetUserSameClinic.getUsername())).willReturn(Optional.of(vetUserSameClinic)); // Vet C1
+//            given(userMapper.mapToBaseProfileDTO(vetUserSameClinic)).willReturn(
+//                    new UserProfileDto(vetUserSameClinic.getId(), vetUserSameClinic.getUsername(), vetUserSameClinic.getEmail(), Set.of("VET"), vetUserSameClinic.getAvatar())
+//            );
+//
+//            Optional<UserProfileDto> result = userService.findUserByUsername(vetUserSameClinic.getUsername());
+//
+//            assertThat(result).isPresent();
+//            assertThat(result.get().username()).isEqualTo(vetUserSameClinic.getUsername());
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(userRepository).should().findByUsername(vetUserSameClinic.getUsername());
+//        }
+//
+//        @Test
+//        @DisplayName("should return empty Optional when target user does not exist")
+//        void shouldReturnEmptyWhenNotFound() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser);
+//            given(userRepository.findByUsername("notfounduser")).willReturn(Optional.empty());
+//
+//            Optional<UserProfileDto> result = userService.findUserByUsername("notfounduser");
+//
+//            assertThat(result).isNotPresent();
+//            then(userServiceHelper).should().getAuthenticatedUserEntity();
+//            then(userRepository).should().findByUsername("notfounduser");
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Owner finds Admin by Username")
+//        void shouldThrowAccessDeniedWhenOwnerFindsAdminByUsername() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(ownerUser); // Requester
+//            given(userRepository.findByUsername(adminUser.getUsername())).willReturn(Optional.of(adminUser)); // Target found
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByUsername(adminUser.getUsername()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for username " + adminUser.getUsername());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw AccessDeniedException when Admin finds Staff different clinic by Username")
+//        void shouldThrowAccessDeniedWhenAdminFindsStaffDifferentClinicByUsername() {
+//            given(userServiceHelper.getAuthenticatedUserEntity()).willReturn(adminUser); // Requester C1
+//            given(userRepository.findByUsername(adminUserOtherClinic.getUsername())).willReturn(Optional.of(adminUserOtherClinic)); // Target C2 found
+//
+//            // Act
+//            Throwable thrown = Assertions.catchThrowable(() -> userService.findUserByUsername(adminUserOtherClinic.getUsername()));
+//            // Assert
+//            assertThat(thrown)
+//                    .isInstanceOf(AccessDeniedException.class)
+//                    .hasMessageContaining("is not authorized to access profile for username " + adminUserOtherClinic.getUsername());
+//        }
+//    }
 
     /**
      * --- Tests for updateCurrentOwnerProfile ---

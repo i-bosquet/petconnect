@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, JSX } from "react";
+import { formatDateTime, getRecordTypeDisplay} from '@/utils/formatters';
 import {
   PetProfileDto,
   RecordViewDto,
@@ -127,12 +128,6 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
     fetchRecords(currentPage); 
   };
 
-   const handleRecordUpdated = () => {
-    setShowEditModal(false);
-    setSelectedRecord(null); 
-    fetchRecords(currentPage); 
-  };
-
    const handleConfirmDeleteRecord = async () => {
     if (!token || !selectedRecord) return;
     setIsActionLoading(true);
@@ -152,22 +147,6 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
     } finally {
         setIsActionLoading(false);
     }
-  };
-
-
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getRecordTypeDisplay = (type: RecordType) => {
-    return type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const getRecordTypeIcon = (type: RecordType): JSX.Element => {
@@ -268,7 +247,7 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
                           )}
                       </h4>
                       <p className="text-xs text-gray-400">
-                        On: {formatDate(record.createdAt)} by{" "}
+                        On: {formatDateTime(record.createdAt)} by{" "}
                         {record.creator?.username || "Unknown"}
                         {record.creator?.roles &&
                           ` (${record.creator.roles.join(", ").toLowerCase()})`}
@@ -383,7 +362,7 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
                     Are you sure you want to delete this medical record?
                     <br/>
                     (Type: <strong className="text-[#FFECAB]">{getRecordTypeDisplay(selectedRecord.type)}</strong>,
-                    Created: <strong className="text-[#FFECAB]">{formatDate(selectedRecord.createdAt)}</strong>)
+                    Created: <strong className="text-[#FFECAB]">{formatDateTime(selectedRecord.createdAt)}</strong>)
                     <br/><br/>
                     This action cannot be undone.
                 </>

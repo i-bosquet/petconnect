@@ -2,6 +2,7 @@ package com.petconnect.backend.record.domain.model;
 
 import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.user.domain.model.BaseEntity;
+import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.UserEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -101,4 +102,8 @@ public class Record extends BaseEntity {
         }
         this.vaccine = vaccine;
     }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "clinic_id", foreignKey = @ForeignKey(name = "fk_record_clinic"))
+    private Clinic createdInClinic; // Null if created by the Owner
 }

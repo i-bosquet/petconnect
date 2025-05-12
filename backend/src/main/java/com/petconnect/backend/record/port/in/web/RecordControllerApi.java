@@ -168,4 +168,18 @@ public interface RecordControllerApi {
             @Parameter(description = "ID of the pet", required = true) @PathVariable Long petId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Requested duration for the token.", required = true, content = @Content(schema = @Schema(implementation = TemporaryAccessRequestDto.class)))
             @Valid @RequestBody TemporaryAccessRequestDto requestDto);
+
+    @Operation(summary = "Get records created by a specific clinic",
+            description = "Retrieves a paginated list of all medical records created by staff within the specified clinic. Requires clinic staff authorization for that clinic.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Records retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - User not authorized for this clinic"),
+            @ApiResponse(responseCode = "404", description = "Clinic not found")
+    })
+    @GetMapping("/clinic/{clinicId}/created-by")
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<Page<RecordViewDto>> getRecordsCreatedByClinic(
+            @Parameter(description = "ID of the clinic") @PathVariable Long clinicId,
+            @Parameter(hidden = true) Pageable pageable
+    );
 }

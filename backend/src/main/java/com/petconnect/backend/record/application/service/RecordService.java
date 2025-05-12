@@ -103,4 +103,16 @@ public interface RecordService {
      * @throws IllegalArgumentException if the duration string in the DTO is invalid.
      */
     TemporaryAccessTokenDto generateTemporaryAccessToken(Long petId, TemporaryAccessRequestDto requestDto, Long requesterUserId);
+
+    /**
+     * Retrieves a paginated list of all medical records created by staff within a specific clinic.
+     * This serves as a historical view for the clinic.
+     *
+     * @param clinicId The ID of the clinic.
+     * @param requesterUserId The ID of the user (clinic staff) requesting the records.
+     * @param pageable Pagination information.
+     * @return A Page of {@link RecordViewDto}.
+     * @throws AccessDeniedException if the requester is not authorized, staff of the clinic.
+     */
+    Page<RecordViewDto> findRecordsCreatedByClinic(Long clinicId, Long requesterUserId, Pageable pageable);
 }

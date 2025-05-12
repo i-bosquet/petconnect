@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent, ChangeEvent, JSX } from 'react';
+import {formatDateTime} from '@/utils/formatters';
 import Modal from '@/components/common/Modal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -110,19 +111,8 @@ const EditRecordModal = ({ isOpen, onClose, onRecordUpdated, recordInitialData }
         );
     }
 
-    const formatDate = (dateString: string | null | undefined): string => {
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        });
-    };
-
     return (
-        <Modal title={`Edit Record (${formatDate(recordInitialData.createdAt)})`} onClose={onClose} maxWidth="max-w-lg">
+        <Modal title={`Edit Record (${formatDateTime(recordInitialData.createdAt)})`} onClose={onClose} maxWidth="max-w-lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                     <div className="p-3 bg-red-900/30 text-red-300 rounded-lg text-sm text-center">

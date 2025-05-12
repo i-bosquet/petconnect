@@ -89,12 +89,12 @@ const ClinicDashboardPage = (): JSX.Element => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-[#FFECAB] mb-0">Clinic Dashboard</h1>
+                <h1 className="text-2xl font-bold text-[#FFECAB] mb-0">Clinic dashboard</h1>
             </div>
 
             <section>
                 <h2 className="text-xl font-semibold text-cyan-400 mb-3 flex items-center">
-                    <BellDot size={20} className="mr-2" /> Pet Activation Requests
+                    <BellDot size={20} className="mr-2" /> Pet activation requests
                 </h2>
                 {isLoadingPending && <div className="flex justify-center items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-cyan-500" /><span className="ml-2 text-gray-300">Loading requests...</span></div>}
                 {errorPending && !isLoadingPending && <div className="p-3 text-red-400 bg-red-900/20 rounded-lg"><AlertCircle size={18} className="inline mr-2"/>{errorPending}</div>}
@@ -118,7 +118,7 @@ const ClinicDashboardPage = (): JSX.Element => {
             </section>
 
             <div className="mt-8 p-6 border border-dashed border-gray-600 rounded-lg">
-                 <h3 className="text-lg font-semibold text-gray-300 mb-2">Clinic Overview</h3>
+                 <h3 className="text-lg font-semibold text-gray-300 mb-2">Clinic overview</h3>
                  <p className="text-gray-400">(More clinic stats, quick links, etc. will be here)</p>
             </div>
 

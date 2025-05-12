@@ -73,7 +73,7 @@ services:
 
   # SonarQube Service
   sonarqube:
-    image: sonarqube:latest
+    image: sonarqube
     container_name: petconnect_sonarqube
     restart: unless-stopped
     environment:

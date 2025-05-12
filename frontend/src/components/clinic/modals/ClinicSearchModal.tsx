@@ -24,7 +24,6 @@ const PAGE_SIZE = 5; // Number of clinics per page
  * @returns {JSX.Element | null} The modal component or null if not open.
  */
 const ClinicSearchModal = ({ isOpen, onClose }: ClinicSearchModalProps): JSX.Element | null => {
-    // --- State ---
     const [clinics, setClinics] = useState<ClinicDto[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
@@ -34,8 +33,6 @@ const ClinicSearchModal = ({ isOpen, onClose }: ClinicSearchModalProps): JSX.Ele
     const [availableCountries, setAvailableCountries] = useState<Country[]>([]);
     const [countriesLoading, setCountriesLoading] = useState<boolean>(false);
     const [countriesError, setCountriesError] = useState<string>("");
-
-    // --- Effects ---
 
     /**
      * useEffect hook to fetch initial data (clinics page 0 and countries)
@@ -60,7 +57,6 @@ const ClinicSearchModal = ({ isOpen, onClose }: ClinicSearchModalProps): JSX.Ele
         }
     }, [isOpen]); // Dependency array includes isOpen
 
-    // --- Data Fetching ---
 
     /**
      * Fetches the distinct list of countries with registered clinics.
@@ -118,8 +114,6 @@ const ClinicSearchModal = ({ isOpen, onClose }: ClinicSearchModalProps): JSX.Ele
         }
     };
 
-    // --- Event Handlers ---
-
     /** Handles changes in search inputs. */
     const handleSearchChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -138,7 +132,6 @@ const ClinicSearchModal = ({ isOpen, onClose }: ClinicSearchModalProps): JSX.Ele
         fetchClinics(newPage, searchParams);
     };
 
-    // --- Render Logic ---
     if (!isOpen) {
         return null;
     }

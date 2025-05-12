@@ -1,4 +1,4 @@
-import { RecordType } from './enumTypes';
+import { RecordType, Specie } from './enumTypes';
 import { UserProfile } from './authTypes'; 
 
 /**
@@ -19,10 +19,18 @@ export interface RecordViewDto {
     id: number | string;
     type: RecordType;
     description?: string | null;
-    vetSignature?: string | null; 
-    createdAt: string;
+    vetSignature?: string | null;
+    createdAt: string; 
+    createdBy?: string | null;
+    updatedAt?: string | null; 
+    updatedBy?: string | null;
     creator: UserProfile; 
     vaccine?: VaccineViewDto | null;
+    createdInClinicId?: number | string | null;
+    createdInClinicName?: string | null;
+    petId: number | string;
+    petName: string | null; 
+    petSpecie: Specie | null; 
 }
 
 /**

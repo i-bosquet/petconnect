@@ -95,6 +95,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, RECORD_ID_URL).authenticated(); // Get record detail (checked in service)
                     http.requestMatchers(HttpMethod.PUT, RECORD_ID_URL).authenticated(); // Update record
                     http.requestMatchers(HttpMethod.DELETE, RECORD_ID_URL).authenticated(); // Delete record (checked in service)
+                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/vets-for-selection").authenticated(); // List vets by clinic
                     http.requestMatchers(HttpMethod.GET, "/api/certificates").authenticated(); // List certificates (requires petId param, checked in service)
                     http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}").authenticated(); // Get certificate detail (checked in service)
                     http.requestMatchers(HttpMethod.GET, "/api/certificates/{certificateId}/qr-data").authenticated(); // Get QR data (checked in service)
@@ -133,8 +134,9 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/pets/clinic").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets associated with MY clinic
                     http.requestMatchers(HttpMethod.GET, "/api/pets/clinic/pending").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets pending at MY clinic
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/public-key/download").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Download the public-key file
+                    http.requestMatchers(HttpMethod.GET, "/api/records/clinic/{clinicId}/created-by").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List all historic records of the clinic
+
                     // --- 4. DEFAULT RULE ---
-                    http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/vets-for-selection").authenticated(); // List vets by clinic
                     // Any other request requires authentication
                     http.anyRequest().authenticated();
                 })

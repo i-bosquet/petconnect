@@ -16,8 +16,8 @@ export interface OwnerProfile {
   username: string;
   email: string;
   roles: string[];
-  avatar: string;
-  phone: string;
+  avatar: string | null;
+  phone: string | null;
 }
 
 /**
@@ -128,5 +128,5 @@ export interface OwnerSummaryDto {
     id: number | string;
     username: string;
     email: string;
-    phone: string | null; // El teléfono puede ser opcional o nulo
+    phone: string | null; 
 }

@@ -81,4 +81,14 @@ public interface RecordRepository extends JpaRepository<Record, Long>, JpaSpecif
             @Param("checkupTypes") Collection<RecordType> checkupTypes,
             @Param("cutoffDateTime") LocalDateTime cutoffDateTime);
 
+    /**
+     * Finds all records created within a specific clinic,
+     * ordered by creation date descending.
+     * Allows pagination.
+     *
+     * @param clinicId The ID of the clinic where the records were created.
+     * @param pageable Pagination and sorting information.
+     * @return A Page containing Records created in the specified clinic.
+     */
+    Page<Record> findByCreatedInClinicIdOrderByCreatedAtDesc(Long clinicId, Pageable pageable);
 }

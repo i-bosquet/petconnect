@@ -75,12 +75,12 @@ const ClinicManagementPage = (): JSX.Element => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl sm:text-3xl font-bold text-[#FFECAB] flex items-center">
                     <Building className="mr-3 h-7 w-7 text-cyan-400" />
-                    Clinic Information & Settings
+                    Clinic information & settings
                 </h1>
                 <div className="flex gap-2 w-full sm:w-auto">
                     {/* Serch button */}
                      <Button onClick={() => setShowSearchModal(true)} className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-orange-800 text-[#FFECAB] hover:bg-orange-600 focus-visible:ring-orange-500 disabled:opacity-50 cursor-pointer">
-                        <Search size={16} className="mr-2" /> Search Clinics
+                        <Search size={16} className="mr-2" /> Search clinics
                     </Button>
                      {/* Edit button */}
                      {isAdmin && (
@@ -110,7 +110,7 @@ const ClinicManagementPage = (): JSX.Element => {
                         </div>
                         {/* Publickeys */}
                         <div className="md:col-span-2 pt-3 border-t border-gray-700 mt-2">
-                            <h4 className="font-medium text-gray-400 mb-1">Clinic Public Key</h4>
+                            <h4 className="font-medium text-gray-400 mb-1">Clinic public key</h4>
                             <div className="flex items-center justify-between gap-2">
                                  {/* Publickey path */}
                                  <p className="text-xs text-gray-300 break-all flex-grow mr-2">

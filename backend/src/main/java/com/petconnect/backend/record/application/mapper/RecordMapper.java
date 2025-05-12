@@ -1,5 +1,7 @@
 package com.petconnect.backend.record.application.mapper;
 
+import com.petconnect.backend.pet.domain.model.Pet;
+import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.record.application.dto.RecordViewDto;
 import com.petconnect.backend.record.application.dto.VaccineViewDto;
 import com.petconnect.backend.record.domain.model.Record;
@@ -37,14 +39,39 @@ public class RecordMapper {
         UserProfileDto creatorDto = userMapper.mapToBaseProfileDTO(entity.getCreator());
         VaccineViewDto vaccineDto = vaccineMapper.toViewDto(entity.getVaccine());
 
+        Long createdInClinicId = null;
+        String createdInClinicName = null;
+        if (entity.getCreatedInClinic() != null) {
+            createdInClinicId = entity.getCreatedInClinic().getId();
+            createdInClinicName = entity.getCreatedInClinic().getName();
+        }
+
+        Pet pet = entity.getPet();
+        Long petId = null;
+        String petName = null;
+        Specie petSpecie = null;
+        if (pet != null) {
+            petId = pet.getId();
+            petName = pet.getName();
+            petSpecie = pet.getBreed() != null ? pet.getBreed().getSpecie() : null;
+        }
+
         return new RecordViewDto(
                 entity.getId(),
                 entity.getType(),
                 entity.getDescription(),
                 entity.getVetSignature(),
                 entity.getCreatedAt(),
+                entity.getCreatedBy(),
+                entity.getUpdatedAt(),
+                entity.getUpdatedBy(),
                 creatorDto,
-                vaccineDto
+                vaccineDto,
+                createdInClinicId,
+                createdInClinicName,
+                petId,
+                petName,
+                petSpecie
         );
     }
 

@@ -201,7 +201,7 @@ const StaffManagementPage = (): JSX.Element => {
       {/* Header*/}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-[#FFECAB] flex items-center">
-          <Users className="mr-3 h-7 w-7 text-cyan-400" />Staff Management</h1>
+          <Users className="mr-3 h-7 w-7 text-cyan-400" />Staff management</h1>
         <div className="flex items-center gap-4">
           {/* Search */}
           <div className="relative">

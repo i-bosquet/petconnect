@@ -130,12 +130,28 @@ public class UserMapper {
                 fallbackAvatarUrl
         );
 
+        String name = null;
+        String surname = null;
+        String clinicName = null;
+
+        if (user instanceof ClinicStaff staff) {
+            name = staff.getName();
+            surname = staff.getSurname();
+            if (staff.getClinic() != null) {
+                clinicName = staff.getClinic().getName();
+            }
+        }
+
+
         return new UserProfileDto(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 roleNames,
-                fullAvatarUrl
+                fullAvatarUrl,
+                name,
+                surname,
+                clinicName
         );
     }
 

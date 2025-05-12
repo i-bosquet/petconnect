@@ -75,18 +75,24 @@ public class RecordServiceImpl implements RecordService {
             Vaccine vaccineEntity = vaccineMapper.fromCreateDto(createDto.vaccine());
             newRecord.setVaccineDetails(vaccineEntity);
         }
-        if (creator instanceof Vet vetCreator) {
-            log.info("Creator is Vet (ID: {}), proceeding with signature.", creatorUserId);
-            String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
-            String signature = signingService.generateVetSignature(vetCreator, dataToSign);
-            newRecord.setVetSignature(signature);
-            log.info("Record for Pet {} created and signed by Vet {}", petId, creatorUserId);
-        } else {
-            log.info("Creator (ID: {}) is not a Vet, record will not be signed.", creatorUserId);
+
+        if (creator instanceof ClinicStaff staffCreator) {
+            newRecord.setCreatedInClinic(staffCreator.getClinic());
+            if (creator instanceof Vet vetCreator) {
+                log.info("Creator is Vet (ID: {}), from clinic {}, proceeding with signature.", creatorUserId, staffCreator.getClinic().getId());
+                String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
+                String signature = signingService.generateVetSignature(vetCreator, dataToSign);
+                newRecord.setVetSignature(signature);
+                log.info("Record for Pet {} created, signed by Vet {}, and associated with clinic {}", createDto.petId(), creatorUserId, staffCreator.getClinic().getId());
+            } else { // If it is Clinic Staff but not Vet
+                log.info("Creator (ID: {}) is ClinicStaff (non-Vet) from clinic {}, record will not be signed but associated with clinic {}.", creatorUserId, staffCreator.getClinic().getId(), staffCreator.getClinic().getId());
+            }
+        } else { // If the creator is Owner
+            log.info("Creator (ID: {}) is an Owner, record will not be signed and not directly associated with a clinic creation context.", creatorUserId);
         }
 
         Record savedRecord = recordRepository.save(newRecord);
-        log.info("User {} created new record ID {} for Pet {}", creatorUserId, savedRecord.getId(), petId);
+        log.info("User {} created new record ID {} for Pet {}", creatorUserId, savedRecord.getId(), createDto.petId());
         return recordMapper.toViewDto(savedRecord);
     }
 
@@ -230,4 +236,17 @@ public class RecordServiceImpl implements RecordService {
         return new TemporaryAccessTokenDto(token);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<RecordViewDto> findRecordsCreatedByClinic(Long clinicId, Long requesterUserId, Pageable pageable) {
+        ClinicStaff staff = entityFinderHelper.findClinicStaffOrFail(requesterUserId, "view clinic's created records");
+        if (!staff.getClinic().getId().equals(clinicId)) {
+            throw new AccessDeniedException("Staff " + requesterUserId + " is not authorized to view records for clinic " + clinicId);
+        }
+        log.info("Staff {} requesting records created by clinic {}", requesterUserId, clinicId);
+
+        Page<Record> recordPage = recordRepository.findByCreatedInClinicIdOrderByCreatedAtDesc(clinicId, pageable);
+
+        return recordMapper.toViewDtoPage(recordPage);
+    }
 }

@@ -99,4 +99,14 @@ public class RecordController implements RecordControllerApi {
         TemporaryAccessTokenDto tokenDto = recordService.generateTemporaryAccessToken(petId, requestDto, requesterUserId);
         return ResponseEntity.ok(tokenDto);
     }
+
+    @Override
+    @GetMapping("/clinic/{clinicId}/created-by")
+    public ResponseEntity<Page<RecordViewDto>> getRecordsCreatedByClinic(
+            @PathVariable Long clinicId,
+            Pageable pageable) {
+        Long requesterUserId = userHelper.getAuthenticatedUserId();
+        Page<RecordViewDto> recordPage = recordService.findRecordsCreatedByClinic(clinicId, requesterUserId, pageable);
+        return ResponseEntity.ok(recordPage);
+    }
 }
