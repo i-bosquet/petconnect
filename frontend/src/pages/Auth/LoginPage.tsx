@@ -319,12 +319,12 @@ const LoginPage = (): JSX.Element => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-[#FFECAB] bg-cyan-800 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-[#FFECAB] bg-cyan-800 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <span className="absolute left-0 inset-y-0 flex items-center pl-3">
                     {isLoading ? (
                       <svg
-                        className="animate-spin h-5 w-5 text-[#FFECAB]" /* ... spinner svg ... */
+                        className="animate-spin h-5 w-5 text-[#FFECAB]" 
                       ></svg>
                     ) : (
                       <LogIn size={18} className="group-hover:opacity-80" />

@@ -290,7 +290,7 @@ const SignupPage = (): JSX.Element => {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-cyan-800 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 mt-4">
+                        className="w-full py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-[#FFECAB] bg-cyan-800 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 mt-4 cursor-pointer">
                         {isLoading ? "Creating Account..." : "Sign up"}
                     </button>
                 </div>

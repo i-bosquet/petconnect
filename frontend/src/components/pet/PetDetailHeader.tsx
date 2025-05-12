@@ -112,7 +112,7 @@ const PetDetailHeader = ({pet, onBack, onEdit, onDeactivate, onRequestActivation
                             <Button
                                 onClick={onRequestActivation}
                                 size="sm"
-                                className="text-cyan-400 bg-transparent hover:bg-cyan-800 hover:text-[#FFECAB] h-7 px-2 py-1 text-xs ml-4 border border-cyan-600 hover:border-cyan-400 mt-2.5"
+                                className="text-cyan-400 bg-transparent hover:bg-cyan-800 hover:text-[#FFECAB] h-7 px-2 py-1 text-xs ml-4 border border-cyan-600 hover:border-cyan-400 mt-2.5 cursor-pointer"
                                 aria-label={`Request activation for ${pet.name}`}
                             >
                                 <Send size={14} className="mr-1 sm:mr-1.5" />

@@ -33,7 +33,7 @@ const PetDetailTabs = ({ pet, onAssociationChanged}: PetDetailTabsProps): JSX.El
           </TabsTrigger>
 
           <TabsTrigger
-            value="Record"
+            value="records"
             className={cn(
               baseTriggerClasses,
               inactiveTriggerClasses,

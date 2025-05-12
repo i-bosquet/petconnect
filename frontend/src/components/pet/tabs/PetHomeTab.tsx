@@ -126,11 +126,11 @@ const PetHomeTab = ({ pet, onPetAssociationChange }: PetHomeTabProps): JSX.Eleme
                                         </Button>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenDisassociateConfirm(vet)} className="text-red-500  hover:bg-red-900 hover:text-[#FFECAB] h-8 w-8 p-1.5  cursor-pointer">
-                                                    <Trash2 size={16} />
+                                                <Button size="icon" onClick={() => handleOpenDisassociateConfirm(vet)} className=" text-red-800 hover:bg-red-800 hover:text-white  h-8 w-8 cursor-pointer m-2">
+                                                    <Trash2 size={18} />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent className="bg-red-700 text-white border-none"><p>Disassociate Vet</p></TooltipContent>
+                                            <TooltipContent className="bg-gray-950 text-white border border-red-700"><p>Disassociate Vet</p></TooltipContent>
                                         </Tooltip>
                                     </div>
                                 </li>
