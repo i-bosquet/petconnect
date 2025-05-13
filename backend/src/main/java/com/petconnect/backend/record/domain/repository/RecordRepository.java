@@ -91,4 +91,13 @@ public interface RecordRepository extends JpaRepository<Record, Long>, JpaSpecif
      * @return A Page containing Records created in the specified clinic.
      */
     Page<Record> findByCreatedInClinicIdOrderByCreatedAtDesc(Long clinicId, Pageable pageable);
+
+    /**
+     * Finds all records associated with a specific pet, ordered by creation date descending.
+     * Returns a List, not a Page.
+     *
+     * @param petId The ID of the pet whose records are to be retrieved.
+     * @return A List of the Pet's Records ordered by creation date descending.
+     */
+    List<Record> findAllByPetIdOrderByCreatedAtDesc(Long petId);
 }

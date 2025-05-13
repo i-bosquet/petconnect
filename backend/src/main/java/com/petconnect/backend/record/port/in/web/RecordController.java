@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 
 /**
  * Implementation of {@link RecordControllerApi}.
@@ -98,6 +100,17 @@ public class RecordController implements RecordControllerApi {
                 petId, requesterUserId, requestDto.durationString());
         TemporaryAccessTokenDto tokenDto = recordService.generateTemporaryAccessToken(petId, requestDto, requesterUserId);
         return ResponseEntity.ok(tokenDto);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @GetMapping("/verify-temporary-access")
+    public ResponseEntity<List<RecordViewDto>> getRecordsByTemporaryToken(@RequestParam String token) {
+        log.info("Received request to verify temporary access token.");
+        List<RecordViewDto> records = recordService.findRecordsByTemporaryAccessToken(token);
+        return ResponseEntity.ok(records);
     }
 
     @Override

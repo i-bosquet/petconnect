@@ -7,6 +7,8 @@ import {
     Page,
     ApiErrorResponse,
     RecordType,
+    TemporaryAccessRequestPayload,
+    TemporaryAccessTokenResponse
 } from '@/types/apiTypes'; 
 
 interface FindRecordsParams {
@@ -220,5 +222,74 @@ export const findRecordsCreatedByClinic = async (
             throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to fetch clinic records.');
         }
         throw new Error('Failed to fetch clinic records due to network or unexpected error.');
+    }
+};
+
+/**
+ * Generates a temporary access token for sharing a pet's signed medical records.
+ *
+ * @param {string} token - The JWT authentication token of the Owner.
+ * @param {number | string} petId - The ID of the pet whose records are to be shared.
+ * @param {TemporaryAccessRequestPayload} payload - Contains the duration string (e.g., "PT1H", "P1D").
+ * @returns {Promise<TemporaryAccessTokenResponse>} A promise resolving to an object containing the temporary access token.
+ * @throws {Error} If token generation fails.
+ */
+export const generateTemporaryRecordAccessToken = async (
+    token: string,
+    petId: number | string,
+    payload: TemporaryAccessRequestPayload
+): Promise<TemporaryAccessTokenResponse> => {
+    if (!token) throw new Error("Authentication token required.");
+    if (!petId) throw new Error("Pet ID is required.");
+
+    try {
+        const response = await axios.post<TemporaryAccessTokenResponse>(
+            `${API_BASE_URL}/records/${petId}/temporary-access`,
+            payload,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Generate Temp Access Token (Pet ID: ${petId}) Error:`, apiError);
+            let errMsg = 'Failed to generate temporary access token.';
+            if (typeof apiError.message === 'string') errMsg = apiError.message;
+            else if (apiError.error) errMsg = apiError.error;
+            throw new Error(errMsg);
+        }
+        throw new Error('Failed to generate temporary access token due to network or unexpected error.');
+    }
+};
+
+/**
+ * Fetches signed medical records for a pet using a temporary access token.
+ *
+ * @param {string} tempToken - The temporary access token obtained from a shared link/QR.
+ * @returns {Promise<RecordViewDto[]>} A promise resolving to a list of signed records.
+ * @throws {Error} If fetching or token validation fails.
+ */
+export const getRecordsByTemporaryToken = async (tempToken: string): Promise<RecordViewDto[]> => {
+    if (!tempToken) throw new Error("Temporary access token is required.");
+    try {
+        const response = await axios.get<RecordViewDto[]>(`${API_BASE_URL}/records/verify-temporary-access`, {
+            params: { token: tempToken } 
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            let errMsg = 'Failed to retrieve records with token.';
+            if (error.response.status === 400) errMsg = apiError.message as string || "Invalid or expired token.";
+            else if (typeof apiError.message === 'string') errMsg = apiError.message;
+            else if (apiError.error) errMsg = apiError.error;
+            throw new Error(errMsg);
+        }
+        throw new Error('Failed to retrieve records due to network or unexpected error.');
     }
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, JSX } from 'react';
-import { formatDateTime, getRecordTypeDisplay  } from '@/utils/formatters';
+import { formatRecordCreatorDisplay, formatDateTime, getRecordTypeDisplay  } from '@/utils/formatters';
 import { PetProfileDto,  VetSummaryDto, RecordViewDto, RecordType, } from '@/types/apiTypes';
 import { UserCircle, Edit, Mail, Phone, FileText, PlusCircle, Trash, Eye as EyeIcon, Loader2, AlertCircle, ShieldCheck,  Thermometer, Syringe, AlertTriangle, Info, BookOpenCheck } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                                                         {record.vetSignature && <Tooltip><TooltipTrigger asChild><ShieldCheck size={12} className="text-green-400"/></TooltipTrigger><TooltipContent><p>Signed</p></TooltipContent></Tooltip>}
                                                     </h5>
                                                     <p className="text-xs text-gray-400">
-                                                        {formatDateTime(record.createdAt)} by {record.creator?.username}
+                                                        {formatDateTime(record.createdAt)} by {formatRecordCreatorDisplay(record.creator)}
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-1">

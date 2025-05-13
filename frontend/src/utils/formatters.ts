@@ -9,12 +9,15 @@ import { UserProfile, ClinicStaffProfile, OwnerProfile, RecordType } from '@/typ
 export const formatRecordCreatorDisplay = (creator: UserProfile | undefined | null): string => {
     if (!creator) return 'Unknown';
 
-    if (typeof (creator as ClinicStaffProfile).name === 'string' &&
-        typeof (creator as ClinicStaffProfile).surname === 'string') {
-        const staff = creator as ClinicStaffProfile;
-        let displayName = `${staff.name} ${staff.surname}`.trim();
-        if (staff.clinicName) { 
-            displayName += ` (${staff.clinicName})`;
+    const staffCandidate = creator as ClinicStaffProfile;
+
+    if (typeof (staffCandidate as ClinicStaffProfile).name === 'string' &&
+        typeof (staffCandidate as ClinicStaffProfile).surname === 'string'&&
+        typeof staffCandidate.clinicName === 'string') { 
+
+        let displayName = `${staffCandidate.name} ${staffCandidate.surname}`.trim();
+        if (staffCandidate.clinicName) { 
+            displayName += ` (${staffCandidate.clinicName})`;
         }
         return displayName || 'Clinic Staff'; 
     }
@@ -22,7 +25,8 @@ export const formatRecordCreatorDisplay = (creator: UserProfile | undefined | nu
         const owner = creator as OwnerProfile;
         let displayName = owner.username;
         if (owner.roles && owner.roles.length > 0) {
-            displayName += ` (${owner.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()).join(', ')})`;
+            const formattedRoles = owner.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1).toLowerCase()).join(', ');
+            displayName += ` (${formattedRoles})`;
         }
         return displayName;
     }

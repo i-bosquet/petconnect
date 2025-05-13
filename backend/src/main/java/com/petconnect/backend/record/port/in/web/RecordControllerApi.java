@@ -7,6 +7,7 @@ import com.petconnect.backend.record.application.dto.TemporaryAccessRequestDto;
 import com.petconnect.backend.record.application.dto.TemporaryAccessTokenDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -22,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -169,6 +171,42 @@ public interface RecordControllerApi {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Requested duration for the token.", required = true, content = @Content(schema = @Schema(implementation = TemporaryAccessRequestDto.class)))
             @Valid @RequestBody TemporaryAccessRequestDto requestDto);
 
+    /**
+     * Verifies a temporary access token and retrieves the signed medical records for the associated pet.
+     * This endpoint is publicly accessible and uses the token for authorization.
+     *
+     * @param token The temporary access token.
+     * @return ResponseEntity with a List of RecordViewDto (only signed records) and status 200 (OK).
+     *         Returns 400 if the token is invalid or expired.
+     *         Returns 404 if the pet associated with the token is not found.
+     */
+    @Operation(summary = "Verify Temporary Access Token & Get Signed Records",
+            description = "Validates a temporary access token and returns signed medical records for the pet. Publicly accessible via token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Signed records retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @ArraySchema(schema = @Schema(implementation = RecordViewDto.class)))),
+            @ApiResponse(responseCode = "400", description = "Invalid, expired, or malformed token",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Pet not found for the token provided",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Map.class)))
+    })
+    @GetMapping("/verify-temporary-access")
+    ResponseEntity<List<RecordViewDto>> getRecordsByTemporaryToken(
+            @Parameter(description = "The temporary access token provided in the shared link/QR", required = true)
+            @RequestParam String token
+    );
+
+    /**
+     * Retrieves a paginated list of all medical records created by staff members
+     * associated with the specified clinic. The user requesting this information
+     * must have proper authorization for the clinic.
+     *
+     * @param clinicId The unique identifier of the clinic whose records are to be retrieved.
+     * @param pageable Pagination and sorting information for the request.
+     * @return A ResponseEntity containing a Page of RecordViewDto objects, which represent
+     *         the details of the records created by the specified clinic's staff.
+     */
     @Operation(summary = "Get records created by a specific clinic",
             description = "Retrieves a paginated list of all medical records created by staff within the specified clinic. Requires clinic staff authorization for that clinic.")
     @ApiResponses(value = {

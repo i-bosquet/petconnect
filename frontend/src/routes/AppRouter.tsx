@@ -14,6 +14,7 @@ import StaffManagementPage from '@/pages/Clinic/StaffManagementPage';
 import RecordManagementPage from '@/pages/Clinic/RecordManagementPage'; 
 import ClinicManagementPage from '@/pages/Clinic/ClinicManagementPage';
 import PetManagementPage from '@/pages/Clinic/PetManagementPage'; 
+import VerifyRecordsPage from '@/pages/Verify/VerifyRecordsPage'; 
 import NotFoundPage from '@/pages/NotFound/NotFoundPage';
 
 
@@ -47,7 +48,8 @@ const AppRouter = (): JSX.Element => {
         <Route path="pets" element={<PetManagementPage />} /> 
         <Route path="settings" element={<ClinicManagementPage />} />
       </Route>
-
+      {/* This route is public and allows access to the verification page via a token */}
+      <Route path="/verify-pet-records" element={<VerifyRecordsPage />} /> 
       {/* Catch-all Not Found Route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

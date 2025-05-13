@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Mapper component for converting between {@link Record} entities and {@link RecordViewDto}.
  * Uses UserMapper and VaccineMapper for nested object mapping.
@@ -87,5 +90,22 @@ public class RecordMapper {
             return Page.empty();
         }
         return recordPage.map(this::toViewDto);
+    }
+
+    /**
+     * Converts a List of {@link Record} entities to an unmodifiable list of {@link RecordViewDto}.
+     * Returns an empty list if the input list is null or empty.
+     *
+     * @param records The list of Record entities.
+     * @return An unmodifiable list of corresponding RecordViewDto objects.
+     * @author ibosquet
+     */
+    public List<RecordViewDto> toViewDtoList(List<Record> records) {
+        if (records == null || records.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return records.stream()
+                .map(this::toViewDto)
+                .toList();
     }
 }

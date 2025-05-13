@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, JSX } from "react";
-import { formatDateTime, getRecordTypeDisplay} from '@/utils/formatters';
+import { formatRecordCreatorDisplay, formatDateTime, getRecordTypeDisplay} from '@/utils/formatters';
 import {
   PetProfileDto,
   RecordViewDto,
@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Info,
   BookOpenCheck,
+  Share2
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { findRecordsByPetId, deleteRecord} from "@/services/recordService";
@@ -30,6 +31,8 @@ import AddRecordModal from "@/components/pet/modals/AddRecordModal";
 import ViewRecordModal from "@/components/pet/modals/ViewRecordModal";
 import EditRecordModal from "@/components/pet/modals/EditRecordModal";
 import ConfirmationModal from "@/components/common/ConfirmationModal";
+import RequestTempAccessModal from '../modals/RequestTempAccessModal'; 
+import ShowTempAccessModal from '../modals/ShowTempAccessModal'; 
 import {
   Tooltip,
   TooltipContent,
@@ -62,9 +65,11 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
   const [showViewModal, setShowViewModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
-  const [selectedRecord, setSelectedRecord] = useState<RecordViewDto | null>(
-    null
-  );
+  const [selectedRecord, setSelectedRecord] = useState<RecordViewDto | null>(null);
+
+  const [showRequestTempAccessModal, setShowRequestTempAccessModal] = useState<boolean>(false);
+  const [generatedTempAccessToken, setGeneratedTempAccessToken] = useState<string | null>(null);
+  const [showShowTempAccessModal, setShowShowTempAccessModal] = useState<boolean>(false);
 
   const fetchRecords = useCallback(
     async (pageToFetch: number) => {
@@ -149,6 +154,25 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
     }
   };
 
+  const handleOpenRequestTempAccessModal = () => {
+        if (user?.id === pet.ownerId) {
+            setShowRequestTempAccessModal(true);
+        } else {
+            toast.error("Only the pet owner can share access to the medical history.");
+        }
+    };
+
+  /**
+  * Called when the temporary access token is successfully generated.
+  * Closes the request modal and opens the modal to display the token/QR.
+  * @param {string} accessToken - The generated temporary access token.
+  */
+  const handleTempTokenGenerated = (accessToken: string) => {
+        setShowRequestTempAccessModal(false);
+        setGeneratedTempAccessToken(accessToken);
+        setShowShowTempAccessModal(true); // Open the modal to show the token and QR
+  };
+
   const getRecordTypeIcon = (type: RecordType): JSX.Element => {
     switch (type) {
       case RecordType.VACCINE:
@@ -175,14 +199,26 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
             <FileText size={24} className="mr-2 text-cyan-400" />
             Medical Records for {pet.name}
           </CardTitle>
-          <Button
-            onClick={handleOpenAddModal}
-            size="sm"
-            className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
-          >
-            <PlusCircle size={16} className="mr-2" />
-            Add New Record
-          </Button>
+           <div className="flex items-center gap-2"> 
+            {user?.id === pet.ownerId && records.some(r => r.vetSignature) && ( // Only show owner and Show only if there are signed records
+                            <Button
+                                onClick={handleOpenRequestTempAccessModal}
+                                size="sm"
+                                className="text-purple-300 hover:bg-purple-700/50 hover:text-purple-200 border border-purple-400 cursor-pointer px-3"
+                            >
+                                <Share2 size={16} className="mr-2" />
+                                Share Signed History
+                            </Button>
+                        )}
+            <Button
+              onClick={handleOpenAddModal}
+              size="sm"
+              className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
+            >
+              <PlusCircle size={16} className="mr-2" />
+              Add New Record
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -248,9 +284,7 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
                       </h4>
                       <p className="text-xs text-gray-400">
                         On: {formatDateTime(record.createdAt)} by{" "}
-                        {record.creator?.username || "Unknown"}
-                        {record.creator?.roles &&
-                          ` (${record.creator.roles.join(", ").toLowerCase()})`}
+                        {formatRecordCreatorDisplay(record.creator)}
                       </p>
                     </div>
                     <div className="flex gap-1.5 mt-2 sm:mt-0 self-start sm:self-center">
@@ -370,6 +404,24 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
             confirmButtonText="Yes, Delete"
             isLoading={isActionLoading} 
         />
+      )}
+
+      {showRequestTempAccessModal && pet?.id && user?.id === pet.ownerId && (
+                <RequestTempAccessModal
+                    isOpen={showRequestTempAccessModal}
+                    onClose={() => setShowRequestTempAccessModal(false)}
+                    petId={pet.id}
+                    onTokenGenerated={handleTempTokenGenerated}
+                />
+      )}
+
+      {showShowTempAccessModal && generatedTempAccessToken && (
+                <ShowTempAccessModal
+                    isOpen={showShowTempAccessModal}
+                    onClose={() => { setShowShowTempAccessModal(false); setGeneratedTempAccessToken(null); }}
+                    accessToken={generatedTempAccessToken}
+                    petName={pet.name}
+                />
       )}
 
     </Card>

@@ -78,7 +78,7 @@ public class Record extends BaseEntity {
      * This field stores the actual UserEntity object relation.
      */
     @NotNull(message = "Record must have a creator")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "creator_user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_record_creator"))
     private UserEntity creator;
     /**

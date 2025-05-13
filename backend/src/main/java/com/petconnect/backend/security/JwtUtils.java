@@ -6,6 +6,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
  * @author ibosquet
  */
 @Component
+@Slf4j
 public class JwtUtils {
 
     @Value("${jwt.secret.key}")
@@ -31,9 +33,10 @@ public class JwtUtils {
     @Value("${jwt.secret.generator}")
     public String userGenerator; // The issuer identifier for JWT tokens
 
-    private static final String PET_ID_CLAIM = "petId";
+    public  static final String PET_ID_CLAIM = "petId";
     private static final String TOKEN_TYPE_CLAIM = "type";
     private static final String TEMPORARY_ACCESS_TYPE = "TEMP_RECORD_ACCESS";
+    private static final String AUTHORITIES_CLAIM = "authorities";
 
     /**
      * Creates a JWT token using the provided authentication details.
@@ -57,7 +60,7 @@ public class JwtUtils {
         return JWT.create()
                 .withIssuer(this.userGenerator)
                 .withSubject(userId)
-                .withClaim("authorities", authorities)
+                .withClaim(AUTHORITIES_CLAIM, authorities)
                 .withIssuedAt(new Date(nowMillis))
                 .withExpiresAt(new Date(expirationMillis))
                 .withJWTId(UUID.randomUUID().toString())
@@ -110,6 +113,39 @@ public class JwtUtils {
             return decodedJWT;
         } catch (JWTVerificationException exception) {
             throw new JWTVerificationException("Token invalid. not authorized");
+        }
+    }
+
+    /**
+     * Validates a temporary JWT access token specifically for pet records.
+     * Checks issuer, token type, and extracts petId.
+     *
+     * @param token The temporary JWT token string.
+     * @return DecodedJWT of a valid and correct type, otherwise throws JWTVerificationException.
+     * @throws JWTVerificationException if the token is invalid, expired, or not of the expected type.
+     */
+    public DecodedJWT validateAndParseTemporaryRecordAccessToken(String token) throws JWTVerificationException {
+        log.debug("Attempting to validate temporary record access token.");
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
+            JWTVerifier verifier = JWT.require(algorithm)
+                    .withIssuer(this.userGenerator)
+                    .withClaim(TOKEN_TYPE_CLAIM, TEMPORARY_ACCESS_TYPE)
+                    .build();
+
+            DecodedJWT decodedJWT = verifier.verify(token);
+            log.debug("Temporary token validated successfully for subject: {}", decodedJWT.getSubject());
+
+            Claim petIdClaim = decodedJWT.getClaim(PET_ID_CLAIM);
+            if (petIdClaim.isNull() || petIdClaim.asLong() == null) {
+                log.error("Temporary token is missing or has invalid petId claim. Token Subject: {}", decodedJWT.getSubject());
+                throw new JWTVerificationException("Token is valid but incomplete (missing petId).");
+            }
+            log.info("Successfully validated temporary access token for petId: {}", petIdClaim.asLong());
+            return decodedJWT;
+        } catch (JWTVerificationException e) {
+            log.warn("Temporary access token validation failed: {}. Token: [{}]", e.getMessage(), token.substring(0, Math.min(token.length(), 30)) + "...");
+            throw e;
         }
     }
 

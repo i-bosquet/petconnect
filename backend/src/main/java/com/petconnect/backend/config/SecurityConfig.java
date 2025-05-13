@@ -83,6 +83,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/clinics").permitAll(); // Search clinics
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/countries").permitAll(); // List countries
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/{id}").permitAll(); // Get clinic detail
+                    http.requestMatchers(HttpMethod.GET, "/api/records/verify-temporary-access").permitAll(); // Temporal access
                     http.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**").permitAll(); // API Docs
                     http.requestMatchers(HttpMethod.GET, "/images/**", "/storage/**").permitAll(); // Static Images
 
@@ -110,7 +111,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-clinic/{clinicId}").hasRole(ROLE_OWNER); // Associate pet for activation
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Associate vet
                     http.requestMatchers(HttpMethod.DELETE, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Disassociate vet
-                    http.requestMatchers(HttpMethod.POST, "/api/records/pet/{petId}/temporary-access").hasRole(ROLE_OWNER); // Temp Access
+                    http.requestMatchers(HttpMethod.POST, "/api/records/{petId}/temporary-access").hasRole(ROLE_OWNER); // Temp Access
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/request-certificate/{vetId}").hasRole(ROLE_OWNER); // Request Cert
 
                     // --- VET ---

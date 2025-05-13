@@ -1,5 +1,6 @@
 package com.petconnect.backend.record.application.service.impl;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.RecordHelper;
@@ -26,9 +27,12 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.petconnect.backend.exception.InvalidTemporaryTokenException;
 
 import java.time.Duration;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -133,15 +137,15 @@ public class RecordServiceImpl implements RecordService {
     @Transactional
     public RecordViewDto updateUnsignedRecord(Long recordId, RecordUpdateDto updateDto, Long requesterUserId) {
         log.info("Attempting to update record ID: {} by User ID: {}", recordId, requesterUserId);
-        Record recordtoUpdate = entityFinderHelper.findRecordByIdOrFail(recordId);
+        Record recordedUpdate = entityFinderHelper.findRecordByIdOrFail(recordId);
         UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
 
-        if (StringUtils.hasText(recordtoUpdate.getVetSignature())) {
+        if (StringUtils.hasText(recordedUpdate.getVetSignature())) {
             log.warn("Update failed for Record ID {}: Record is signed.", recordId);
             throw new RecordSignedException(recordId);
         }
 
-        if (recordtoUpdate.getType() == RecordType.VACCINE) {
+        if (recordedUpdate.getType() == RecordType.VACCINE) {
             log.warn("Update failed for Record ID {}: Cannot update records of type VACCINE.", recordId);
             throw new RecordUpdateVaccineException(recordId, "records of type VACCINE cannot be updated.");
         }
@@ -151,29 +155,29 @@ public class RecordServiceImpl implements RecordService {
             throw new RecordUpdateVaccineException(recordId, "cannot change record type to VACCINE.");
         }
 
-        authorizationHelper.verifyUserAuthorizationForUnsignedRecordUpdate(requester, recordtoUpdate);
+        authorizationHelper.verifyUserAuthorizationForUnsignedRecordUpdate(requester, recordedUpdate);
         log.debug("Authorization successful for User {} updating Record ID {}", requesterUserId, recordId);
 
         boolean changed = false;
 
-        if (updateDto.type() != null && updateDto.type() != recordtoUpdate.getType()) {
+        if (updateDto.type() != null && updateDto.type() != recordedUpdate.getType()) {
 
-            log.info("Updating Record ID {} type from {} to {}", recordId, recordtoUpdate.getType(), updateDto.type());
-            recordtoUpdate.setType(updateDto.type());
+            log.info("Updating Record ID {} type from {} to {}", recordId, recordedUpdate.getType(), updateDto.type());
+            recordedUpdate.setType(updateDto.type());
             changed = true;
         }
         String newDescription = updateDto.description();
         if (newDescription != null) {
             String effectiveNewDescription = newDescription.isBlank() ? null : newDescription;
-            if (!Objects.equals(effectiveNewDescription, recordtoUpdate.getDescription())) {
+            if (!Objects.equals(effectiveNewDescription, recordedUpdate.getDescription())) {
                 log.info("Updating Record ID {} description.", recordId);
-                recordtoUpdate.setDescription(effectiveNewDescription);
+                recordedUpdate.setDescription(effectiveNewDescription);
                 changed = true;
             }
         }
-        Record updatedRecord = recordtoUpdate;
+        Record updatedRecord = recordedUpdate;
         if (changed) {
-            updatedRecord = recordRepository.save(recordtoUpdate);
+            updatedRecord = recordRepository.save(recordedUpdate);
             log.info("Record ID {} updated successfully by User ID {}", recordId, requesterUserId);
         } else {
             log.info("No effective changes detected for Record ID {}, update skipped.", recordId);
@@ -234,6 +238,51 @@ public class RecordServiceImpl implements RecordService {
         log.info("Temporary access token generated successfully for Pet ID {} with duration {}", petId, duration);
 
         return new TemporaryAccessTokenDto(token);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecordViewDto> findRecordsByTemporaryAccessToken(String tokenValue) {
+        if (!StringUtils.hasText(tokenValue)) {
+            log.warn("Attempt to access records with empty temporary token.");
+            throw new InvalidTemporaryTokenException("Temporary access token is missing.");
+        }
+
+        DecodedJWT decodedJWT;
+        try {
+            decodedJWT = jwtUtils.validateAndParseTemporaryRecordAccessToken(tokenValue);
+        } catch (JWTVerificationException e) {
+            throw new InvalidTemporaryTokenException("Temporary access token is invalid or has expired. Details: " + e.getMessage());
+        }
+
+        Long petId = decodedJWT.getClaim(JwtUtils.PET_ID_CLAIM).asLong(); 
+        if (petId == null) {
+            log.error("Temporary access token is valid but critically missing petId claim after validation. Token subject: {}", decodedJWT.getSubject());
+            throw new InvalidTemporaryTokenException("Token claims are critically incomplete.");
+        }
+
+        log.info("Fetching signed records for petId {} via temporary token.", petId);
+        // Validates that the pet exists
+        entityFinderHelper.findPetByIdOrFail(petId);
+
+        // Get ALL pet records
+        List<Record> allPetRecords = recordRepository.findAllByPetIdOrderByCreatedAtDesc(petId);
+
+        // Filter only the signed ones
+        List<Record> signedRecords = allPetRecords
+                .stream()
+                .filter(recordEntity -> StringUtils.hasText(recordEntity.getVetSignature()))
+                .toList();
+
+        if (signedRecords.isEmpty()) {
+            log.info("No signed records found for petId {} via temporary token.", petId);
+        }
+
+        log.info("Successfully retrieved {} signed records for petId {} using temporary token.", signedRecords.size(), petId);
+        return recordMapper.toViewDtoList(signedRecords);
     }
 
     @Override

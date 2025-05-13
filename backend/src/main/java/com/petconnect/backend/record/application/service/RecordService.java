@@ -6,6 +6,9 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 
 /**
@@ -103,6 +106,16 @@ public interface RecordService {
      * @throws IllegalArgumentException if the duration string in the DTO is invalid.
      */
     TemporaryAccessTokenDto generateTemporaryAccessToken(Long petId, TemporaryAccessRequestDto requestDto, Long requesterUserId);
+
+    /**
+     * Retrieves a list of medical records linked to a temporary access token.
+     * The token provides limited, read-only access to signed medical records.
+     *
+     * @param tokenValue The value of the temporary access token used for authorization.
+     * @return A list of {@link RecordViewDto} objects representing the medical records accessible with the provided token.
+     */
+    @Transactional(readOnly = true)
+    List<RecordViewDto> findRecordsByTemporaryAccessToken(String tokenValue);
 
     /**
      * Retrieves a paginated list of all medical records created by staff within a specific clinic.
