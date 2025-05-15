@@ -542,3 +542,71 @@ export const getVetsByClinicId = async (token: string, clinicId: number | string
     }
 };
 
+/**
+ * Allows a pet owner to request certificate generation from a specific clinic
+ * for one of their pets. The pet must be associated with a vet from that clinic.
+ *
+ * @param {string} token - The JWT token of the authenticated owner.
+ * @param {number | string} petId - The ID of the pet for which the certificate is requested.
+ * @param {number | string} clinicId - The ID of the clinic to which the request is directed.
+ * @returns {Promise<void>} A promise that resolves when the request is successfully sent.
+ * @throws {Error} Throws an error if the request fails.
+ */
+export const requestCertificateGeneration = async (
+    token: string,
+    petId: number | string,
+    clinicId: number | string
+): Promise<void> => {
+    if (!token) throw new Error("Authentication token required.");
+    if (!petId || !clinicId) throw new Error("Pet ID and Clinic ID are required.");
+
+    try {
+        await axios.post(`${API_BASE_URL}/pets/${petId}/request-certificate/${clinicId}`, {}, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Request Certificate (Pet: ${petId}, Clinic: ${clinicId}) Error:`, apiError);
+            throw new Error(typeof apiError.message === 'string' ? apiError.message : apiError.error || 'Failed to request certificate.');
+        }
+        throw new Error('Failed to request certificate due to network or unexpected error.');
+    }
+};
+
+/**
+ * Fetches pets that have a pending certificate request for a specific clinic.
+ * Requires VET or ADMIN role of that clinic.
+ *
+ * @param {string} token - The JWT token of the authenticated clinic staff.
+ * @param {number | string} clinicId - The ID of the clinic.
+ * @returns {Promise<PetProfileDto[]>} A list of pets with pending certificate requests.
+ */
+export const findPetsWithPendingCertRequestsForClinic = async (
+    token: string,
+    clinicId: number | string
+): Promise<PetProfileDto[]> => {
+    if (!token) throw new Error("Authentication token required.");
+    if (!clinicId) throw new Error("Clinic ID required.");
+    try {
+        const response = await axios.get<PetProfileDto[]>(`${API_BASE_URL}/pets/${clinicId}/pending-certificate-requests`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        return response.data;
+    } catch (error) {
+       if (axios.isAxiosError(error) && error.response) {
+            const apiError = error.response.data as ApiErrorResponse;
+            console.error(`API Error Fetching Pending Certificate Requests for Clinic ${clinicId}:`, apiError);
+            let errorMessage = 'Failed to fetch pending certificate requests.';
+            if (typeof apiError.message === 'string') {
+                errorMessage = apiError.message;
+            } else if (apiError.error) { 
+                errorMessage = apiError.error;
+            }
+            throw new Error(errorMessage);
+        } else {
+            console.error('Network or other error fetching pending certificate requests:', error);
+            throw new Error('Failed to fetch pending certificate requests due to network or unexpected error.');
+        }
+    }
+};

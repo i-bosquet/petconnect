@@ -43,6 +43,15 @@ public interface PetRepository extends JpaRepository<Pet, Long>, JpaSpecificatio
     List<Pet> findByPendingActivationClinicIdAndStatus(Long clinicId, PetStatus status);
 
     /**
+     * Finds a list of pets that are pending a certificate at a specific clinic, filtered by status.
+     *
+     * @param clinicId The ID of the clinic where the pets are pending a certificate.
+     * @param status The status of the pets to filter by.
+     * @return A list of Pet entities matching the specified clinic and status.
+     */
+    List<Pet> findByPendingCertificateClinicIdAndStatus(Long clinicId, PetStatus status);
+
+    /**
      * Checks if a pet with the given microchip number exists.
      * More efficient than findByMicrochip(...).isPresent().
      *

@@ -41,7 +41,7 @@ const TopBar = ({ selectedPetForChat }: TopBarProps): JSX.Element => {
         setUser(null);
         setShowDropdown(false);
         setShowProfileModal(false);
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
     }, [navigate]); 
     
 
@@ -187,7 +187,7 @@ const TopBar = ({ selectedPetForChat }: TopBarProps): JSX.Element => {
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={handleProfileClick}
-                                        className="flex items-center gap-2 rounded-full border border-transparent px-2 py-1.5 text-sm font-medium text-[#FFECAB]/90 hover:text-[#FFECAB] hover:bg-cyan-900/50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 focus:ring-offset-[#090D1A] transition-colors"
+                                        className="flex items-center gap-2 rounded-full border border-transparent px-2 py-1.5 text-sm font-medium text-[#FFECAB]/90 hover:text-[#FFECAB] hover:bg-cyan-900/50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 focus:ring-offset-[#090D1A] transition-colors cursor-pointer"
                                         aria-expanded={showDropdown}
                                         aria-haspopup="true"
                                         aria-label="User menu"
@@ -215,10 +215,10 @@ const TopBar = ({ selectedPetForChat }: TopBarProps): JSX.Element => {
                         {/* Dropdown Menu */}
                         {showDropdown && (
                             <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-[#0c1225] ring-1 ring-[#FFECAB]/30 ring-opacity-5 focus:outline-none z-40" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
-                                <button onClick={handleOpenProfileModal} className="flex items-center w-full px-4 py-2 text-sm text-[#FFECAB]/90 hover:bg-cyan-900/50 hover:text-[#FFECAB]" role="menuitem">
+                                <button onClick={handleOpenProfileModal} className="flex items-center w-full px-4 py-2 text-sm text-[#FFECAB]/90 hover:bg-cyan-900/50 hover:text-[#FFECAB] cursor-pointer" role="menuitem">
                                     <UserCog size={16} className="mr-2" /> Profile 
                                 </button>
-                                <button onClick={handleLogoutCallback} className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 hover:text-red-300" role="menuitem">
+                                <button onClick={handleLogoutCallback} className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 hover:text-red-300 cursor-pointer" role="menuitem">
                                     <LogOut size={16} className="mr-2" /> Logout
                                 </button>
                             </div>

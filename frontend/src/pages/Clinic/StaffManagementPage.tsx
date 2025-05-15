@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, JSX, ChangeEvent} from "react";
-import {UserRoundPlus, Users, Loader2, AlertCircle, Edit2, UserCheck, UserX, Search} from "lucide-react";
+import {UserRoundPlus, Users, Loader2, AlertCircle, Eye, UserCheck, UserX, Search} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -344,14 +344,14 @@ const StaffManagementPage = (): JSX.Element => {
                         <TooltipTrigger asChild>
                           <Button
                             size="icon"
-                            className="text-cyan-400 hover:bg-cyan-800 hover:text-[#FFECAB] h-8 w-8 cursor-pointer"
+                            className=" text-[#FFECAB] hover:text-cyan-800 hover:bg-[#FFECAB] h-8 w-8 cursor-pointer"
                             onClick={() => handleOpenDetailModal(staff)}
                           >
-                            <Edit2 size={16} />
+                            <Eye size={16} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Edit Staff</p>
+                        <TooltipContent className="bg-gray-950 text-white border  border-cyan-700">
+                          <p>View Staff</p>
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>

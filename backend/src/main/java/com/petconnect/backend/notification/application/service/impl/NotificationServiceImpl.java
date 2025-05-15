@@ -1,11 +1,13 @@
 package com.petconnect.backend.notification.application.service.impl;
 
 import com.petconnect.backend.certificate.application.event.CertificateGeneratedEvent;
+import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.notification.application.service.NotificationService;
 import com.petconnect.backend.pet.application.event.CertificateRequestedEvent;
 import com.petconnect.backend.pet.application.event.PetActivatedEvent;
 import com.petconnect.backend.pet.application.event.PetActivationRequestedEvent;
+import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.user.domain.model.ClinicStaff;
 import com.petconnect.backend.user.domain.model.Owner;
 import com.petconnect.backend.user.domain.model.Vet;
@@ -34,6 +36,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final UserRepository userRepository;
     private final ClinicStaffRepository clinicStaffRepository;
+    private final EntityFinderHelper entityFinderHelper;
 
     /**
      * {@inheritDoc}
@@ -79,15 +82,38 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public void processCertificateRequest(CertificateRequestedEvent event) {
-        log.info("Processing CertificateRequestedEvent for Pet ID: {}, Target Vet ID: {}", event.petId(), event.targetVetId());
+        log.info("Processing CertificateRequestedEvent for Pet ID: {}, Target Clinic ID: {}", event.petId(), event.targetClinicId());
 
-        Vet targetVet = findVet(event.targetVetId());
-        if (targetVet == null) return;
+        List<ClinicStaff> staffList = clinicStaffRepository.findByClinicIdAndIsActive(event.targetClinicId(), true);
+        List<Vet> vetsInClinic = staffList.stream()
+                .filter(Vet.class::isInstance)
+                .map(Vet.class::cast)
+                .toList();
 
-        log.info("--> NOTIFICATION SIMULATION (to Vet: {} {}): Owner ID {} requested a certificate generation for Pet ID {}.",
-                targetVet.getName(), targetVet.getSurname(),
-                event.ownerId(),
-                event.petId());
+        if (vetsInClinic.isEmpty()) {
+            log.warn("No active Vets found in target clinic {} to notify about certificate request for pet {}.", event.targetClinicId(), event.petId());
+            return;
+        }
+
+        Pet pet = entityFinderHelper.findPetByIdOrFail(event.petId());
+        Owner owner = findOwner(event.ownerId());
+
+        String petName = pet != null ? pet.getName() : "ID " + event.petId();
+        String ownerName = owner != null ? owner.getUsername() : "Owner ID " + event.ownerId();
+
+        for (Vet vet : vetsInClinic) {
+            log.info("--> NOTIFICATION SIMULATION (to Vet: {} {} in Clinic {}): " +
+                            "Owner {} has requested a certificate for pet {}. Please review in clinic dashboard.",
+                    vet.getName(), vet.getSurname(), vet.getClinic().getName(),
+                    ownerName, petName);
+        }
+
+        if (event.targetVetId() != null) {
+            Vet specificTargetVet = findVet(event.targetVetId());
+            if (specificTargetVet != null && specificTargetVet.getClinic().getId().equals(event.targetClinicId())) {
+                log.info("----> Specific request was targeted to Vet: {} {}", specificTargetVet.getName(), specificTargetVet.getSurname());
+            }
+        }
     }
 
     /**

@@ -8,7 +8,8 @@ import {
   Edit,
   Building,
   PawPrint,
-  ClipboardList 
+  ClipboardList,
+  ScrollText  
 } from 'lucide-react';
 import { ClinicStaffProfile } from '@/types/apiTypes';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -48,6 +49,7 @@ const ClinicSidebar = ({
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/clinic/dashboard' },
         { id: 'pet_management', label: 'Pet Management', icon: PawPrint, path: '/clinic/pets', vetOrAdmin: true },
         { id: 'record_management', label: 'Medical Records', icon: ClipboardList, path: '/clinic/records', vetOrAdmin: true },
+        { id: 'certificate_management', label: 'Certificates', icon: ScrollText, path: '/clinic/certificates', vetOrAdmin: true },
         { id: 'staff_management', label: 'Staff Management', icon: Users, path: '/clinic/staff', adminOnly: true },
         { id: 'settings', label: 'Clinic Info', icon: Building, path: '/clinic/settings' },
     ];

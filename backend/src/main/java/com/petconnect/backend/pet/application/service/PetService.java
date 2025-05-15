@@ -182,10 +182,22 @@ public interface PetService {
      * Publishes a CertificateRequestedEvent.
      *
      * @param petId The ID of the Pet.
-     * @param vetId The ID of the target Veterinarian associated with the pet.
+     * @param clinicId The ID of the Clinic with vets associated with the pet.
      * @param ownerId The ID of the authenticated Owner making the request.
      * @throws EntityNotFoundException if pet or vet not found.
      * @throws AccessDeniedException if the user is not the owner, or the vet is not associated with the pet.
      */
-    void requestCertificateGeneration(Long petId, Long vetId, Long ownerId);
+    void requestCertificateGeneration(Long petId, Long clinicId, Long ownerId);
+
+    /**
+     * Finds pets with pending certificate requests for a specific clinic.
+     * Requires authorization (requester must be a staff member of the clinic).
+     *
+     * @param clinicId The ID of the clinic for which to find pending certificate requests.
+     * @param requesterStaffId The ID of the clinic staff member making the request.
+     * @return A list of PetProfileDto objects representing pets with pending certificate requests for the requested clinic.
+     * @throws EntityNotFoundException if the clinic is not found.
+     * @throws AccessDeniedException if the requester is not authorized staff of the clinic.
+     */
+    List<PetProfileDto> findPetsWithPendingCertRequestsForClinic(Long clinicId, Long requesterStaffId);
 }

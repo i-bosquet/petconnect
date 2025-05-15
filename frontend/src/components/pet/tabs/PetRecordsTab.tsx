@@ -194,30 +194,45 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
   return (
     <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <CardTitle className="text-[#FFECAB] text-xl flex items-center">
             <FileText size={24} className="mr-2 text-cyan-400" />
             Medical Records for {pet.name}
           </CardTitle>
-           <div className="flex items-center gap-2"> 
-            {user?.id === pet.ownerId && records.some(r => r.vetSignature) && ( // Only show owner and Show only if there are signed records
-                            <Button
-                                onClick={handleOpenRequestTempAccessModal}
-                                size="sm"
-                                className="text-purple-300 hover:bg-purple-700/50 hover:text-purple-200 border border-purple-400 cursor-pointer px-3"
-                            >
-                                <Share2 size={16} className="mr-2" />
-                                Share Signed History
-                            </Button>
-                        )}
-            <Button
-              onClick={handleOpenAddModal}
-              size="sm"
-              className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
-            >
-              <PlusCircle size={16} className="mr-2" />
-              Add New Record
-            </Button>
+          <div className="sm:items-end mx-auto">
+            {user?.id === pet.ownerId &&
+                records.some((r) => r.vetSignature) && ( // Only show owner and Show only if there are signed records
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleOpenRequestTempAccessModal}
+                      size="sm"
+                      className="text-purple-300 hover:bg-purple-700/50 hover:text-purple-200 border border-purple-400 cursor-pointer px-3 mr-2"
+                    >
+                      <Share2 size={16} className="sm:mr-2" />
+                      <p>Share <span className="hidden sm:inline">Signed History</span></p>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-gray-950 text-white border border-purple-700">
+                    <p>Share Signed History</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleOpenAddModal}
+                  size="sm"
+                  className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
+                >
+                  <PlusCircle size={16} className="sm:mr-2" />
+                  <p>Add <span className="hidden sm:inline">New Record</span></p>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-gray-950 text-white border border-cyan-700">
+                <p>Add New Record</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </CardHeader>
@@ -387,43 +402,56 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
 
       {showDeleteConfirmModal && selectedRecord && (
         <ConfirmationModal
-            isOpen={showDeleteConfirmModal}
-            onClose={() => { setShowDeleteConfirmModal(false); setSelectedRecord(null); }}
-            onConfirm={handleConfirmDeleteRecord}
-            title="Confirm Delete Record"
-            message={
-                <>
-                    Are you sure you want to delete this medical record?
-                    <br/>
-                    (Type: <strong className="text-[#FFECAB]">{getRecordTypeDisplay(selectedRecord.type)}</strong>,
-                    Created: <strong className="text-[#FFECAB]">{formatDateTime(selectedRecord.createdAt)}</strong>)
-                    <br/><br/>
-                    This action cannot be undone.
-                </>
-            }
-            confirmButtonText="Yes, Delete"
-            isLoading={isActionLoading} 
+          isOpen={showDeleteConfirmModal}
+          onClose={() => {
+            setShowDeleteConfirmModal(false);
+            setSelectedRecord(null);
+          }}
+          onConfirm={handleConfirmDeleteRecord}
+          title="Confirm Delete Record"
+          message={
+            <>
+              Are you sure you want to delete this medical record?
+              <br />
+              (Type:{" "}
+              <strong className="text-[#FFECAB]">
+                {getRecordTypeDisplay(selectedRecord.type)}
+              </strong>
+              , Created:{" "}
+              <strong className="text-[#FFECAB]">
+                {formatDateTime(selectedRecord.createdAt)}
+              </strong>
+              )
+              <br />
+              <br />
+              This action cannot be undone.
+            </>
+          }
+          confirmButtonText="Yes, Delete"
+          isLoading={isActionLoading}
         />
       )}
 
       {showRequestTempAccessModal && pet?.id && user?.id === pet.ownerId && (
-                <RequestTempAccessModal
-                    isOpen={showRequestTempAccessModal}
-                    onClose={() => setShowRequestTempAccessModal(false)}
-                    petId={pet.id}
-                    onTokenGenerated={handleTempTokenGenerated}
-                />
+        <RequestTempAccessModal
+          isOpen={showRequestTempAccessModal}
+          onClose={() => setShowRequestTempAccessModal(false)}
+          petId={pet.id}
+          onTokenGenerated={handleTempTokenGenerated}
+        />
       )}
 
       {showShowTempAccessModal && generatedTempAccessToken && (
-                <ShowTempAccessModal
-                    isOpen={showShowTempAccessModal}
-                    onClose={() => { setShowShowTempAccessModal(false); setGeneratedTempAccessToken(null); }}
-                    accessToken={generatedTempAccessToken}
-                    petName={pet.name}
-                />
+        <ShowTempAccessModal
+          isOpen={showShowTempAccessModal}
+          onClose={() => {
+            setShowShowTempAccessModal(false);
+            setGeneratedTempAccessToken(null);
+          }}
+          accessToken={generatedTempAccessToken}
+          petName={pet.name}
+        />
       )}
-
     </Card>
   );
 };

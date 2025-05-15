@@ -409,32 +409,72 @@ public class PetServiceImpl implements PetService {
      * {@inheritDoc}
      */
     @Transactional
-    public void requestCertificateGeneration(Long petId, Long vetId, Long ownerId) {
-        log.info("Processing certificate generation request for Pet ID {} to Vet ID {} by Owner ID {}", petId, vetId, ownerId);
-        // Find Pet and verify ownership
+    public void requestCertificateGeneration(Long petId, Long clinicId, Long ownerId) {
+        log.info("Processing certificate generation request for Pet ID {} to Clinic ID {} by Owner ID {}", petId, clinicId, ownerId);
         Pet pet = findPetByIdAndOwnerOrFail(petId, ownerId);
+        Clinic targetClinic = entityFinderHelper.findClinicOrFail(clinicId);
 
-        // Find the target Vet
-        entityFinderHelper.findVetOrFail(vetId);
-
-        // Verify Vet is associated with the Pet
-        if (pet.getAssociatedVets() == null || pet.getAssociatedVets().stream().noneMatch(vet -> vet.getId().equals(vetId))) {
-            log.warn("Certificate request failed: Vet {} is not associated with Pet {}", vetId, petId);
-            throw new AccessDeniedException("Veterinarian with ID " + vetId + " is not associated with Pet " + petId + ".");
+        if (pet.getStatus() != PetStatus.ACTIVE) {
+            log.warn("Certificate request failed: Pet {} is not ACTIVE (status is {}).", petId, pet.getStatus());
+            throw new IllegalStateException("Pet " + pet.getName() + " must be in ACTIVE status to request a certificate.");
         }
 
+        boolean isAssociatedWithTargetClinic = pet.getAssociatedVets().stream()
+                .anyMatch(vet -> vet.getClinic() != null && vet.getClinic().getId().equals(clinicId));
+
+        if (!isAssociatedWithTargetClinic) {
+            log.warn("Certificate request failed: Pet {} is not associated with any vet from Clinic {}", petId, clinicId);
+            throw new AccessDeniedException("To request a certificate, Pet " + petId + " must be associated with a veterinarian from the selected Clinic (ID: " + clinicId + ").");
+        }
+
+        if (pet.getPendingCertificateClinic() != null) {
+            if (pet.getPendingCertificateClinic().getId().equals(clinicId)) {
+                log.warn("Pet {} already has a pending certificate request at clinic {}. New request to clinic {} rejected.",
+                        petId, pet.getPendingCertificateClinic().getId(), clinicId);
+                // Allow overwriting with the same clinic (will simply republish the event)
+            } else {
+                log.warn("Pet {} already has a pending certificate request at a different clinic (ID: {}). New request to clinic {} rejected.",
+                        petId, pet.getPendingCertificateClinic().getId(), clinicId);
+                throw new IllegalStateException("Pet " + pet.getName() + " already has a pending certificate request at clinic '" +
+                        pet.getPendingCertificateClinic().getName() + "'. Please wait for it to be processed or contact that clinic.");
+            }
+        }
+
+        pet.setPendingCertificateClinic(targetClinic);
+        log.info("Pet ID {} has been marked with pendingCertificateClinic ID: {}", petId, clinicId);
+
         try {
-            CertificateRequestedEvent event = new CertificateRequestedEvent(
+            Long representativeVetIdForEvent = pet.getAssociatedVets().stream()
+                    .filter(vet -> vet.getClinic() != null && vet.getClinic().getId().equals(clinicId))
+                    .map(UserEntity::getId)
+                    .findFirst()
+                    .orElse(null);
+
+            CertificateRequestedEvent eventToPublish = new CertificateRequestedEvent(
                     petId,
                     ownerId,
-                    vetId,
+                    representativeVetIdForEvent,
+                    targetClinic.getId(),
                     LocalDateTime.now()
             );
-            petEventPublisher.publishCertificateRequested(event);
-            log.info("CertificateRequestedEvent published successfully for Pet {}, target Vet {}", petId, vetId);
+            petEventPublisher.publishCertificateRequested(eventToPublish);
+
+            log.info("CertificateRequestedEvent published successfully for Pet ID {}, target Clinic ID {}. Representative Vet ID (if any): {}",
+                    petId, targetClinic.getId(), representativeVetIdForEvent);
         } catch (Exception e) {
             log.error("Failed to publish CertificateRequestedEvent for petId {}: {}", petId, e.getMessage(), e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PetProfileDto> findPetsWithPendingCertRequestsForClinic(Long clinicId, Long requesterStaffId) {
+        ClinicStaff staff = entityFinderHelper.findClinicStaffOrFail(requesterStaffId, "view pending certificate requests");
+        if (!staff.getClinic().getId().equals(clinicId)) {
+            throw new AccessDeniedException("Staff " + requesterStaffId + " is not authorized for clinic " + clinicId);
+        }
+        List<Pet> petsWithRequests = petRepository.findByPendingCertificateClinicIdAndStatus(clinicId, PetStatus.ACTIVE);
+        return petMapper.toProfileDtoList(petsWithRequests);
     }
 
     // --- PRIVATE HELPER METHODS ---

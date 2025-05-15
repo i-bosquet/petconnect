@@ -1,11 +1,10 @@
 import { JSX } from 'react';
-import { QrCode, FileText, History, Home } from "lucide-react";
+import { FileText, History, Home } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PetProfileDto } from '@/types/apiTypes';
 import PetHomeTab from "./tabs/PetHomeTab";
 import PetRecordsTab from './tabs/PetRecordsTab';
 import PetDocumentsTab from './tabs/PetCertificatesTab';
-import PetQrTab from './tabs/PetQrTab';
 import { cn } from '@/lib/utils'; 
 
 interface PetDetailTabsProps {
@@ -53,21 +52,8 @@ const PetDetailTabs = ({ pet, onAssociationChanged}: PetDetailTabsProps): JSX.El
             )}
           >
             <FileText size={16} className="inline-block sm:mr-2" />
-            <span className="hidden sm:inline">Cretificates</span>
+            <span className="hidden sm:inline">Certificates</span>
           </TabsTrigger>
-
-          <TabsTrigger
-            value="qr"
-            className={cn(
-              baseTriggerClasses,
-              inactiveTriggerClasses,
-              "data-[state=active]:bg-transparent data-[state=active]:text-[#FFECAB] data-[state=active]:border-b-2 data-[state=active]:border-[#FFECAB] data-[state=active]:shadow-none"
-            )}
-          >
-            <QrCode size={16} className="inline-block sm:mr-2" />
-            <span className="hidden sm:inline">QR</span>
-          </TabsTrigger>
-
         </TabsList>
 
         <TabsContent value="home" className="mt-2">
@@ -78,9 +64,6 @@ const PetDetailTabs = ({ pet, onAssociationChanged}: PetDetailTabsProps): JSX.El
         </TabsContent>
         <TabsContent value="certificates" className="mt-2">
           <PetDocumentsTab pet={pet} />
-        </TabsContent>
-        <TabsContent value="qr" className="mt-2">
-          <PetQrTab pet={pet} />
         </TabsContent>
       </Tabs>
     );

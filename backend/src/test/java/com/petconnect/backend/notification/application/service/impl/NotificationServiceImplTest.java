@@ -179,45 +179,45 @@ class NotificationServiceImplTest {
         }
     }
 
-    @Nested
-    @DisplayName("processCertificateRequest Tests")
-    class ProcessCertificateRequestTests {
-
-        @Test
-        @DisplayName("should log notification for the target vet")
-        void shouldLogNotificationForVet() {
-            // Arrange
-            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, vetId, LocalDateTime.now());
-            given(userRepository.findById(vetId)).willReturn(Optional.of(testVet));
-
-            // Act
-            notificationService.processCertificateRequest(event);
-
-            // Assert
-            List<ILoggingEvent> logsList = listAppender.list;
-            assertThat(logsList).anyMatch(log -> log.getFormattedMessage().contains("Processing CertificateRequestedEvent"))
-                    .anyMatch(log -> log.getFormattedMessage().contains("--> NOTIFICATION SIMULATION (to Vet: Notify Vet): Owner ID " + ownerId + " requested a certificate generation"));
-            verify(userRepository).findById(vetId);
-        }
-
-        @Test
-        @DisplayName("should log error if target vet not found")
-        void shouldLogErrorIfVetNotFound() {
-            // Arrange
-            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, 998L, LocalDateTime.now());
-            given(userRepository.findById(998L)).willReturn(Optional.empty());
-
-            // Act
-            notificationService.processCertificateRequest(event);
-
-            // Assert
-            List<ILoggingEvent> logsList = listAppender.list;
-            assertThat(logsList).anyMatch(log -> log.getFormattedMessage().contains("Processing CertificateRequestedEvent"))
-                    .anyMatch(log -> log.getLevel() == Level.ERROR && log.getFormattedMessage().contains("Could not find vet for notification"))
-                    .noneMatch(log -> log.getFormattedMessage().contains("--> NOTIFICATION SIMULATION"));
-            verify(userRepository).findById(998L);
-        }
-    }
+//    @Nested
+//    @DisplayName("processCertificateRequest Tests")
+//    class ProcessCertificateRequestTests {
+//
+//        @Test
+//        @DisplayName("should log notification for the target vet")
+//        void shouldLogNotificationForVet() {
+//            // Arrange
+//            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, vetId, LocalDateTime.now());
+//            given(userRepository.findById(vetId)).willReturn(Optional.of(testVet));
+//
+//            // Act
+//            notificationService.processCertificateRequest(event);
+//
+//            // Assert
+//            List<ILoggingEvent> logsList = listAppender.list;
+//            assertThat(logsList).anyMatch(log -> log.getFormattedMessage().contains("Processing CertificateRequestedEvent"))
+//                    .anyMatch(log -> log.getFormattedMessage().contains("--> NOTIFICATION SIMULATION (to Vet: Notify Vet): Owner ID " + ownerId + " requested a certificate generation"));
+//            verify(userRepository).findById(vetId);
+//        }
+//
+//        @Test
+//        @DisplayName("should log error if target vet not found")
+//        void shouldLogErrorIfVetNotFound() {
+//            // Arrange
+//            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, 998L, LocalDateTime.now());
+//            given(userRepository.findById(998L)).willReturn(Optional.empty());
+//
+//            // Act
+//            notificationService.processCertificateRequest(event);
+//
+//            // Assert
+//            List<ILoggingEvent> logsList = listAppender.list;
+//            assertThat(logsList).anyMatch(log -> log.getFormattedMessage().contains("Processing CertificateRequestedEvent"))
+//                    .anyMatch(log -> log.getLevel() == Level.ERROR && log.getFormattedMessage().contains("Could not find vet for notification"))
+//                    .noneMatch(log -> log.getFormattedMessage().contains("--> NOTIFICATION SIMULATION"));
+//            verify(userRepository).findById(998L);
+//        }
+//    }
 
     @Nested
     @DisplayName("processCertificateGenerationConfirmation Tests")

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, JSX, ChangeEvent, FormEvent, useCallback } from 'react';
 import Modal from '../../common/Modal';
-import { Upload, Calendar, PawPrint, VenetianMask, Palette, Sigma, Loader2 } from 'lucide-react';
+import { Upload, Calendar, PawPrint, VenetianMask, Palette, Sigma, Loader2, CircleX, SaveAll } from 'lucide-react';
 import { Specie, Gender } from '../../../types/enumTypes';
 import { PetRegistrationData, BreedDto } from '../../../types/apiTypes';
 import { registerPet, getBreedsBySpecie } from '../../../services/petService';
@@ -178,7 +178,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      {/* Pet Name */}
                     <div className="space-y-1.5">
-                        <label htmlFor="petName" className="block text-sm font-medium text-gray-300">Name *</label>
+                        <label htmlFor="petName" className="block text-sm font-medium text-gray-300">Name <span className='text-[#FFECAB]'>*</span></label>
                         <div className="relative">
                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><PawPrint size={16} className="text-gray-400" /></div>
                              <input id="petName" name="name" type="text" required value={petData.name} onChange={handleChange} disabled={isLoading} placeholder="Your pet's name"
@@ -187,7 +187,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                     </div>
                     {/* Species Selection */}
                      <div className="space-y-1.5">
-                          <label className="block text-sm font-medium text-gray-300 mb-1">Species *</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">Species <span className='text-[#FFECAB]'>*</span></label>
                           <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
                               {(Object.keys(Specie) as Array<keyof typeof Specie>).map((key) => (
                                  <label key={key} className="flex items-center cursor-pointer text-sm">
@@ -219,7 +219,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                      </div>
                      {/* Birth Date */}
                      <div className="space-y-1.5">
-                          <label htmlFor="birthDate" className="block text-sm font-medium text-gray-300">Birth Date *</label>
+                          <label htmlFor="birthDate" className="block text-sm font-medium text-gray-300">Birth Date <span className='text-[#FFECAB]'>*</span></label>
                           <div className="relative">
                               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar size={16} className="text-gray-400" /></div>
                               <input id="birthDate" name="birthDate" type="date" required value={petData.birthDate} onChange={handleChange} disabled={isLoading}
@@ -232,7 +232,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Gender Selection */}
                     <div className="space-y-1.5">
-                       <label className="block text-sm font-medium text-gray-300 mb-1">Gender (Optional)</label>
+                       <label className="block text-sm font-medium text-gray-300 mb-1">Gender</label>
                         <div className="flex gap-x-6 gap-y-2 pt-1">
                             {(Object.keys(Gender) as Array<keyof typeof Gender>).map(key => (
                                 <label key={key} className="flex items-center cursor-pointer text-sm">
@@ -244,7 +244,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                     </div>
                      {/* Color Input */}
                     <div className="space-y-1.5">
-                         <label htmlFor="color" className="block text-sm font-medium text-gray-300">Color (Optional)</label>
+                         <label htmlFor="color" className="block text-sm font-medium text-gray-300">Color</label>
                           <div className="relative">
                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Palette size={16} className="text-gray-400" /></div>
                             <input id="color" name="color" type="text" value={petData.color ?? ''} onChange={handleChange} disabled={isLoading} placeholder="e.g., Brown, Black & White"
@@ -255,7 +255,7 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
 
                 {/* Microchip Input */}
                 <div className="space-y-1.5">
-                    <label htmlFor="microchip" className="block text-sm font-medium text-gray-300">Microchip (Optional)</label>
+                    <label htmlFor="microchip" className="block text-sm font-medium text-gray-300">Microchip (15 dig)</label>
                      <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Sigma size={16} className="text-gray-400" /></div>
                         <input id="microchip" name="microchip" type="text" maxLength={50}
@@ -268,20 +268,20 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
                  {error && ( <p className="text-sm text-red-400 text-center">{error}</p> )}
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-4 pt-4"> {/* Mantenido pt-4 aquí, no pt-5 como en otros */}
+                <div className="flex justify-end gap-4 pt-4">
                     <Button
                         type="button"
                         onClick={onClose}
                         disabled={isLoading}
-                        className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50"
-                    >
+                        className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50 cursor-pointer">
+                        <CircleX size={16} className="mr-2"  />
                         Cancel
                     </Button>
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50"
-                    >
+                        className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer">
+                        <SaveAll size={16} className="mr-2" />
                         {isLoading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                         {isLoading ? 'Adding Pet...' : 'Add Pet'}
                     </Button>

@@ -21,8 +21,11 @@ export interface PetProfileDto {
     breedName?: string | null;
     pendingActivationClinicId?: number | string | null;
     pendingActivationClinicName?: string | null;
+    pendingCertificateClinicId?: number | string | null;
+    pendingCertificateClinicName?: string | null;
     associatedVets: VetSummaryDto[];
     ownerDetails?: OwnerSummaryDto | null;
+    canRequestAhcCertificate?: boolean; 
     createdAt?: string | null; 
     updatedAt?: string | null;
 }

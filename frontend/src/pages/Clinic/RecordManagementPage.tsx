@@ -19,7 +19,7 @@ const PAGE_SIZE_CLINIC_RECORDS = 10;
 
 /**
  * RecordManagementPage - Displays a historical list of all medical records
- * created by the current clinic's staff.
+ * created by the clinic's staff.
  * Allows viewing details of each record.
  *
  * @returns {JSX.Element} The clinic's record management page component.

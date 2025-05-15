@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -129,4 +131,28 @@ public interface CertificateControllerApi {
     ResponseEntity<String> getCertificateQrData(
             @Parameter(description = "ID of the certificate", required = true)
             @PathVariable Long certificateId);
+
+    /**
+     * Retrieves a paginated list of all digital certificates issued by staff of the specified clinic.
+     * Requires the user to have clinic staff authorization.
+     *
+     * @param clinicId the identifier of the clinic whose certificates are to be retrieved
+     * @param pageable the pagination information for retrieving the certificates
+     * @return a paginated response containing digital certificates issued by the clinic
+     */
+    @Operation(summary = "Get certificates issued by a specific clinic",
+            description = "Retrieves a paginated list of all digital certificates issued by staff of the specified clinic. Requires clinic staff authorization.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Certificates retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CertificateViewDto.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden (User not authorized for the clinic)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Clinic not found", content = @Content(schema = @Schema(implementation = Map.class)))
+    })
+    @GetMapping("/clinic/{clinicId}")
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<Page<CertificateViewDto>> findCertificatesByClinic(
+            @Parameter(description = "ID of the issuing clinic") @PathVariable Long clinicId,
+            @Parameter(hidden = true) Pageable pageable
+    );
 }

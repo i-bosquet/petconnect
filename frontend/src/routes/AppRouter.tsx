@@ -12,6 +12,7 @@ import OwnerDashboardPage from '@/pages/Owner/OwnerDashboardPage';
 import ClinicDashboardPage from '@/pages/Clinic/ClinicDashboardPage';
 import StaffManagementPage from '@/pages/Clinic/StaffManagementPage';
 import RecordManagementPage from '@/pages/Clinic/RecordManagementPage'; 
+import CertificateManagementPage from '@/pages/Clinic/CertificateManagementPage';
 import ClinicManagementPage from '@/pages/Clinic/ClinicManagementPage';
 import PetManagementPage from '@/pages/Clinic/PetManagementPage'; 
 import VerifyRecordsPage from '@/pages/Verify/VerifyRecordsPage'; 
@@ -44,8 +45,9 @@ const AppRouter = (): JSX.Element => {
         <Route index element={<ClinicDashboardPage />} />
         <Route path="dashboard" element={<ClinicDashboardPage />} />
         <Route path="staff" element={<StaffManagementPage />} /> 
+        <Route path="pets" element={<PetManagementPage />} />
         <Route path="records" element={<RecordManagementPage />} /> 
-        <Route path="pets" element={<PetManagementPage />} /> 
+        <Route path="certificates" element={<CertificateManagementPage />} /> 
         <Route path="settings" element={<ClinicManagementPage />} />
       </Route>
       {/* This route is public and allows access to the verification page via a token */}

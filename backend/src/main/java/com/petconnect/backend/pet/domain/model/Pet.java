@@ -160,6 +160,15 @@ public class Pet extends BaseEntity {
     private Clinic pendingActivationClinic;
 
     /**
+     * Represents the clinic associated with a pending certificate request for a pet.
+     * This field maps to the "pending_certificate_clinic_id" column in the database
+     * and establishes a many-to-one relationship with the {@code Clinic} entity.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pending_certificate_clinic_id", foreignKey = @ForeignKey(name = "fk_pet_pending_cert_clinic"))
+    private Clinic pendingCertificateClinic;
+
+    /**
      * The set of Veterinarians associated with providing care for this pet.
      * Mapped using a Many-to-Many relationship through the join table "pet_vet_association".
      * Fetched lazily. Cascade type is typically limited (PERSIST, MERGE) as Vets exist independently.

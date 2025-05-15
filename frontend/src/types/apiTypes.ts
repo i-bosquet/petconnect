@@ -24,3 +24,6 @@ export * from './recordTypes';
 
 // Re-export auth related types
 export * from './authTypes';
+
+// Re-export certificate related types
+export * from './certificateTypes';

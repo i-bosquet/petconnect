@@ -139,7 +139,7 @@ const PetDetailHeader = ({pet, onBack, onEdit, onDeactivate, onRequestActivation
                     aria-label="Go back to pet list"
                   >
                     <span className='hidden sm:block'>Back</span>
-                    <ArrowRight size={16} className="sm:mr-2" />
+                    <ArrowRight size={16} className="sm:mr-2 pr-0" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-gray-950 text-white border border-cyan-700">

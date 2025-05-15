@@ -212,7 +212,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                                                 <div>
                                                     <h5 className="font-semibold text-sm text-white flex items-center gap-1.5">
                                                         {getRecordTypeIcon(record.type)} {getRecordTypeDisplay(record.type)}
-                                                        {record.vetSignature && <Tooltip><TooltipTrigger asChild><ShieldCheck size={12} className="text-green-400"/></TooltipTrigger><TooltipContent><p>Signed</p></TooltipContent></Tooltip>}
+                                                        {record.vetSignature && <Tooltip><TooltipTrigger asChild><ShieldCheck size={12} className="text-green-400"/></TooltipTrigger><TooltipContent className="bg-gray-950 text-white border  border-green-400"><p>Signed</p></TooltipContent></Tooltip>}
                                                     </h5>
                                                     <p className="text-xs text-gray-400">
                                                         {formatDateTime(record.createdAt)} by {formatRecordCreatorDisplay(record.creator)}

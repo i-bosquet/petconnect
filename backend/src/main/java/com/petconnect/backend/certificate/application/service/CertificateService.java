@@ -2,6 +2,8 @@ package com.petconnect.backend.certificate.application.service;
 
 import com.petconnect.backend.certificate.application.dto.CertificateGenerationRequestDto;
 import com.petconnect.backend.certificate.application.dto.CertificateViewDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -69,5 +71,19 @@ public interface CertificateService {
      * @throws RuntimeException if the QR data generation process fails.
      */
     String getQrDataForCertificate(Long certificateId, Long requesterUserId);
+
+    /**
+     * Retrieves a paginated list of certificates issued by a specific clinic.
+     * Requires authorization (Clinic-associated Staff or proper permission).
+     *
+     * @param clinicId         The ID of the clinic whose certificates are being queried.
+     * @param requesterUserId  The ID of the user making the request.
+     * @param pageable         Pagination information, including page number and size.
+     * @return A paginated {@link Page} of {@link CertificateViewDto} objects, each containing
+     *         details of certificates issued by the specified clinic.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if the clinic does not exist.
+     * @throws org.springframework.security.access.AccessDeniedException if the requester lacks authorization.
+     */
+    Page<CertificateViewDto> findCertificatesByClinic(Long clinicId, Long requesterUserId, Pageable pageable);
 
 }

@@ -204,12 +204,24 @@ public class PetController implements PetControllerApi{
      * {@inheritDoc}
      */
     @Override
-    @PostMapping("/{petId}/request-certificate/{vetId}")
+    @PostMapping("/{petId}/request-certificate/{clinicId}")
     public ResponseEntity<Void> requestCertificateGeneration(
             @PathVariable Long petId,
-            @PathVariable Long vetId) {
+            @PathVariable Long clinicId) {
         Long ownerId = userServiceHelper.getAuthenticatedUserId();
-        petService.requestCertificateGeneration(petId, vetId, ownerId);
+        petService.requestCertificateGeneration(petId, clinicId, ownerId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @GetMapping("/{clinicId}/pending-certificate-requests")
+    public ResponseEntity<List<PetProfileDto>> getPetsWithPendingCertificateRequests(
+            @PathVariable Long clinicId) {
+        Long requesterStaffId = userServiceHelper.getAuthenticatedUserId();
+        List<PetProfileDto> pets = petService.findPetsWithPendingCertRequestsForClinic(clinicId, requesterStaffId);
+        return ResponseEntity.ok(pets);
     }
 }

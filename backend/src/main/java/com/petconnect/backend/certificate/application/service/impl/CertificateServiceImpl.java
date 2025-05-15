@@ -11,11 +11,16 @@ import com.petconnect.backend.certificate.domain.repository.CertificateRepositor
 import com.petconnect.backend.common.helper.*;
 import com.petconnect.backend.common.service.QrCodeService;
 import com.petconnect.backend.pet.domain.model.Pet;
+import com.petconnect.backend.pet.domain.repository.PetRepository;
 import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.user.domain.model.Clinic;
+import com.petconnect.backend.user.domain.model.ClinicStaff;
 import com.petconnect.backend.user.domain.model.Vet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +48,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final CertificateHelper certificateHelper;
     private final QrCodeService qrCodeService;
     private final CertificateEventPublisherPort certificateEventPublisher;
+    private final PetRepository petRepository;
 
     /**
      * {@inheritDoc}
@@ -88,6 +94,17 @@ public class CertificateServiceImpl implements CertificateService {
         }
 
         Certificate savedCertificate = certificateRepository.save(newCertificate);
+
+        // After saving the certificate, update the pet to remove the pending request
+        if (pet.getPendingCertificateClinic() != null && pet.getPendingCertificateClinic().getId().equals(clinic.getId())) {
+            log.info("Certificate ID {} generated for Pet ID {}. Clearing pending certificate request from clinic ID {}.",
+                    savedCertificate.getId(), pet.getId(), clinic.getId());
+            pet.setPendingCertificateClinic(null);
+            petRepository.save(pet); // Save the change to the pet
+        } else if (pet.getPendingCertificateClinic() != null) {
+            log.warn("Certificate ID {} generated for Pet ID {}, but the pending request was for a different clinic (ID: {}) or clinic was null. Pending request not cleared automatically.",
+                    savedCertificate.getId(), pet.getId(), pet.getPendingCertificateClinic().getId());
+        }
 
         try {
             CertificateGeneratedEvent event = new CertificateGeneratedEvent(
@@ -149,5 +166,18 @@ public class CertificateServiceImpl implements CertificateService {
         authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "get QR data for certificate");
 
         return qrCodeService.generateQrData(certificate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CertificateViewDto> findCertificatesByClinic(Long clinicId, Long requesterUserId, Pageable pageable) {
+        ClinicStaff staff = entityFinderHelper.findClinicStaffOrFail(requesterUserId, "view issued certificates for clinic");
+        if (!staff.getClinic().getId().equals(clinicId)) {
+            throw new AccessDeniedException("Staff " + requesterUserId + " is not authorized to view certificates for clinic " + clinicId);
+        }
+        log.info("Staff {} requesting certificates issued by clinic {}", requesterUserId, clinicId);
+
+        Page<Certificate> certificatePage = certificateRepository.findByIssuingClinicIdOrderByCreatedAtDesc(clinicId, pageable);
+        return certificatePage.map(certificateMapper::toViewDto);
     }
 }

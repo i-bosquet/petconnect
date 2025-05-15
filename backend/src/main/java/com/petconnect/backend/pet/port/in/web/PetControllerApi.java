@@ -339,24 +339,53 @@ public interface PetControllerApi {
 
 
     /**
-     * Allows an Owner to request certificate generation for their pet from a specific associated Vet.
-     * This triggers an asynchronous notification/event for the Vet.
+     * Requests the generation of a certificate from a specific clinic on behalf of a pet owner.
+     * This request is associated with a pet and a clinic where one of the pet's veterinarians operates.
      *
-     * @param petId ID of the pet.
-     * @param vetId ID of the target Veterinarian.
-     * @return ResponseEntity with status 204 (No Content) on the successful request.
+     * @param petId   the ID of the pet for which the certificate is being requested
+     * @param clinicId the ID of the clinic to which the certificate generation request is sent
+     * @return a {@link ResponseEntity} with a status code:
+     *         204 (No Content) if the certificate request is successfully submitted,
+     *         401 (Unauthorized) if the user is not authenticated,
+     *         403 (Forbidden) if the user is not the owner or the clinic is not associated,
+     *         404 (Not Found) if the pet or clinic does not exist
      */
-    @Operation(summary = "Request Certificate Generation (Owner)",
-            description = "Owner requests an associated Vet to generate a certificate for the specified pet.")
+    @Operation(summary = "Request Certificate Generation from Clinic (Owner)",
+            description = "Allows the Pet Owner to request a certificate generation from a specific clinic with which one of their pet's veterinarians is associated.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Certificate request submitted successfully."),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "403", description = "Forbidden (User not owner or Vet not associated)", content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "404", description = "Pet or Vet not found", content = @Content(schema = @Schema(implementation = Map.class)))
+            @ApiResponse(responseCode = "403", description = "Forbidden (User not owner or Clinic not associated)", content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Pet or Clinic not found", content = @Content(schema = @Schema(implementation = Map.class)))
     })
-    @PostMapping("/{petId}/request-certificate/{vetId}")
+    @PostMapping("/{petId}/request-certificate/{clinicId }")
     ResponseEntity<Void> requestCertificateGeneration(
             @Parameter(description = "ID of the pet", required = true) @PathVariable Long petId,
-            @Parameter(description = "ID of the target Vet", required = true) @PathVariable Long vetId);
+            @Parameter(description = "ID of the Clinic to request the certificate from", required = true) @PathVariable Long clinicId );
+
+    /**
+     * Retrieves a list of pets that have a pending certificate request for a specific clinic.
+     * This endpoint is intended for clinic staff (Admin or Vet) to view these requests.
+     *
+     * @param clinicId The ID of the clinic for which to retrieve pending certificate requests.
+     * @return A ResponseEntity containing a list of {@link PetProfileDto} objects for pets
+     *         with pending certificate requests at the specified clinic.
+     *         Returns 403 if the requester is not staff of the clinic.
+     */
+    @Operation(summary = "List Pets with Pending Certificate Requests for a Clinic",
+            description = "For clinic staff: Retrieves pets that have an active certificate generation request " +
+                    "directed to the specified clinic. Shows pets that are currently ACTIVE.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of pets with pending requests retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @ArraySchema(schema = @Schema(implementation = PetProfileDto.class)))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - JWT token missing or invalid"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - User is not staff of the specified clinic"),
+            @ApiResponse(responseCode = "404", description = "Clinic not found")
+    })
+    @GetMapping("/{clinicId}/pending-certificate-requests")
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<List<PetProfileDto>> getPetsWithPendingCertificateRequests(
+            @Parameter(description = "ID of the clinic", required = true) @PathVariable Long clinicId);
 }
 

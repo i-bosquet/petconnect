@@ -1,12 +1,17 @@
 package com.petconnect.backend.pet.application.mapper;
 
 import com.petconnect.backend.common.helper.ImageUrlHelper;
+import com.petconnect.backend.common.helper.RecordHelper;
 import com.petconnect.backend.common.helper.Utils;
+import com.petconnect.backend.common.helper.ValidateHelper;
+import com.petconnect.backend.exception.MissingRabiesVaccineException;
+import com.petconnect.backend.exception.MissingRecentCheckupException;
 import com.petconnect.backend.pet.application.dto.PetClinicUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetOwnerUpdateDto;
 import com.petconnect.backend.pet.application.dto.PetProfileDto;
 import com.petconnect.backend.pet.domain.model.Breed;
 import com.petconnect.backend.pet.domain.model.Pet;
+import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.user.application.dto.OwnerSummaryDto;
 import com.petconnect.backend.user.application.dto.VetSummaryDto;
@@ -39,6 +44,8 @@ public class PetMapper {
 
     private final UserMapper userMapper;
     private final ImageUrlHelper imageUrlHelper;
+    private final ValidateHelper validateHelper;
+    private final RecordHelper recordHelper;
 
     @Value("${app.backend.base-url}")
     private String backendBaseUrl;
@@ -89,6 +96,21 @@ public class PetMapper {
                 fallbackPetAvatarUrl
         );
 
+        boolean canRequestAhc = false;
+        if (pet.getStatus() == PetStatus.ACTIVE) {
+            try {
+                validateHelper.findValidRabiesRecord(pet.getId());
+                recordHelper.findValidCheckupRecord(pet.getId());
+                canRequestAhc = true;
+            } catch (MissingRabiesVaccineException | MissingRecentCheckupException e) {
+                canRequestAhc = false;
+                log.debug("Pet {} does not meet AHC prerequisites: {}", pet.getId(), e.getMessage());
+            } catch (Exception e) {
+                canRequestAhc = false;
+                log.warn("Unexpected error checking AHC prerequisites for pet {}: {}", pet.getId(), e.getMessage());
+            }
+        }
+
         return new PetProfileDto(
                 pet.getId(),
                 pet.getName(),
@@ -106,7 +128,8 @@ public class PetMapper {
                 pendingClinicId,
                 pendingClinicName,
                 vetSummaries,
-                ownerDetails
+                ownerDetails,
+                canRequestAhc
         );
     }
 

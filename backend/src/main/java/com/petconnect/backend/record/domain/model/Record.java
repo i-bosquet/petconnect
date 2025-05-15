@@ -72,15 +72,16 @@ public class Record extends BaseEntity {
     private Pet pet;
 
     /**
-     * The UserEntity (Owner or ClinicStaff/Vet) who created this record entry.
-     * This relationship is mandatory. Fetched lazily.
-     * Note: BaseEntity.createdBy stores the username string via AuditorAware for logging.
-     * This field stores the actual UserEntity object relation.
+     * The user who created this medical record.
+     * Represents a mandatory relationship with the UserEntity class.
+     * This field must not be null and is eagerly fetched.
+     *
      */
     @NotNull(message = "Record must have a creator")
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "creator_user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_record_creator"))
     private UserEntity creator;
+
     /**
      * Optional detailed vaccine information. This is populated only when the record
      * 'type' is VACCINE. The relationship is owned by the Vaccine entity (via 'recordEntity' field)

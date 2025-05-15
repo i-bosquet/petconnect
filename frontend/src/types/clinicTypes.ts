@@ -23,7 +23,7 @@ export interface VetSummaryDto {
  * Data Transfer Object representing a Clinic's details.
  */
 export interface ClinicDto {
-    id: number;
+    id:  number | string; 
     name: string;
     address: string;
     city: string;

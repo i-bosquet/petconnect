@@ -1,6 +1,8 @@
 package com.petconnect.backend.certificate.domain.repository;
 
 import com.petconnect.backend.certificate.domain.model.Certificate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -42,4 +44,13 @@ public interface CertificateRepository extends JpaRepository<Certificate, Long> 
      * @return true if a certificate associated with this record exists, false otherwise.
      */
     boolean existsByMedicalRecordId(Long recordId);
+
+    /**
+     * Retrieves a page of certificates associated with a specific issuing clinic, ordered by creation date in descending order.
+     *
+     * @param issuingClinicId The ID of the issuing clinic.
+     * @param pageable Paging and sorting information to control the result set.
+     * @return A {@link Page} containing certificates issued by the specified clinic, ordered by creation date descending.
+     */
+    Page<Certificate> findByIssuingClinicIdOrderByCreatedAtDesc(Long issuingClinicId, Pageable pageable);
 }

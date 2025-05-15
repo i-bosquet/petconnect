@@ -7,6 +7,8 @@ import com.petconnect.backend.common.helper.UserHelper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -80,5 +82,15 @@ public class CertificateController implements CertificateControllerApi {
         return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(qrData);
+    }
+
+    @Override
+    @GetMapping("/clinic/{clinicId}")
+    public ResponseEntity<Page<CertificateViewDto>> findCertificatesByClinic(
+            @PathVariable Long clinicId,
+            Pageable pageable) {
+        Long requesterUserId = userHelper.getAuthenticatedUserId();
+        Page<CertificateViewDto> certificatePage = certificateService.findCertificatesByClinic(clinicId, requesterUserId, pageable);
+        return ResponseEntity.ok(certificatePage);
     }
 }

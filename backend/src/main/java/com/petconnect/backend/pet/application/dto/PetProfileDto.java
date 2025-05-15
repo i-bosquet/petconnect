@@ -10,25 +10,31 @@ import java.time.LocalDate;
 import java.util.Set;
 
 /**
- * Data Transfer Object representing the complete profile of a pet within the system.
- * Includes a combination of owner-provided data, clinic-verified details, and associated metadata.
+ * Data Transfer Object representing the detailed profile of a pet within the system.
+ * This record encapsulates information about the pet, its owner, current status,
+ * associated veterinarians, pending activations, and other relevant details.
+ * Primarily used for displaying the full information of a pet in the system.
  *
- * @param id The unique identifier of the pet.
- * @param name The name of the pet.
- * @param specie The species of the pet (e.g., Dog, Cat, Rabbit, etc.).
- * @param color The color description of the pet.
- * @param gender The gender of the pet.
- * @param birthDate The date of birth of the pet.
- * @param microchip The microchip number of the pet.
- * @param image The URL or path to the pet's image on the system.
- * @param status The current status of the pet (e.g., Pending, Active, Inactive).
- * @param ownerId The unique identifier of the owner linked to the pet.
- * @param ownerUsername The username of the pet owner.
- * @param breedId The unique identifier of the breed associated with the pet.
- * @param breedName The descriptive name of the breed associated with the pet.
- * @param pendingActivationClinicId The unique ID of the clinic handling the pending activation of the pet (if applicable).
- * @param pendingActivationClinicName The name of the clinic handling the pending activation of the pet (if applicable).
- * @param associatedVets A set of veterinarians associated with the pet, providing summary details.
+ * @param id                           The unique identifier of the pet.
+ * @param name                         The name of the pet.
+ * @param specie                       The species classification of the pet (e.g., DOG, CAT).
+ * @param color                        The pet's predominant color.
+ * @param gender                       The gender of the pet (e.g., MALE, FEMALE).
+ * @param birthDate                    The pet's date of birth.
+ * @param microchip                    The microchip number associated with the pet.
+ * @param image                        The URL/path to the pet's image.
+ * @param status                       The current lifecycle status of the pet (e.g., PENDING, ACTIVE).
+ * @param ownerId                      The unique ID of the pet's owner.
+ * @param ownerUsername                The username of the pet's owner.
+ * @param breedId                      The unique ID of the pet's breed.
+ * @param breedName                    The name of the pet's breed.
+ * @param pendingActivationClinicId    The unique ID of the clinic where the pet's activation is pending (if any).
+ * @param pendingActivationClinicName  The name of the clinic where the pet's activation is pending (if any).
+ * @param associatedVets               A set of summaries for veterinarians associated with the pet.
+ * @param ownerDetails                 A summary of the owner's information, including username and contact details.
+ * @param canRequestAhcCertificate     Flag indicating whether the pet is eligible for requesting an AHC certificate.
+ *
+ * @author ibosquet
  */
 public record PetProfileDto(
         Long id,
@@ -47,7 +53,8 @@ public record PetProfileDto(
         Long pendingActivationClinicId,
         String pendingActivationClinicName,
         Set<VetSummaryDto> associatedVets,
-        OwnerSummaryDto ownerDetails
+        OwnerSummaryDto ownerDetails,
+        boolean canRequestAhcCertificate
 ) {
 }
 

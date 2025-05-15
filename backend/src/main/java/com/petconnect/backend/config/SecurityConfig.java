@@ -112,7 +112,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Associate vet
                     http.requestMatchers(HttpMethod.DELETE, "/api/pets/{petId}/associate-vet/{vetId}").hasRole(ROLE_OWNER); // Disassociate vet
                     http.requestMatchers(HttpMethod.POST, "/api/records/{petId}/temporary-access").hasRole(ROLE_OWNER); // Temp Access
-                    http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/request-certificate/{vetId}").hasRole(ROLE_OWNER); // Request Cert
+                    http.requestMatchers(HttpMethod.POST, "/api/pets/{petId}/request-certificate/{clinicId}").hasRole(ROLE_OWNER); // Request Cert
 
                     // --- VET ---
                     http.requestMatchers(HttpMethod.PUT, "/api/pets/{petId}/activate").hasAnyRole(ROLE_VET); // Activate pet
@@ -136,6 +136,8 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/api/pets/clinic/pending").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List pets pending at MY clinic
                     http.requestMatchers(HttpMethod.GET, "/api/clinics/{clinicId}/public-key/download").hasAnyRole(ROLE_ADMIN, ROLE_VET); // Download the public-key file
                     http.requestMatchers(HttpMethod.GET, "/api/records/clinic/{clinicId}/created-by").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List all historic records of the clinic
+                    http.requestMatchers(HttpMethod.GET, "/api/pets/{clinicId}/pending-certificate-requests").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List requests for certificates from pets associated with MY clinic
+                    http.requestMatchers(HttpMethod.GET, "/api/certificates/clinic/{clinicId}").hasAnyRole(ROLE_ADMIN, ROLE_VET); // List all certificates of the clinic
 
                     // --- 4. DEFAULT RULE ---
                     // Any other request requires authentication
