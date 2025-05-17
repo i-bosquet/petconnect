@@ -1,11 +1,9 @@
 package com.petconnect.backend.user.application.service;
 
-import com.petconnect.backend.exception.EmailAlreadyExistsException;
-import com.petconnect.backend.exception.LicenseNumberAlreadyExistsException;
-import com.petconnect.backend.exception.UsernameAlreadyExistsException;
 import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffProfileDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffUpdateDto;
+import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,36 +19,38 @@ import java.util.List;
  */
 public interface ClinicStaffService {
     /**
-     * Creates a new Clinic Staff member (Vet or Admin) associated with a specific clinic.
-     * This operation should typically be performed by an existing ADMIN of that clinic.
-     * Handles password hashing, role assignment, and association with the clinic.
-     * Validates uniqueness of email, username, and potentially license number for Vets.
+     * Creates a new clinic staff member (VET or ADMIN) with the specified details.
+     * This method is executed by an ADMIN and optionally uploads the public and
+     * private key files for secure operations, typically required for VET roles.
      *
-     * @param creationDTO DTO containing the details of the staff member to create.
-     * @param publicKeyFile The public key file for the staff member's digital signature capability can be null for an ADMIN role.
-     * @param creatingAdminId The ID of the ADMIN user performing the creation (for authorization checks).
-     * @return A DTO representing the profile of the newly created staff member.
-     * @throws EmailAlreadyExistsException if email is taken.
-     * @throws UsernameAlreadyExistsException if a username is taken.
-     * @throws LicenseNumberAlreadyExistsException if the license number is taken (for Vets).
-     * @throws EntityNotFoundException if the specified clinicId does not exist.
-     * @throws IllegalArgumentException if the provided role in DTO is not VET or ADMIN,
-     *         or if required Vet fields are missing when a role is VET.
-     * @throws AccessDeniedException if the creating user is not authorized.
+     * @param creationDTO A DTO containing the details of the staff member to be created,
+     *                    such as username, email, name, role (VET or ADMIN), etc.
+     * @param publicKeyFile The public key file for the staff member may be null if not applicable.
+     * @param privateKeyFileEncrypted The encrypted private key file for the staff member may be null if not applicable.
+     * @param creatingAdminId The unique ID of the ADMIN creating the staff member. Used for authorization and auditing.
+     * @return A ClinicStaffProfileDto representing the newly created staff member's profile data.
+     * @throws EntityExistsException if a user with the provided username or email already exists.
+     * @throws AccessDeniedException if the creating admin lacks the necessary permissions.
+     * @throws IllegalArgumentException if the provided data is invalid or missing required fields.
      */
-    ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, @Nullable MultipartFile publicKeyFile, Long creatingAdminId);
+    ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO,
+                                            @Nullable MultipartFile publicKeyFile,
+                                            @Nullable MultipartFile privateKeyFileEncrypted,
+                                            Long creatingAdminId);
 
     /**
-     * Activates a previously deactivated Clinic Staff member account.
+     * Activates a Clinic Staff member account.
+     * Activated staff can log in and perform their designated roles.
      *
      * @param staffId The ID of the staff member to activate.
-     * @param activatingAdminId The ID of the ADMIN performing the action.
-     * @return The profile DTO of the activated staff member.
-     * @throws EntityNotFoundException if the staff member is not found.
-     * @throws AccessDeniedException if the activating user is not authorized.
+     * @param updatingAdminId The ID of the ADMIN performing the activation.
+     * @return A ClinicStaffProfileDto representing the activated staff member's profile details.
+     * @throws EntityNotFoundException if the specified staff member does not exist.
+     * @throws AccessDeniedException if the updating user lacks necessary permissions.
      * @throws IllegalStateException if the staff member is already active.
      */
-    ClinicStaffProfileDto activateStaff(Long staffId, Long activatingAdminId);
+    ClinicStaffProfileDto activateStaff(Long staffId,
+                                        Long updatingAdminId);
 
     /**
      * Deactivates a Clinic Staff member account.
@@ -98,6 +98,6 @@ public interface ClinicStaffService {
      * @throws AccessDeniedException if the updating user lacks authorization.
      * @throws IllegalArgumentException if the provided update data is invalid or missing required fields.
      */
-    ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, @Nullable MultipartFile publicKeyFile, Long updatingAdminId);
+    ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO, @Nullable MultipartFile publicKeyFile, @Nullable MultipartFile privateKeyFile, Long updatingAdminId);
 
 }

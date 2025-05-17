@@ -72,8 +72,9 @@ public class CertificateServiceImpl implements CertificateService {
         Map<String, Object> payloadMap = certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, requestDto.certificateNumber());
         String payloadJson = recordHelper.serializePayload(payloadMap, validRabiesRecord.getId());
         String payloadHash = recordHelper.hashPayload(payloadJson, pet.getId());
-        String vetSignature = recordHelper.signWithVetKey(generatingVet, payloadHash);
-        String clinicSignature = recordHelper.signWithClinicKey(clinic, payloadHash);
+        // Send passwords fron Dto to helper to sign payload with keys
+        String vetSignature = recordHelper.signWithVetKey(generatingVet, payloadHash, requestDto.vetPrivateKeyPassword().toCharArray());
+        String clinicSignature = recordHelper.signWithClinicKey(clinic, payloadHash, requestDto.clinicPrivateKeyPassword().toCharArray());
 
         // Build and Save Certificate Entity
         Certificate newCertificate = Certificate.builder()

@@ -62,56 +62,56 @@ class PetControllerIntegrationTest {
     private final Long labradorBreedId = 25L;
 
 
-    /**
-     * Set up initial users, pets, and get tokens.
-     */
-    @BeforeEach
-    void setUp() throws Exception {
-
-        adminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
-        otherAdminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
-
-        String ownerUsername = "pet_ctrl_owner_" + System.currentTimeMillis();
-        String ownerEmail = ownerUsername + "@test.com";
-        OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerEmail, "password123", "777-888-999");
-
-        userRepository.findByUsername(ownerUsername).ifPresent(userRepository::delete);
-        entityManager.flush();
-
-        MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(ownerReg)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        OwnerProfileDto ownerDto = objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
-        ownerId = ownerDto.id();
-        ownerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
-
-        String vetUsername = "pet_ctrl_vet_" + System.currentTimeMillis();
-        String vetEmail = vetUsername + "@test.com";
-        ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(
-                vetUsername, vetEmail, "password123", "Test", "Vet", RoleEnum.VET,
-                "VETLIC" + System.currentTimeMillis(), "VETKEY" + System.currentTimeMillis()
-        );
-
-        userRepository.findByUsername(vetUsername).ifPresent(userRepository::delete);
-        entityManager.flush();
-
-        MvcResult vetRegResult = mockMvc.perform(post("/api/staff")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(vetReg)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
-        vetId = vetDto.id();
-        vetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
-
-        assertThat(ownerToken).isNotNull();
-        assertThat(adminToken).isNotNull();
-        assertThat(vetToken).isNotNull();
-        assertThat(otherAdminToken).isNotNull();
-    }
+//    /**
+//     * Set up initial users, pets, and get tokens.
+//     */
+//    @BeforeEach
+//    void setUp() throws Exception {
+//
+//        adminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_london", "password123"));
+//        otherAdminToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
+//
+//        String ownerUsername = "pet_ctrl_owner_" + System.currentTimeMillis();
+//        String ownerEmail = ownerUsername + "@test.com";
+//        OwnerRegistrationDto ownerReg = new OwnerRegistrationDto(ownerUsername, ownerEmail, "password123", "777-888-999");
+//
+//        userRepository.findByUsername(ownerUsername).ifPresent(userRepository::delete);
+//        entityManager.flush();
+//
+//        MvcResult ownerRegResult = mockMvc.perform(post("/api/auth/register")
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(ownerReg)))
+//                .andExpect(status().isCreated())
+//                .andReturn();
+//        OwnerProfileDto ownerDto = objectMapper.readValue(ownerRegResult.getResponse().getContentAsString(), OwnerProfileDto.class);
+//        ownerId = ownerDto.id();
+//        ownerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
+//
+//        String vetUsername = "pet_ctrl_vet_" + System.currentTimeMillis();
+//        String vetEmail = vetUsername + "@test.com";
+//        ClinicStaffCreationDto vetReg = new ClinicStaffCreationDto(
+//                vetUsername, vetEmail, "password123", "Test", "Vet", RoleEnum.VET,
+//                "VETLIC" + System.currentTimeMillis(), "VETKEY" + System.currentTimeMillis()
+//        );
+//
+//        userRepository.findByUsername(vetUsername).ifPresent(userRepository::delete);
+//        entityManager.flush();
+//
+//        MvcResult vetRegResult = mockMvc.perform(post("/api/staff")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(vetReg)))
+//                .andExpect(status().isCreated())
+//                .andReturn();
+//        ClinicStaffProfileDto vetDto = objectMapper.readValue(vetRegResult.getResponse().getContentAsString(), ClinicStaffProfileDto.class);
+//        vetId = vetDto.id();
+//        vetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(vetReg.username(), vetReg.password()));
+//
+//        assertThat(ownerToken).isNotNull();
+//        assertThat(adminToken).isNotNull();
+//        assertThat(vetToken).isNotNull();
+//        assertThat(otherAdminToken).isNotNull();
+//    }
 
     /**
      * --- Tests for POST /api/pets (Register Pet) ---

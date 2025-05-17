@@ -213,7 +213,8 @@ export const updateClinicStaff = async (
     token: string,
     staffId: number | string,
     updateData: ClinicStaffUpdatePayload,
-    publicKeyFile: File | null
+    publicKeyFile: File | null,
+    privateKeyFile: File | null
 ): Promise<ClinicStaffProfile> => {
     if (!token) { throw new Error("Authentication token required."); }
 
@@ -226,6 +227,12 @@ export const updateClinicStaff = async (
         console.log(`Updating staff ${staffId} with new public key file.`);
     } else {
         console.log(`Updating staff ${staffId} without changing public key file.`);
+    }
+
+    if (privateKeyFile) { 
+        formData.append('privateKeyFile', privateKeyFile, privateKeyFile.name);
+    } else {
+        console.log(`Updating staff ${staffId} without changing private key file.`);
     }
 
     try {

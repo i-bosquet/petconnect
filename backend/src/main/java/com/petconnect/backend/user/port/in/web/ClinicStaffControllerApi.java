@@ -31,17 +31,17 @@ import java.util.Map;
 public interface ClinicStaffControllerApi {
 
     /**
-     * Creates a new clinic staff member (Veterinarian or Administrator).
-     * This endpoint allows an authenticated Admin user to create a new user account
-     * (Vet or Admin role) and associate it with their own clinic. The service layer handles
-     * password hashing, role assignment, and validation (e.g., uniqueness of username, email, license number).
+     * Creates a new clinic staff member (Vet or Admin) within the admin's clinic.
      *
-     * @param creationDTO A {@link ClinicStaffCreationDto} containing the details for the new staff member.
-     *                    Requires a role (VET or ADMIN), unique username/email, password, name, surname.
-     *                    If a role is VET, licenseNumber and vetPublicKey are also required and validated for uniqueness.
-     * @return A {@link ResponseEntity} containing the {@link ClinicStaffProfileDto} of the newly created staff member
-     *         with HTTP status 201 (Created).
-     *         See possible error responses for details on failures.
+     * This method allows an admin to onboard new staff member details and upload optional public/private key files
+     * for users with the Vet role. The creation process validates the provided data and responds with the created
+     * staff member's profile or an appropriate error message in case of failure.
+     *
+     * @param creationDTO The data transfer object containing the clinic staff member's details.
+     * @param publicKeyFile The public key file (e.g., .pem or .crt) for the Vet. Required if the role is VET.
+     * @param privateKeyFile The private key file corresponding to the Vet's public key. Optional for VET role.
+     * @return A ResponseEntity containing the profile of the newly created clinic staff member or an appropriate
+     * error response in case of a failure during processing.
      */
     @Operation(summary = "Create New Clinic Staff",
             description = "Allows an Admin to create a new Vet or Admin user within their own clinic.")
@@ -63,19 +63,23 @@ public interface ClinicStaffControllerApi {
             @Parameter(description = "Details for the new clinic staff member.", required = true, schema = @Schema(implementation = ClinicStaffCreationDto.class))
             @RequestPart("dto") @Valid ClinicStaffCreationDto creationDTO,
             @Parameter(description = "Vet's Public Key file (.pem/.crt) - Required if role is VET")
-            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile,
+            @RequestPart(value = "privateKeyFile", required = false) @Nullable MultipartFile privateKeyFile);
 
     /**
-     * Updates the details of a clinic staff member.
-     * This method is intended to be used by an Admin to modify the information
-     * of a staff member within the same clinic to which the Admin belongs.
+     * Updates the details of a clinic staff member for an admin user. This operation
+     * allows the admin to modify their clinic's staff member details, such as personal information,
+     * public key, and private key files, if applicable.
      *
-     * @param staffId the unique identifier of the staff member to update
-     * @param updateDTO the details of the staff member to update;
-     *                  must be provided in a JSON format corresponding to ClinicStaffUpdateDto
-     * @param publicKeyFile an optional file containing the new public key for the staff member
-     *                      (must be in .pem or .crt format)
-     * @return ResponseEntity containing the updated staff profile as ClinicStaffProfileDto
+     * @param staffId the unique identifier of the staff member to update. This value is mandatory.
+     * @param updateDTO the ClinicStaffUpdateDto object containing updated details for the staff member.
+     *                  This includes fields such as name, specialty, and other relevant information.
+     * @param publicKeyFile an optional MultipartFile containing the new public key for the staff member.
+     *                      This file should be in PEM or CRT format.
+     * @param privateKeyFile an optional MultipartFile containing the new private key for the staff member.
+     *                       This file should be in PEM or CRT format.
+     * @return a ResponseEntity containing the updated ClinicStaffProfileDto object if the update is successful.
+     *         On failure, appropriate error messages are returned based on the error condition.
      */
     @Operation(summary = "Update Clinic Staff Details",
             description = "Allows an Admin to update details of a staff member in their own clinic.")
@@ -100,7 +104,8 @@ public interface ClinicStaffControllerApi {
             @Parameter(description = "Staff details to update (JSON part)", required = true, schema = @Schema(implementation = ClinicStaffUpdateDto.class))
             @RequestPart("dto") @Valid ClinicStaffUpdateDto updateDTO,
             @Parameter(description = "Optional new Vet's Public Key file (.pem/.crt)")
-            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile,
+            @RequestPart(value = "privateKeyFile", required = false) @Nullable MultipartFile privateKeyFile);
 
 
     /**

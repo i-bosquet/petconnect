@@ -78,8 +78,18 @@ public class Clinic extends BaseEntity{
      * Cannot be blank. Must be unique across all clinics.
      */
     @NotBlank(message = "Clinic public key path cannot be blank")
-    @Column(name = "public_key", nullable = false, unique = true, length = 255)
+    @Column(name = "public_key", nullable = false, unique = true)
     private String publicKey;
+
+    /**
+     * The server-side path to the clinic's ENCRYPTED private key file.
+     * This path is internal to the server's file system or a configured secure storage.
+     * The key itself is encrypted with the clinic's associated password.
+     * Cannot be blank. Must be unique across all clinics.
+     */
+    @NotBlank(message = "Path to clinics's encrypted private key file cannot be blank")
+    @Column(name = "private_key", nullable = false, unique = true)
+    private String privateKey;
 
     /**
      * The list of staff members (Vets, Admins) associated with this clinic.

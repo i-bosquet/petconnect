@@ -220,382 +220,382 @@ class CertificateControllerIntegrationTest {
 //        assertThat(recordIdIllness).isNotNull();
 //    }
 
-    /**
-     * --- Tests for POST /api/certificates (Generate Certificate) ---
-     */
-    @Nested
-    @DisplayName("POST /api/certificates (Generate Certificate Tests)")
-    class GenerateCertificateTests {
-        private Long recordIdSecondVaccineOk;
-
-        @BeforeEach
-        void setup() throws Exception {
-            VaccineCreateDto vacDto2 = new VaccineCreateDto("Distemper", 1, "DistLab", "BatchDIST" + System.currentTimeMillis(), true);
-            RecordCreateDto rec2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Distemper vaccine", vacDto2);
-            MvcResult recRes2 = mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(rec2)))
-                    .andExpect(status().isCreated()).andReturn();
-            recordIdSecondVaccineOk = extractRecordIdFromResult(objectMapper,recRes2);
-            assertThat(recordIdSecondVaccineOk).isNotNull();
-            entityManager.flush();entityManager.clear();
-        }
-
-        @Test
-        @DisplayName("should return 201 Created and CertificateViewDto when called by authorized Vet with eligible record")
-        void generateCertificate_Success() throws Exception {
-            CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(petIdEligible, "AHC-GEN-SUCCESS-" + System.currentTimeMillis());
-
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id", is(notNullValue())))
-                    .andExpect(jsonPath("$.certificateNumber", is(request.certificateNumber())))
-                    .andExpect(jsonPath("$.pet.id", is(petIdEligible.intValue())))
-                    .andExpect(jsonPath("$.originatingRecord.id", is(recordIdSecondVaccineOk.intValue())))
-                    .andExpect(jsonPath("$.generatorVet.id", is(vetId.intValue())))
-                    .andExpect(jsonPath("$.issuingClinic.id", is(clinic1Id.intValue())))
-                    .andExpect(jsonPath("$.payload", is(notNullValue())))
-                    .andExpect(jsonPath("$.hash", is(notNullValue())))
-                    .andExpect(jsonPath("$.vetSignature", is(notNullValue())))
-                    .andExpect(jsonPath("$.clinicSignature", is(notNullValue())));
-        }
-
-        @Test
-        @DisplayName("should return 400 Bad Request when source record is not suitable (unsigned or wrong type)")
-        void generateCertificate_BadRequest_RecordNotSuitable() throws Exception {
-            CertificateGenerationRequestDto requestUnsignedRabiesPet = new CertificateGenerationRequestDto(petIdNotEligible, "AHC-FAIL-UNSIGNED");
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(requestUnsignedRabiesPet)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message", containsString("No valid, signed, and current Rabies vaccine record found")));
-        }
-
-        @Test
-        @DisplayName("should return 409 Conflict when certificate number already exists")
-        void generateCertificate_Conflict_NumberExists() throws Exception {
-            String existingCertNumber = "AHC-DUPLICATE-" + System.currentTimeMillis();
-            CertificateGenerationRequestDto firstRequest = new CertificateGenerationRequestDto(petIdEligible, existingCertNumber);
-
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(firstRequest)))
-                    .andExpect(status().isCreated());
-
-            entityManager.flush(); entityManager.clear();
-
-            VaccineCreateDto rabiesVacDto2 = new VaccineCreateDto("Rabies2", 1, "RabiesLab2", "BatchRAB2" + System.currentTimeMillis(), true);
-            RecordCreateDto rabiesRecDto2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Second Rabies vaccine", rabiesVacDto2);
-            MvcResult rabiesRes2 = mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(rabiesRecDto2)))
-                    .andExpect(status().isCreated()).andReturn();
-            extractRecordIdFromResult(objectMapper,rabiesRes2);
-            entityManager.flush();entityManager.clear();
-
-            CertificateGenerationRequestDto secondRequest = new CertificateGenerationRequestDto(petIdEligible, existingCertNumber);
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(secondRequest)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("'" + existingCertNumber + "' is already in use")));
-        }
-
-        @Test
-        @DisplayName("should return 409 Conflict when certificate already exists for the source record")
-        void generateCertificate_Conflict_CertForRecordExists() throws Exception {
-            CertificateGenerationRequestDto firstRequest = new CertificateGenerationRequestDto(petIdEligible, "AHC-REC-DUP1-" + System.currentTimeMillis());
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(firstRequest)))
-                    .andExpect(status().isCreated());
-
-            entityManager.flush(); entityManager.clear();
-
-            CertificateGenerationRequestDto secondRequest = new CertificateGenerationRequestDto(petIdEligible, "AHC-REC-DUP2-" + System.currentTimeMillis());
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(secondRequest)))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("A certificate already exists for record")));
-        }
-
-        @Test
-        @DisplayName("should return 403 Forbidden when called by non-Vet")
-        void generateCertificate_Forbidden_Owner() throws Exception {
-            CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(recordIdRabiesOk, "AHC-OWNER-FAIL");
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("should return 404 Not Found when source Record ID does not exist")
-        void generateCertificate_NotFound_Record() throws Exception {
-            CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(9999L, "AHC-REC-NF");
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("should return 404 Not Found when source Record ID does not exist")
-        void generateCertificate_BadRequest_MissingDtoFields() throws Exception {
-            CertificateGenerationRequestDto missingPetId = new CertificateGenerationRequestDto(null, "AHC-VALID");
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(missingPetId)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message.petId", containsString("Pet ID cannot be null")));
-
-            CertificateGenerationRequestDto missingCertNumber = new CertificateGenerationRequestDto(petIdEligible, "");
-            mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(missingCertNumber)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message.certificateNumber", containsString("cannot be blank")));
-        }
-    }
-
-
-    /**
-     * --- Tests for GET /api/certificates (List Certificates) ---
-     */
-    @Nested
-    @DisplayName("GET /api/certificates (List Certificates Tests)")
-    class ListCertificatesTests {
-
-        private Long certId1, certId2;
-
-        @BeforeEach
-        void listSetup() throws Exception {
-            // Generate two certificates for the eligible pet
-            CertificateGenerationRequestDto req1 = new CertificateGenerationRequestDto(petIdEligible, "LIST-CERT-1-" + System.currentTimeMillis());
-            MvcResult res1 = mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req1)))
-                    .andExpect(status().isCreated())
-                    .andReturn();
-            certId1 = objectMapper.readValue(res1.getResponse().getContentAsString(), CertificateViewDto.class).id();
-
-            VaccineCreateDto vac2 = new VaccineCreateDto("FluVacList", 1, "LabListF", "BatchListF" + System.currentTimeMillis(), true);
-            RecordCreateDto rec2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Second vaccine", vac2);
-            MvcResult recRes2 = mockMvc.perform(post("/api/records")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(rec2)))
-                    .andExpect(status().isCreated()).andReturn();
-            extractRecordIdFromResult(objectMapper,recRes2);
-
-            CertificateGenerationRequestDto req2 = new CertificateGenerationRequestDto(petIdEligible, "LIST-CERT-2-" + System.currentTimeMillis());
-            MvcResult res2 = mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req2)))
-                    .andExpect(status().isCreated())
-                    .andReturn();
-            certId2 = objectMapper.readValue(res2.getResponse().getContentAsString(), CertificateViewDto.class).id();
-            entityManager.flush(); entityManager.clear();
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with list of certificates when called by Owner")
-        void listCertificates_Success_Owner() throws Exception {
-            mockMvc.perform(get("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .param("petId", petIdEligible.toString()))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(2)))
-                    .andExpect(jsonPath("$[*].id", containsInAnyOrder(certId1.intValue(), certId2.intValue())));
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with list of certificates when called by associated Vet")
-        void listCertificates_Success_Vet() throws Exception {
-            mockMvc.perform(get("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .param("petId", petIdEligible.toString()))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(2)));
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with empty list when pet has no certificates")
-        void listCertificates_Success_NoCerts() throws Exception {
-            mockMvc.perform(get("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .param("petId", petIdNotEligible.toString()))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(0)));
-        }
-
-        @Test
-        @DisplayName("should return 403 Forbidden when called by unauthorized user")
-        void listCertificates_Forbidden() throws Exception {
-            mockMvc.perform(get("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken)
-                            .param("petId", petIdEligible.toString()))
-                    .andExpect(status().isForbidden());
-
-            mockMvc.perform(get("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherVetToken)
-                            .param("petId", petIdEligible.toString()))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("should return 404 Not Found when Pet ID does not exist")
-        void listCertificates_NotFound_Pet() throws Exception {
-            mockMvc.perform(get("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .param("petId", "9999"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-
-    /**
-     * --- Tests for GET /api/certificates/{certificateId} ---
-     */
-    @Nested
-    @DisplayName("GET /api/certificates/{certificateId}  (Get Certificate By ID Tests)")
-    class GetCertificateByIdTests {
-
-        private Long certificateIdToGet;
-
-        @BeforeEach
-        void getByIdSetup() throws Exception {
-            CertificateGenerationRequestDto req = new CertificateGenerationRequestDto(petIdEligible, "GET-CERT-" + System.currentTimeMillis());
-            MvcResult res = mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isCreated())
-                    .andReturn();
-            certificateIdToGet = objectMapper.readValue(res.getResponse().getContentAsString(), CertificateViewDto.class).id();
-            assertThat(certificateIdToGet).isNotNull();
-            entityManager.flush(); entityManager.clear();
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with certificate details when called by Owner")
-        void getCertificateById_Success_Owner() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id", is(certificateIdToGet.intValue())));
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with certificate details when called by associated Vet")
-        void getCertificateById_Success_Vet() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id", is(certificateIdToGet.intValue())));
-        }
-
-        @Test
-        @DisplayName("should return 403 Forbidden when called by unauthorized user")
-        void getCertificateById_Forbidden() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken))
-                    .andExpect(status().isForbidden());
-            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherVetToken))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("should return 404 Not Found when certificate ID does not exist")
-        void getCertificateById_NotFound() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}", 9999L)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    /**
-     * --- Tests for GET /api/certificates/{certificateId}/qr-data ---
-     */
-    @Nested
-    @DisplayName("GET /api/certificates/{certificateId}/qr-data  (Get Certificate QR Data Tests)")
-    class GetCertificateQrDataTests {
-
-        private Long certificateIdForQr;
-
-        @BeforeEach
-        void getQrSetup() throws Exception {
-            CertificateGenerationRequestDto req = new CertificateGenerationRequestDto(petIdEligible, "QR-CERT-" + System.currentTimeMillis());
-            MvcResult res = mockMvc.perform(post("/api/certificates")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req)))
-                    .andExpect(status().isCreated())
-                    .andReturn();
-            certificateIdForQr = objectMapper.readValue(res.getResponse().getContentAsString(), CertificateViewDto.class).id();
-            assertThat(certificateIdForQr).isNotNull();
-            entityManager.flush(); entityManager.clear();
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with Base45 string when called by Owner")
-        void getQrData_Success_Owner() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string(startsWith("HC1:")));
-        }
-
-        @Test
-        @DisplayName("should return 200 OK with Base45 string when called by associated Vet")
-        void getQrData_Success_Vet() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                    .andExpect(content().string(startsWith("HC1:")));
-        }
-
-        @Test
-        @DisplayName("should return 403 Forbidden when called by unauthorized user")
-        void getQrData_Forbidden() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("should return 404 Not Found when certificate ID does not exist")
-        void getQrData_NotFound() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", 9999L)
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
-                    .andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
-        void getQrData_Unauthorized() throws Exception {
-            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr))
-                    .andExpect(status().isUnauthorized());
-        }
-    }
+//    /**
+//     * --- Tests for POST /api/certificates (Generate Certificate) ---
+//     */
+//    @Nested
+//    @DisplayName("POST /api/certificates (Generate Certificate Tests)")
+//    class GenerateCertificateTests {
+//        private Long recordIdSecondVaccineOk;
+//
+//        @BeforeEach
+//        void setup() throws Exception {
+//            VaccineCreateDto vacDto2 = new VaccineCreateDto("Distemper", 1, "DistLab", "BatchDIST" + System.currentTimeMillis(), true);
+//            RecordCreateDto rec2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Distemper vaccine", vacDto2);
+//            MvcResult recRes2 = mockMvc.perform(post("/api/records")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(rec2)))
+//                    .andExpect(status().isCreated()).andReturn();
+//            recordIdSecondVaccineOk = extractRecordIdFromResult(objectMapper,recRes2);
+//            assertThat(recordIdSecondVaccineOk).isNotNull();
+//            entityManager.flush();entityManager.clear();
+//        }
+//
+//        @Test
+//        @DisplayName("should return 201 Created and CertificateViewDto when called by authorized Vet with eligible record")
+//        void generateCertificate_Success() throws Exception {
+//            CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(petIdEligible, "AHC-GEN-SUCCESS-" + System.currentTimeMillis());
+//
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(request)))
+//                    .andExpect(status().isCreated())
+//                    .andExpect(jsonPath("$.id", is(notNullValue())))
+//                    .andExpect(jsonPath("$.certificateNumber", is(request.certificateNumber())))
+//                    .andExpect(jsonPath("$.pet.id", is(petIdEligible.intValue())))
+//                    .andExpect(jsonPath("$.originatingRecord.id", is(recordIdSecondVaccineOk.intValue())))
+//                    .andExpect(jsonPath("$.generatorVet.id", is(vetId.intValue())))
+//                    .andExpect(jsonPath("$.issuingClinic.id", is(clinic1Id.intValue())))
+//                    .andExpect(jsonPath("$.payload", is(notNullValue())))
+//                    .andExpect(jsonPath("$.hash", is(notNullValue())))
+//                    .andExpect(jsonPath("$.vetSignature", is(notNullValue())))
+//                    .andExpect(jsonPath("$.clinicSignature", is(notNullValue())));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 400 Bad Request when source record is not suitable (unsigned or wrong type)")
+//        void generateCertificate_BadRequest_RecordNotSuitable() throws Exception {
+//            CertificateGenerationRequestDto requestUnsignedRabiesPet = new CertificateGenerationRequestDto(petIdNotEligible, "AHC-FAIL-UNSIGNED");
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(requestUnsignedRabiesPet)))
+//                    .andExpect(status().isBadRequest())
+//                    .andExpect(jsonPath("$.message", containsString("No valid, signed, and current Rabies vaccine record found")));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 409 Conflict when certificate number already exists")
+//        void generateCertificate_Conflict_NumberExists() throws Exception {
+//            String existingCertNumber = "AHC-DUPLICATE-" + System.currentTimeMillis();
+//            CertificateGenerationRequestDto firstRequest = new CertificateGenerationRequestDto(petIdEligible, existingCertNumber);
+//
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(firstRequest)))
+//                    .andExpect(status().isCreated());
+//
+//            entityManager.flush(); entityManager.clear();
+//
+//            VaccineCreateDto rabiesVacDto2 = new VaccineCreateDto("Rabies2", 1, "RabiesLab2", "BatchRAB2" + System.currentTimeMillis(), true);
+//            RecordCreateDto rabiesRecDto2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Second Rabies vaccine", rabiesVacDto2);
+//            MvcResult rabiesRes2 = mockMvc.perform(post("/api/records")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(rabiesRecDto2)))
+//                    .andExpect(status().isCreated()).andReturn();
+//            extractRecordIdFromResult(objectMapper,rabiesRes2);
+//            entityManager.flush();entityManager.clear();
+//
+//            CertificateGenerationRequestDto secondRequest = new CertificateGenerationRequestDto(petIdEligible, existingCertNumber);
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(secondRequest)))
+//                    .andExpect(status().isConflict())
+//                    .andExpect(jsonPath("$.message", containsString("'" + existingCertNumber + "' is already in use")));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 409 Conflict when certificate already exists for the source record")
+//        void generateCertificate_Conflict_CertForRecordExists() throws Exception {
+//            CertificateGenerationRequestDto firstRequest = new CertificateGenerationRequestDto(petIdEligible, "AHC-REC-DUP1-" + System.currentTimeMillis());
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(firstRequest)))
+//                    .andExpect(status().isCreated());
+//
+//            entityManager.flush(); entityManager.clear();
+//
+//            CertificateGenerationRequestDto secondRequest = new CertificateGenerationRequestDto(petIdEligible, "AHC-REC-DUP2-" + System.currentTimeMillis());
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(secondRequest)))
+//                    .andExpect(status().isConflict())
+//                    .andExpect(jsonPath("$.message", containsString("A certificate already exists for record")));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 403 Forbidden when called by non-Vet")
+//        void generateCertificate_Forbidden_Owner() throws Exception {
+//            CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(recordIdRabiesOk, "AHC-OWNER-FAIL");
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(request)))
+//                    .andExpect(status().isForbidden());
+//        }
+//
+//        @Test
+//        @DisplayName("should return 404 Not Found when source Record ID does not exist")
+//        void generateCertificate_NotFound_Record() throws Exception {
+//            CertificateGenerationRequestDto request = new CertificateGenerationRequestDto(9999L, "AHC-REC-NF");
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(request)))
+//                    .andExpect(status().isNotFound());
+//        }
+//
+//        @Test
+//        @DisplayName("should return 404 Not Found when source Record ID does not exist")
+//        void generateCertificate_BadRequest_MissingDtoFields() throws Exception {
+//            CertificateGenerationRequestDto missingPetId = new CertificateGenerationRequestDto(null, "AHC-VALID");
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(missingPetId)))
+//                    .andExpect(status().isBadRequest())
+//                    .andExpect(jsonPath("$.message.petId", containsString("Pet ID cannot be null")));
+//
+//            CertificateGenerationRequestDto missingCertNumber = new CertificateGenerationRequestDto(petIdEligible, "");
+//            mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(missingCertNumber)))
+//                    .andExpect(status().isBadRequest())
+//                    .andExpect(jsonPath("$.message.certificateNumber", containsString("cannot be blank")));
+//        }
+//    }
+//
+//
+//    /**
+//     * --- Tests for GET /api/certificates (List Certificates) ---
+//     */
+//    @Nested
+//    @DisplayName("GET /api/certificates (List Certificates Tests)")
+//    class ListCertificatesTests {
+//
+//        private Long certId1, certId2;
+//
+//        @BeforeEach
+//        void listSetup() throws Exception {
+//            // Generate two certificates for the eligible pet
+//            CertificateGenerationRequestDto req1 = new CertificateGenerationRequestDto(petIdEligible, "LIST-CERT-1-" + System.currentTimeMillis());
+//            MvcResult res1 = mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(req1)))
+//                    .andExpect(status().isCreated())
+//                    .andReturn();
+//            certId1 = objectMapper.readValue(res1.getResponse().getContentAsString(), CertificateViewDto.class).id();
+//
+//            VaccineCreateDto vac2 = new VaccineCreateDto("FluVacList", 1, "LabListF", "BatchListF" + System.currentTimeMillis(), true);
+//            RecordCreateDto rec2 = new RecordCreateDto(petIdEligible, RecordType.VACCINE, "Second vaccine", vac2);
+//            MvcResult recRes2 = mockMvc.perform(post("/api/records")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(rec2)))
+//                    .andExpect(status().isCreated()).andReturn();
+//            extractRecordIdFromResult(objectMapper,recRes2);
+//
+//            CertificateGenerationRequestDto req2 = new CertificateGenerationRequestDto(petIdEligible, "LIST-CERT-2-" + System.currentTimeMillis());
+//            MvcResult res2 = mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(req2)))
+//                    .andExpect(status().isCreated())
+//                    .andReturn();
+//            certId2 = objectMapper.readValue(res2.getResponse().getContentAsString(), CertificateViewDto.class).id();
+//            entityManager.flush(); entityManager.clear();
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with list of certificates when called by Owner")
+//        void listCertificates_Success_Owner() throws Exception {
+//            mockMvc.perform(get("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .param("petId", petIdEligible.toString()))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$", hasSize(2)))
+//                    .andExpect(jsonPath("$[*].id", containsInAnyOrder(certId1.intValue(), certId2.intValue())));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with list of certificates when called by associated Vet")
+//        void listCertificates_Success_Vet() throws Exception {
+//            mockMvc.perform(get("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .param("petId", petIdEligible.toString()))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$", hasSize(2)));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with empty list when pet has no certificates")
+//        void listCertificates_Success_NoCerts() throws Exception {
+//            mockMvc.perform(get("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .param("petId", petIdNotEligible.toString()))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$", hasSize(0)));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 403 Forbidden when called by unauthorized user")
+//        void listCertificates_Forbidden() throws Exception {
+//            mockMvc.perform(get("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken)
+//                            .param("petId", petIdEligible.toString()))
+//                    .andExpect(status().isForbidden());
+//
+//            mockMvc.perform(get("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherVetToken)
+//                            .param("petId", petIdEligible.toString()))
+//                    .andExpect(status().isForbidden());
+//        }
+//
+//        @Test
+//        @DisplayName("should return 404 Not Found when Pet ID does not exist")
+//        void listCertificates_NotFound_Pet() throws Exception {
+//            mockMvc.perform(get("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+//                            .param("petId", "9999"))
+//                    .andExpect(status().isNotFound());
+//        }
+//    }
+//
+//
+//    /**
+//     * --- Tests for GET /api/certificates/{certificateId} ---
+//     */
+//    @Nested
+//    @DisplayName("GET /api/certificates/{certificateId}  (Get Certificate By ID Tests)")
+//    class GetCertificateByIdTests {
+//
+//        private Long certificateIdToGet;
+//
+//        @BeforeEach
+//        void getByIdSetup() throws Exception {
+//            CertificateGenerationRequestDto req = new CertificateGenerationRequestDto(petIdEligible, "GET-CERT-" + System.currentTimeMillis());
+//            MvcResult res = mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(req)))
+//                    .andExpect(status().isCreated())
+//                    .andReturn();
+//            certificateIdToGet = objectMapper.readValue(res.getResponse().getContentAsString(), CertificateViewDto.class).id();
+//            assertThat(certificateIdToGet).isNotNull();
+//            entityManager.flush(); entityManager.clear();
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with certificate details when called by Owner")
+//        void getCertificateById_Success_Owner() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$.id", is(certificateIdToGet.intValue())));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with certificate details when called by associated Vet")
+//        void getCertificateById_Success_Vet() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
+//                    .andExpect(status().isOk())
+//                    .andExpect(jsonPath("$.id", is(certificateIdToGet.intValue())));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 403 Forbidden when called by unauthorized user")
+//        void getCertificateById_Forbidden() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken))
+//                    .andExpect(status().isForbidden());
+//            mockMvc.perform(get("/api/certificates/{certificateId}", certificateIdToGet)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherVetToken))
+//                    .andExpect(status().isForbidden());
+//        }
+//
+//        @Test
+//        @DisplayName("should return 404 Not Found when certificate ID does not exist")
+//        void getCertificateById_NotFound() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}", 9999L)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+//                    .andExpect(status().isNotFound());
+//        }
+//    }
+//
+//    /**
+//     * --- Tests for GET /api/certificates/{certificateId}/qr-data ---
+//     */
+//    @Nested
+//    @DisplayName("GET /api/certificates/{certificateId}/qr-data  (Get Certificate QR Data Tests)")
+//    class GetCertificateQrDataTests {
+//
+//        private Long certificateIdForQr;
+//
+//        @BeforeEach
+//        void getQrSetup() throws Exception {
+//            CertificateGenerationRequestDto req = new CertificateGenerationRequestDto(petIdEligible, "QR-CERT-" + System.currentTimeMillis());
+//            MvcResult res = mockMvc.perform(post("/api/certificates")
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                            .contentType(MediaType.APPLICATION_JSON)
+//                            .content(objectMapper.writeValueAsString(req)))
+//                    .andExpect(status().isCreated())
+//                    .andReturn();
+//            certificateIdForQr = objectMapper.readValue(res.getResponse().getContentAsString(), CertificateViewDto.class).id();
+//            assertThat(certificateIdForQr).isNotNull();
+//            entityManager.flush(); entityManager.clear();
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with Base45 string when called by Owner")
+//        void getQrData_Success_Owner() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+//                    .andExpect(status().isOk())
+//                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+//                    .andExpect(content().string(startsWith("HC1:")));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 200 OK with Base45 string when called by associated Vet")
+//        void getQrData_Success_Vet() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken))
+//                    .andExpect(status().isOk())
+//                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+//                    .andExpect(content().string(startsWith("HC1:")));
+//        }
+//
+//        @Test
+//        @DisplayName("should return 403 Forbidden when called by unauthorized user")
+//        void getQrData_Forbidden() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherOwnerToken))
+//                    .andExpect(status().isForbidden());
+//        }
+//
+//        @Test
+//        @DisplayName("should return 404 Not Found when certificate ID does not exist")
+//        void getQrData_NotFound() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", 9999L)
+//                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+//                    .andExpect(status().isNotFound());
+//        }
+//
+//        @Test
+//        @DisplayName("should return 401 Unauthorized when no authentication token is provided")
+//        void getQrData_Unauthorized() throws Exception {
+//            mockMvc.perform(get("/api/certificates/{certificateId}/qr-data", certificateIdForQr))
+//                    .andExpect(status().isUnauthorized());
+//        }
+//    }
 }

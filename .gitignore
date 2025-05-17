@@ -359,5 +359,6 @@ $RECYCLE.BIN/
 /images/
 /keys/
 /keys_public/
+/keys_private/
 
 # End of https://www.toptal.com/developers/gitignore/api/java,maven,intellij,node,visualstudiocode,windows,react

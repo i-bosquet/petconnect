@@ -17,14 +17,10 @@ import jakarta.validation.constraints.Size;
 public record ClinicUpdateDto(
         @Size(max = 255, message = "Clinic name cannot exceed 255 characters")
         String name,
-
         String address,
-
         @Size(max = 100, message = "City name cannot exceed 100 characters")
         String city,
-
         Country country,
-
         @Size(max = 20, message = "Phone number cannot exceed 20 characters")
         String phone
 ) {}

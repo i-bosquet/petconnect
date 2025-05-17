@@ -26,6 +26,8 @@ export interface PetProfileDto {
     associatedVets: VetSummaryDto[];
     ownerDetails?: OwnerSummaryDto | null;
     canRequestAhcCertificate?: boolean; 
+    lastEuEntryDate?: string | null;   
+    lastEuExitDate?: string | null;
     createdAt?: string | null; 
     updatedAt?: string | null;
 }
@@ -78,6 +80,8 @@ export interface PetRegistrationData {
     birthDate?: string | null; 
     microchip?: string | null;
     breedId?: number | string | null;
+    newEuEntryDate?: string | null; 
+    newEuExitDate?: string | null;
 }
 
 /**

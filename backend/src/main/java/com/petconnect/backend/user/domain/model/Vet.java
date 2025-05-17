@@ -43,4 +43,13 @@ public class Vet extends ClinicStaff {
     @NotBlank(message = "Veterinarian public key path cannot be blank")
     @Column(name = "vet_public_key", nullable = false, unique = true, length = 255)
     private String vetPublicKey;
+
+    /**
+     * The server-side path to the veterinarian's ENCRYPTED private key PEM file.
+     * This path is internal to the server's file system or a configured secure storage.
+     * The key itself is encrypted with the vet's personal password.
+     */
+    @NotBlank(message = "Path to vet's encrypted private key file cannot be blank")
+    @Column(name = "vet_private_key", nullable = false, unique = true, length = 255)
+    private String vetPrivateKey;
 }

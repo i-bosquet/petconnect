@@ -11,6 +11,7 @@ export interface VetSummaryDto {
     surname: string | null;
     avatar: string | null;    
     email: string | null;   
+    licenseNumber: string | null;
     clinicId: number | string | null; 
     clinicName: string | null;
     clinicAddress: string | null; 

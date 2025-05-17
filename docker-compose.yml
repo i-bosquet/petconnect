@@ -63,13 +63,16 @@ services:
       - SPRING_MAIL_PASSWORD=${GMAIL_APP_PASSWORD}
       # Image Path - Matches the container path for images
       - APP_EXTERNAL_IMAGES_PATH=/app/images # Matches MvcConfig target if serving uploaded images via container
-      - APP_EXTERNAL_KEYS_PATH=/app/keys_public
+      # Keys Path
+      - APP_EXTERNAL_PUB_KEYS_PATH=/app/keys_public
+      - APP_EXTERNAL_PRI_KEYS_PATH=/app/keys_private
     volumes:
       # Mount host directories into the container
       # :ro for read-only, :rw for read-write
       - ./keys:/app/keys:ro
       - ./images:/app/images:rw
       - ./keys_public:/app/keys_public:rw
+      - ./keys_private:/app/keys_private:rw
 
   # SonarQube Service
   sonarqube:

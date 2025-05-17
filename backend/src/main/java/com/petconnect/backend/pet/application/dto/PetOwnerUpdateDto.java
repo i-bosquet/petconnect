@@ -3,6 +3,7 @@ package com.petconnect.backend.pet.application.dto;
 import com.petconnect.backend.pet.domain.model.Gender;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
+import org.springframework.lang.Nullable;
 
 import java.time.LocalDate;
 
@@ -42,6 +43,9 @@ public record PetOwnerUpdateDto(
         @Size(max = 50, message = "Microchip number cannot exceed 50 characters")
         String microchip,
 
-        Long breedId
+        Long breedId,
+
+        @Nullable LocalDate newEuEntryDate,
+        @Nullable LocalDate newEuExitDate
 ) {
 }

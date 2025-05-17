@@ -16,14 +16,16 @@ import java.security.PublicKey;
 public interface SigningService {
 
     /**
-     * Generates a digital signature using the specific Vet's configured private key.
+     * Generates a digital signature for a given data string using the veterinarian's private key.
+     * The private key is decrypted using the provided password.
      *
-     * @param vet        The Vet performing the signing.
-     * @param dataToSign The data string (typically a hash) to be signed.
-     * @return Base64 encoded signature string.
-     * @throws RuntimeException if signing fails.
+     * @param vet            The veterinarian whose private key will be used for signing.
+     * @param dataToSign     The string data to be signed, typically a precomputed hash.
+     * @param vetKeyPassword The password used to decrypt the veterinarian's private key.
+     * @return A Base64 encoded string representation of the generated digital signature.
+     * @throws RuntimeException if signing fails due to key access, decryption issues, or other errors.
      */
-    String generateVetSignature(Vet vet, String dataToSign);
+    String generateVetSignature(Vet vet, String dataToSign, char[] vetKeyPassword);
 
     /**
      * Generates a digital signature using the issuing Clinic's configured private key.
@@ -34,7 +36,7 @@ public interface SigningService {
      * @return Base64 encoded signature string.
      * @throws RuntimeException if signing fails.
      */
-    String generateClinicSignature(Clinic clinic, String dataToSign);
+    String generateClinicSignature(Clinic clinic, String dataToSign, char[] clinicKeyPassword);
 
     /**
      * Verifies a digital signature using a provided public key.
@@ -47,15 +49,6 @@ public interface SigningService {
     boolean verifySignature(String publicKeyPemB64, String originalData, String signatureB64);
 
     /**
-     * Retrieves the PrivateKey object for the specified Vet.
-     * FOR TFG/DEMO USE ONLY - Loads from the configured file.
-     * @param vet The veterinarian.
-     * @return The PrivateKey.
-     * @throws RuntimeException if key loading fails.
-     */
-    PrivateKey getVetPrivateKey(Vet vet);
-
-    /**
      * Retrieves the PublicKey object corresponding to the Vet's private key.
      * This might load from a file or be derived if not stored separately.
      * @param vet The veterinarian.
@@ -64,14 +57,6 @@ public interface SigningService {
      */
     PublicKey getVetPublicKey(Vet vet);
 
-    /**
-     * Retrieves the PrivateKey object for the specified Clinic.
-     * FOR TFG/ DEMO, USE ONLY - Loads from a configured file.
-     * @param clinic The clinic.
-     * @return The PrivateKey.
-     * @throws RuntimeException if key loading fails.
-     */
-    PrivateKey getClinicPrivateKey(Clinic clinic);
 
     /**
      * Retrieves the PublicKey object corresponding to the Clinic's private key.

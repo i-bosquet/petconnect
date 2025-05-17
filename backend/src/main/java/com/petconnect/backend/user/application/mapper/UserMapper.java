@@ -8,8 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 import com.petconnect.backend.common.helper.ImageUrlHelper;
+import org.springframework.util.StringUtils;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -74,9 +74,11 @@ public class UserMapper {
 
         String licenseNumber = null;
         String vetPublicKeyPath = null;
+        boolean hasPrivateKey = false;
         if (staff instanceof Vet vet) {
             licenseNumber = vet.getLicenseNumber();
             vetPublicKeyPath = vet.getVetPublicKey();
+            hasPrivateKey = StringUtils.hasText(vet.getVetPrivateKey());
         }
 
         Long clinicId = (staff.getClinic() != null) ? staff.getClinic().getId() : null;
@@ -95,6 +97,7 @@ public class UserMapper {
                 clinicName,
                 licenseNumber,
                 vetPublicKeyPath,
+                hasPrivateKey,
                 staff.getCreatedAt(),
                 staff.getCreatedBy(),
                 staff.getUpdatedAt(),
@@ -270,6 +273,7 @@ public class UserMapper {
                 vet.getSurname(),
                 vetAvatarFullUrl,
                 vet.getEmail(),
+                vet.getLicenseNumber(),
                 clinicId,
                 clinicName,
                 clinicAddress,

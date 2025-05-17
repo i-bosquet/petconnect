@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, JSX, ChangeEvent, FormEvent, useCallback } from 'react';
-import Modal from '../../common/Modal';
+import Modal from '@/components/common/Modal';
 import { Upload, Calendar, PawPrint, VenetianMask, Palette, Sigma, Loader2, CircleX, SaveAll } from 'lucide-react';
-import { Specie, Gender } from '../../../types/enumTypes';
-import { PetRegistrationData, BreedDto } from '../../../types/apiTypes';
-import { registerPet, getBreedsBySpecie } from '../../../services/petService';
-import { BACKEND_BASE_URL } from '../../../config';
+import { Specie, Gender } from '@/types/enumTypes';
+import { PetRegistrationData, BreedDto } from '@/types/apiTypes';
+import { registerPet, getBreedsBySpecie } from '@/services/petService';
+import { BACKEND_BASE_URL } from '@/config';
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface AddPetModalProps {
     onClose: () => void;
@@ -129,6 +130,11 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
         if (!token) { setError("Authentication error."); return; }
         if (!petData.name || !petData.specie || !petData.birthDate) {
             setError("Pet Name, Species, and Birth Date are required."); return;
+        }
+         if (petData.microchip && !/^[0-9]{15}$/.test(petData.microchip)) {
+            setError("Microchip must be exactly 15 digits and contain only numbers.");
+            toast.error("Microchip must be exactly 15 digits and contain only numbers.");
+            return; 
         }
         setIsLoading(true);
 
@@ -255,11 +261,11 @@ const AddPetModal = ({ onClose, onPetAdded }: AddPetModalProps): JSX.Element => 
 
                 {/* Microchip Input */}
                 <div className="space-y-1.5">
-                    <label htmlFor="microchip" className="block text-sm font-medium text-gray-300">Microchip (15 dig)</label>
+                    <label htmlFor="microchip" className="block text-sm font-medium text-gray-300">Microchip</label>
                      <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Sigma size={16} className="text-gray-400" /></div>
                         <input id="microchip" name="microchip" type="text" maxLength={50}
-                           value={petData.microchip ?? ''} onChange={handleChange} disabled={isLoading} placeholder="Pet's microchip number"
+                           value={petData.microchip ?? ''} onChange={handleChange} disabled={isLoading} placeholder="Pet's microchip number (15 digits)"
                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-700 rounded-xl shadow-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-600 focus:border-cyan-600 text-white bg-[#070913] disabled:opacity-50"/>
                     </div>
                 </div>

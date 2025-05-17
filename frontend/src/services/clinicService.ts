@@ -125,7 +125,8 @@ export const updateClinic = async (
     token: string,
     clinicId: number | string,
     updateData: ClinicUpdatePayload,
-    publicKeyFile: File | null 
+    publicKeyFile: File | null,
+    privateKeyFile: File | null
 ): Promise<ClinicDto> => {
     if (!token) throw new Error("Authentication token required.");
     if (!clinicId) throw new Error("Clinic ID required.");
@@ -136,6 +137,10 @@ export const updateClinic = async (
 
     if (publicKeyFile) {
         formData.append('publicKeyFile', publicKeyFile, publicKeyFile.name);
+    }
+
+    if (privateKeyFile) { 
+        formData.append('privateKeyFile', privateKeyFile, privateKeyFile.name);
     }
 
     try {

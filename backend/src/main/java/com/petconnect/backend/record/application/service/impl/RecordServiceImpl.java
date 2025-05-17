@@ -84,10 +84,14 @@ public class RecordServiceImpl implements RecordService {
             newRecord.setCreatedInClinic(staffCreator.getClinic());
             if (creator instanceof Vet vetCreator) {
                 log.info("Creator is Vet (ID: {}), from clinic {}, proceeding with signature.", creatorUserId, staffCreator.getClinic().getId());
+                if (!StringUtils.hasText(createDto.vetPrivateKeyPassword())) {
+                    log.error("Vet (ID: {}) attempting to create a record but no private key password provided in DTO.", creatorUserId);
+                    throw new IllegalArgumentException("Veterinarian's private key password is required for signing.");
+                }
                 String dataToSign = recordHelper.buildSignableData(pet, vetCreator, createDto);
-                String signature = signingService.generateVetSignature(vetCreator, dataToSign);
+                String signature = signingService.generateVetSignature(vetCreator, dataToSign, createDto.vetPrivateKeyPassword().toCharArray());
                 newRecord.setVetSignature(signature);
-                log.info("Record for Pet {} created, signed by Vet {}, and associated with clinic {}", createDto.petId(), creatorUserId, staffCreator.getClinic().getId());
+                log.info("Record for Pet {} created, signed by Vet {}...", createDto.petId(), creatorUserId);
             } else { // If it is Clinic Staff but not Vet
                 log.info("Creator (ID: {}) is ClinicStaff (non-Vet) from clinic {}, record will not be signed but associated with clinic {}.", creatorUserId, staffCreator.getClinic().getId(), staffCreator.getClinic().getId());
             }

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '@/config';
-import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto, PetClinicUpdatePayload, VetSummaryDto } from '../types/apiTypes';
+import { PetProfileDto, Page, ApiErrorResponse, PetRegistrationData, BreedDto, PetOwnerUpdatePayload,Specie, PetStatus, PetActivationDto, PetClinicUpdatePayload, VetSummaryDto } from '@/types/apiTypes';
 
 interface FindMyPetsParams {
 page: number;

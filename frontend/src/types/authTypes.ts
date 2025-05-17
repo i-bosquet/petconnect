@@ -36,6 +36,7 @@ export interface ClinicStaffProfile {
   clinicName: string;
   licenseNumber?: string | null;
   vetPublicKey?: string | null;
+  hasPrivateKeyConfigured?: boolean;
   createdAt?: string | null;
   createdBy?: string | null;
   updatedAt?: string | null;

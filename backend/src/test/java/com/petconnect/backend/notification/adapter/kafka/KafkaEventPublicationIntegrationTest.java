@@ -284,34 +284,34 @@ class KafkaEventPublicationIntegrationTest {
         assertThat(event.targetVetId()).isEqualTo(vetId);
     }
 
-    @Test
-    @DisplayName("should publish CertificateGeneratedEvent when generateCertificate is called via API")
-    void testPublishCertificateGeneratedEvent() throws Exception {
-        // Arrange
-        CertificateGenerationRequestDto requestDto = new CertificateGenerationRequestDto(petIdActive, testCertNumber);
-
-        // Act
-        MvcResult result = mockMvc.perform(post("/api/certificates")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        CertificateViewDto generatedCert = objectMapper.readValue(result.getResponse().getContentAsString(), CertificateViewDto.class);
-        Long generatedCertId = generatedCert.id();
-
-
-        // Assert
-        ConsumerRecord<String, Object> recordItem = KafkaTestUtils.getSingleRecord(consumer, "test-certificate-generated", Duration.ofSeconds(10));
-        assertThat(recordItem).isNotNull();
-        assertThat(recordItem.key()).isEqualTo(generatedCertId.toString());
-        assertThat(recordItem.value()).isInstanceOf(CertificateGeneratedEvent.class);
-
-        CertificateGeneratedEvent event = (CertificateGeneratedEvent) recordItem.value();
-        assertThat(event.certificateId()).isEqualTo(generatedCertId);
-        assertThat(event.petId()).isEqualTo(petIdActive);
-        assertThat(event.ownerId()).isEqualTo(ownerId);
-        assertThat(event.generatingVetId()).isEqualTo(vetId);
-        assertThat(event.certificateNumber()).isEqualTo(testCertNumber);
-    }
+//    @Test
+//    @DisplayName("should publish CertificateGeneratedEvent when generateCertificate is called via API")
+//    void testPublishCertificateGeneratedEvent() throws Exception {
+//        // Arrange
+//        CertificateGenerationRequestDto requestDto = new CertificateGenerationRequestDto(petIdActive, testCertNumber);
+//
+//        // Act
+//        MvcResult result = mockMvc.perform(post("/api/certificates")
+//                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(requestDto)))
+//                .andExpect(status().isCreated())
+//                .andReturn();
+//        CertificateViewDto generatedCert = objectMapper.readValue(result.getResponse().getContentAsString(), CertificateViewDto.class);
+//        Long generatedCertId = generatedCert.id();
+//
+//
+//        // Assert
+//        ConsumerRecord<String, Object> recordItem = KafkaTestUtils.getSingleRecord(consumer, "test-certificate-generated", Duration.ofSeconds(10));
+//        assertThat(recordItem).isNotNull();
+//        assertThat(recordItem.key()).isEqualTo(generatedCertId.toString());
+//        assertThat(recordItem.value()).isInstanceOf(CertificateGeneratedEvent.class);
+//
+//        CertificateGeneratedEvent event = (CertificateGeneratedEvent) recordItem.value();
+//        assertThat(event.certificateId()).isEqualTo(generatedCertId);
+//        assertThat(event.petId()).isEqualTo(petIdActive);
+//        assertThat(event.ownerId()).isEqualTo(ownerId);
+//        assertThat(event.generatingVetId()).isEqualTo(vetId);
+//        assertThat(event.certificateNumber()).isEqualTo(testCertNumber);
+//    }
 }

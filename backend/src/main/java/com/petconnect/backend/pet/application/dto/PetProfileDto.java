@@ -5,6 +5,7 @@ import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.pet.domain.model.Specie;
 import com.petconnect.backend.user.application.dto.OwnerSummaryDto;
 import com.petconnect.backend.user.application.dto.VetSummaryDto;
+import org.springframework.lang.Nullable;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -54,7 +55,9 @@ public record PetProfileDto(
         String pendingActivationClinicName,
         Set<VetSummaryDto> associatedVets,
         OwnerSummaryDto ownerDetails,
-        boolean canRequestAhcCertificate
+        boolean canRequestAhcCertificate,
+        @Nullable LocalDate lastEuEntryDate,
+        @Nullable LocalDate lastEuExitDate
 ) {
 }
 

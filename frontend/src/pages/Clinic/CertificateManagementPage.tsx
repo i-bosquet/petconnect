@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Input } from "@/components/ui/input";
 import { CertificateViewDto, Page} from "@/types/apiTypes"; 
 import { findCertificatesCreatedByClinic} from "@/services/certificateService";
-// import ViewCertificateModal from '@/components/clinic/modals/ViewCertificateModal'; 
+import ViewCertificateModal from '@/components/common/ViewCertificateModal'; 
 import { useAuth } from "@/hooks/useAuth";
 import Pagination from "@/components/common/Pagination";
 
@@ -29,8 +29,8 @@ const CertificateManagementPage = (): JSX.Element => {
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(0);
 
-    // const [selectedCertificate, setSelectedCertificate] = useState<CertificateViewDto | null>(null);
-    // const [showViewModal, setShowViewModal] = useState<boolean>(false);
+    const [selectedCertificate, setSelectedCertificate] = useState<CertificateViewDto | null>(null);
+    const [showViewModal, setShowViewModal] = useState<boolean>(false);
 
     const clinicIdFromUser = user?.clinicId;
 
@@ -84,6 +84,11 @@ const CertificateManagementPage = (): JSX.Element => {
         fetchClinicCreatedCertificates(0);
     };
 
+     const handleOpenViewModal = (certificate: CertificateViewDto) => {
+        setSelectedCertificate(certificate);
+        setShowViewModal(true);
+    };
+
     const filteredCertificates = useMemo(() => {
         if (!searchTerm) return certificates;
         const lowerSearch = searchTerm.toLowerCase();
@@ -96,6 +101,8 @@ const CertificateManagementPage = (): JSX.Element => {
             (cert.generatorVet?.surname?.toLowerCase().includes(lowerSearch))
         );
     }, [certificates, searchTerm]);
+
+    
 
     if (isLoadingAuth) {
         return <div className="flex justify-center items-center py-10"><Loader2 className="h-8 w-8 animate-spin text-cyan-500" /> <span className="ml-2">Loading...</span></div>;
@@ -194,8 +201,7 @@ const CertificateManagementPage = (): JSX.Element => {
                                 <Button
                                   size="icon"
                                   className="h-7 w-7 text-[#FFECAB] hover:text-[#090D1A]  hover:bg-[#FFECAB] cursor-pointer"
-                                  // onClick={() => handleOpenViewModal(cert)}
-                                  onClick={() => alert(`TODO: View Certificate ${cert.id}`)}
+                                  onClick={() => handleOpenViewModal(cert)}
                                 >
                                    <Eye size={16} />
                                 </Button>
@@ -224,13 +230,13 @@ const CertificateManagementPage = (): JSX.Element => {
         </Card>
 
         {/* Modals */}
-          {/* {showViewModal && selectedCertificate && (
+          {showViewModal && selectedCertificate && (
             <ViewCertificateModal
               isOpen={showViewModal}
               onClose={() => {setShowViewModal(false); setSelectedCertificate(null);}}
               certificate={selectedCertificate}
             />
-           )} */}
+           )}
 
       </div>
     );

@@ -1,4 +1,4 @@
-import { PetProfileDto, RecordSummaryDto, VetSummaryDto, ClinicDto } from './apiTypes'; 
+import { PetProfileDto, RecordViewDto, VetSummaryDto} from './apiTypes'; 
 
 export interface CertificateGenerationRequestDto {
     petId: number | string;
@@ -9,9 +9,8 @@ export interface CertificateViewDto {
     id: number | string;
     certificateNumber: string;
     pet: PetProfileDto; 
-    originatingRecord: RecordSummaryDto;
+    originatingRecord: RecordViewDto;
     generatorVet: VetSummaryDto;
-    issuingClinic: ClinicDto;
     createdAt: string;
     initialEuEntryExpiryDate?: string | null; 
     travelValidityEndDate?: string | null; 
@@ -20,4 +19,11 @@ export interface CertificateViewDto {
     hash: string;
     vetSignature: string;
     clinicSignature: string;
+}
+
+export interface CertificateGenerationRequestDto {
+    petId: number | string;
+    certificateNumber: string;
+    vetPrivateKeyPassword?: string | null; 
+    clinicPrivateKeyPassword?: string | null; 
 }

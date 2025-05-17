@@ -16,10 +16,11 @@ import {
   RecordCreatePayload,
   RecordType,
   VaccineCreatePayload ,
+  RoleEnum
 } from "@/types/apiTypes";
 import { createRecord } from "@/services/recordService";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Save, CircleX, ShieldPlus } from "lucide-react";
+import { Loader2, Save, CircleX, ShieldPlus, LockKeyhole,Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface AddRecordModalProps {
@@ -33,6 +34,7 @@ const initialFormData: Partial<RecordCreatePayload> = {
   type: RecordType.OTHER, // Default  OTHER
   description: "",
   vaccine: undefined,
+  vetPrivateKeyPassword: '',
 };
 
 const initialVaccineData: Partial<VaccineCreatePayload > = {
@@ -55,19 +57,22 @@ const AddRecordModal = ({
   onRecordAdded,
   petId,
 }: AddRecordModalProps): JSX.Element | null => {
-  const { token } = useAuth();
-  const [formData, setFormData] =
-    useState<Partial<RecordCreatePayload>>(initialFormData);
-  const [vaccineData, setVaccineData] =
-    useState<Partial<VaccineCreatePayload >>(initialVaccineData);
+  const { token, user } = useAuth();
+  const [formData, setFormData] =useState<Partial<RecordCreatePayload>>(initialFormData);
+  const [vaccineData, setVaccineData] =useState<Partial<VaccineCreatePayload >>(initialVaccineData);
+  const [vetPassword, setVetPassword] = useState<string>(''); 
+  const [showVetPassword, setShowVetPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+
+  const isCurrentUserVet = user?.roles?.includes(RoleEnum.VET) ?? false;
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setFormData(initialFormData);
       setVaccineData(initialVaccineData);
+      setVetPassword(''); 
       setError("");
       setIsLoading(false);
     }
@@ -134,14 +139,8 @@ const AddRecordModal = ({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!token) {
-      setError("Authentication error. Please log in again.");
-      return;
-    }
-    if (!formData.type) {
-      setError("Record type is required.");
-      return;
-    }
+    if (!token) {setError("Authentication error. Please log in again."); return;}
+    if (!formData.type) {setError("Record type is required."); return;}
     if (formData.type === RecordType.VACCINE) {
       if (
         !vaccineData.name ||
@@ -159,6 +158,10 @@ const AddRecordModal = ({
         return;
       }
     }
+     if (isCurrentUserVet && !vetPassword.trim()) {
+            setError("Your private key password is required to sign this record.");
+            return;
+        }
 
     setIsLoading(true);
     setError("");
@@ -177,6 +180,7 @@ const AddRecordModal = ({
               isRabiesVaccine: vaccineData.isRabiesVaccine || false,
             }
           : null,
+      vetPrivateKeyPassword: isCurrentUserVet ? vetPassword : null, 
     };
 
     try {
@@ -188,7 +192,9 @@ const AddRecordModal = ({
       console.error("Failed to add record:", err);
       setError(
         err instanceof Error ? err.message : "Could not add medical record."
+        
       );
+      toast.error(err instanceof Error ? err.message : 'Could not add medical record.');
     } finally {
       setIsLoading(false);
     }
@@ -296,7 +302,7 @@ const AddRecordModal = ({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="laboratory" className="text-gray-300">
-                  Laboratory
+                  Laboratory *
                 </Label>
                 <Input
                   id="laboratory"
@@ -349,6 +355,35 @@ const AddRecordModal = ({
             </div>
           </div>
         )}
+
+        {/* Password for Vet */}
+        {isCurrentUserVet && (
+        <div className="mt-4 pt-4 border-t border-[#FFECAB]/20 space-y-2">
+          <Label htmlFor="vetPasswordForSign" className="text-gray-300 flex items-center">
+            <LockKeyhole size={16} className="mr-2 text-orange-400" />Your Signing Password * </Label>
+          <p className="text-xs text-gray-400">Enter the password for your private signing key to digitally sign this record.</p>
+          <div className="relative">
+            <Input
+              id="vetPasswordForSign"
+              type={showVetPassword ? "text" : "password"}
+              value={vetPassword}
+              onChange={(e) => setVetPassword(e.target.value)}
+              placeholder="Enter your signing password"
+              required
+              disabled={isLoading}
+              className="bg-[#070913] border-gray-700 pr-10"
+             />
+            <button
+              type="button"
+              onClick={() => setShowVetPassword(!showVetPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-200"
+              aria-label={showVetPassword ? "Hide password" : "Show password"}
+            >
+              {showVetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>          
+        )}        
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t border-[#FFECAB]/20 mt-5">

@@ -15,8 +15,11 @@ import jakarta.validation.constraints.NotNull;
 public record CertificateGenerationRequestDto(
         @NotNull(message = "Pet ID cannot be null")
         Long petId,
-
         @NotBlank(message = "Official Certificate Number cannot be blank")
-        String certificateNumber
+        String certificateNumber,
+        @NotBlank (message = "Vet`s private key password vet cannot be blank")
+        String vetPrivateKeyPassword,
+        @NotBlank (message = "Clinic`s private key password vet cannot be blank")
+        String clinicPrivateKeyPassword
 ) {
 }

@@ -3,6 +3,7 @@ package com.petconnect.backend.user.application.service.impl;
 import com.petconnect.backend.common.helper.AuthorizationHelper;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.common.helper.ValidateHelper;
+import com.petconnect.backend.common.service.EmailService;
 import com.petconnect.backend.common.service.KeyStorageService;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Implementation of the {@link ClinicStaffService} interface.
@@ -36,7 +38,6 @@ import java.util.List;
 @Slf4j
 public class ClinicStaffServiceImpl implements ClinicStaffService {
 
-
     private final ClinicStaffRepository clinicStaffRepository;
     private final UserMapper userMapper;
     private final EntityFinderHelper entityFinderHelper;
@@ -44,13 +45,17 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
     private final ValidateHelper validateHelper;
     private final ClinicStaffHelper clinicStaffHelper;
     private final KeyStorageService keyStorageService;
+    private final EmailService emailService;
 
     /**
      * {@inheritDoc}
      */
     @Override
     @Transactional
-    public ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO, @Nullable MultipartFile publicKeyFile, Long creatingAdminId) {
+    public ClinicStaffProfileDto createClinicStaff(ClinicStaffCreationDto creationDTO,
+                                                   @Nullable MultipartFile publicKeyFile,
+                                                   @Nullable MultipartFile privateKeyFileEncrypted,
+                                                   Long creatingAdminId) {
         // Verify the user performing the action is a valid Admin and get their clinic
         ClinicStaff creatingAdminStaff = entityFinderHelper.findAdminStaffOrFail(creatingAdminId, "create clinic staff");
         Clinic targetClinic = creatingAdminStaff.getClinic(); // New staff will belong to this admin's clinic
@@ -59,29 +64,47 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         validateHelper.validateStaffRole(creationDTO.role());
         validateHelper.validateNewStaffUniqueness(creationDTO.email(), creationDTO.username());
 
+        String savedPublicKeyPath = null;
+        String savedPrivateKeyPath = null;
+
         // --- Logic to save the public key BEFORE creating the Vet entity---
-        String publicKeyPath = null;
         if (creationDTO.role() == RoleEnum.VET) {
+
+            validateHelper.validateVetLicenseNumber(creationDTO.licenseNumber());
+
             if (publicKeyFile == null || publicKeyFile.isEmpty()) {
                 throw new IllegalArgumentException("Public Key file (.pem) is required for VET role.");
             }
-            // Validate other VET (license) fields
-            validateHelper.validateVetLicenseNumber(creationDTO.licenseNumber());
 
             try {
                 // Create a predictable filename, e.g., vet_<username>_pub
                 String desiredFilenameBase = "vet_" + creationDTO.username() + "_pub";
                 // Save in the "vets" subdirectory
-                publicKeyPath = keyStorageService.storePublicKey(publicKeyFile, "vets", desiredFilenameBase);
-                log.info("Stored public key for new vet {} at path: {}", creationDTO.username(), publicKeyPath);
+                savedPublicKeyPath  = keyStorageService.storePublicKey(publicKeyFile, "vets", desiredFilenameBase);
+                log.info("Stored public key for new vet {} at path: {}", creationDTO.username(), savedPublicKeyPath );
             } catch (IOException | IllegalArgumentException e) {
                 log.error("Failed to store public key file for vet {}: {}", creationDTO.username(), e.getMessage(), e);
                 throw new RuntimeException("Failed to store public key file: " + e.getMessage(), e);
             }
+
+            if (privateKeyFileEncrypted == null || privateKeyFileEncrypted.isEmpty()) {
+                throw new IllegalArgumentException("Encrypted Private Key file is required for VET role.");
+            }
+            try {
+                // Create a predictable filename, e.g., vet_<username>_priv
+                String desiredPrivKeyFilenameBase = "vet_" + creationDTO.username() + "_priv";
+                // Save in the "vets" subdirectory
+                savedPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(privateKeyFileEncrypted, "vets", desiredPrivKeyFilenameBase);
+                log.info("Stored encrypted private key for new vet {} at path: {}", creationDTO.username(), savedPrivateKeyPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store encrypted private key file for vet {}: {}", creationDTO.username(), e.getMessage(), e);
+                if (savedPublicKeyPath != null) keyStorageService.deleteKey(savedPublicKeyPath);
+                throw new RuntimeException("Failed to store encrypted private key file: " + e.getMessage(), e);
+            }
         }
 
         // Create Entity (Vet or Admin)
-        ClinicStaff newStaff = clinicStaffHelper.buildNewStaffEntity(creationDTO, publicKeyPath, targetClinic);
+        ClinicStaff newStaff = clinicStaffHelper.buildNewStaffEntity(creationDTO, savedPublicKeyPath, savedPrivateKeyPath, targetClinic);
 
         // Save and Map Response
         ClinicStaff savedStaff = clinicStaffRepository.save(newStaff);
@@ -95,50 +118,71 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
      */
     @Override
     @Transactional
-    public ClinicStaffProfileDto updateClinicStaff(Long staffId, ClinicStaffUpdateDto updateDTO,  @Nullable MultipartFile publicKeyFile,  Long updatingAdminId) {
-        // Find staff to update
+    public ClinicStaffProfileDto updateClinicStaff(Long staffId,
+                                                   ClinicStaffUpdateDto updateDTO,
+                                                   @Nullable MultipartFile newPublicKeyFile,
+                                                   @Nullable MultipartFile newPrivateKeyFile,
+                                                   Long updatingAdminId) {
         ClinicStaff staffToUpdate = entityFinderHelper.findClinicStaffOrFail(staffId, "update");
-        // Verify Admin authorization (same clinic)
         authorizationHelper.verifyAdminActionOnStaff(updatingAdminId, staffToUpdate, "update");
 
-        String newPublicKeyPath = null;
+        String oldPublicKeyPath = (staffToUpdate instanceof Vet v) ? v.getVetPublicKey() : null;
+        String oldPrivateKeyPath = (staffToUpdate instanceof Vet v) ? v.getVetPrivateKey() : null;
 
-        boolean attemptingVetRole = updateDTO.roles() != null && updateDTO.roles().contains(RoleEnum.VET);
-        if (attemptingVetRole && publicKeyFile != null && !publicKeyFile.isEmpty()) {
-            if (!(staffToUpdate instanceof Vet)) {
-                log.info("New public key file provided for staff ID {}, role update includes VET.", staffId);
-            }
+        String finalNewPublicKeyPath = oldPublicKeyPath;
+        String finalNewPrivateKeyPath = oldPrivateKeyPath;
+        boolean publicKeyChanged = false;
+        boolean privateKeyChanged = false;
+
+        boolean isTargetRoleVet = (updateDTO.roles() != null && !updateDTO.roles().isEmpty())
+                ? updateDTO.roles().contains(RoleEnum.VET)
+                : staffToUpdate.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.VET);
+
+
+        if (isTargetRoleVet && newPublicKeyFile != null && !newPublicKeyFile.isEmpty()) {
             try {
                 String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_pub";
-                newPublicKeyPath = keyStorageService.storePublicKey(publicKeyFile, "vets", desiredFilenameBase);
-                log.info("Stored new public key for staff {} at path: {}", staffToUpdate.getUsername(), newPublicKeyPath);
+                finalNewPublicKeyPath = keyStorageService.storePublicKey(newPublicKeyFile, "vets", desiredFilenameBase);
+                publicKeyChanged = !Objects.equals(oldPublicKeyPath, finalNewPublicKeyPath);
             } catch (IOException | IllegalArgumentException e) {
                 log.error("Failed to store new public key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
                 throw new RuntimeException("Failed to store new public key file: " + e.getMessage(), e);
             }
-        } else if (attemptingVetRole && staffToUpdate instanceof Vet vet && StringUtils.hasText(vet.getVetPublicKey())) {
-            newPublicKeyPath = vet.getVetPublicKey();
-            log.debug("Keeping existing public key path for staff ID {}: {}", staffId, newPublicKeyPath);
         }
 
-        // Apply updates
-        boolean changed = clinicStaffHelper.applyStaffUpdates(staffToUpdate, updateDTO, newPublicKeyPath);
-
-        // Save if changed
-        ClinicStaff updatedStaff = staffToUpdate;
-        if (changed) {
-            if (newPublicKeyPath != null && staffToUpdate instanceof Vet vet &&
-                    StringUtils.hasText(vet.getVetPublicKey()) && !vet.getVetPublicKey().equals(newPublicKeyPath)) {
-                log.info("Deleting old public key file for staff {}: {}", staffId, vet.getVetPublicKey());
-                keyStorageService.deleteKey(vet.getVetPublicKey());
+        if (isTargetRoleVet && newPrivateKeyFile != null && !newPrivateKeyFile.isEmpty()) {
+            try {
+                String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_priv";
+                finalNewPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(newPrivateKeyFile, "vets", desiredFilenameBase);
+                privateKeyChanged = !Objects.equals(oldPrivateKeyPath, finalNewPrivateKeyPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store new encrypted private key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
+                throw new RuntimeException("Failed to store new encrypted private key file: " + e.getMessage(), e);
             }
-            updatedStaff = clinicStaffRepository.save(staffToUpdate);
-            log.info("Admin {} updated staff {}", updatingAdminId, updatedStaff.getUsername());
+        }
+
+        boolean otherFieldsChanged = clinicStaffHelper.applyStaffUpdates(staffToUpdate, updateDTO, finalNewPublicKeyPath, finalNewPrivateKeyPath);
+
+        ClinicStaff updatedStaffEntity = staffToUpdate;
+        if (otherFieldsChanged || publicKeyChanged || privateKeyChanged) {
+            if (publicKeyChanged && StringUtils.hasText(oldPublicKeyPath)) {
+                keyStorageService.deleteKey(oldPublicKeyPath);
+            }
+            if (privateKeyChanged && StringUtils.hasText(oldPrivateKeyPath)) {
+                keyStorageService.deleteKey(oldPrivateKeyPath);
+            }
+            updatedStaffEntity = clinicStaffRepository.save(staffToUpdate);
+            log.info("Admin {} updated staff {}", updatingAdminId, updatedStaffEntity.getUsername());
+
+            if (staffToUpdate instanceof Vet && (publicKeyChanged || privateKeyChanged)) {
+                emailService.sendVetKeysChangedNotification(updatedStaffEntity.getEmail(), updatedStaffEntity.getName());
+                log.info("Vet keys changed for {}. Notification would be sent.", updatedStaffEntity.getUsername());
+            }
+
         } else {
             log.info("No changes detected for staff ID {}, update skipped.", staffId);
         }
-
-        return userMapper.toClinicStaffProfileDto(updatedStaff);
+        return userMapper.toClinicStaffProfileDto(updatedStaffEntity);
     }
 
     /**

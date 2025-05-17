@@ -10,14 +10,15 @@ import { cn } from '@/lib/utils';
 interface PetDetailTabsProps {
     pet: PetProfileDto;
     onAssociationChanged: () => void;
+    defaultActiveTab?: string; 
 }
 
-const PetDetailTabs = ({ pet, onAssociationChanged}: PetDetailTabsProps): JSX.Element => {
+const PetDetailTabs = ({ pet, onAssociationChanged, defaultActiveTab = "home" }: PetDetailTabsProps): JSX.Element => {
     const baseTriggerClasses = "flex-1 min-w-[70px] sm:min-w-[100px] justify-center items-center gap-1.5 px-2 py-2.5 h-auto text-sm font-medium cursor-pointer";
     const inactiveTriggerClasses = "text-gray-400 hover:text-[#FFECAB] hover:bg-[#090D1A]/30";
 
     return (
-      <Tabs defaultValue="home" className="w-full mt-4">
+      <Tabs defaultValue={defaultActiveTab}  className="w-full mt-4" key={pet.id + defaultActiveTab}>
         <TabsList className="flex w-full justify-around gap-1 bg-transparent ">
           <TabsTrigger
             value="home"

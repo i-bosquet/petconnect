@@ -5,10 +5,7 @@ import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.Owner;
 import com.petconnect.backend.user.domain.model.Vet;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -68,13 +65,12 @@ public class Pet extends BaseEntity {
     private LocalDate birthDate;
 
     /**
-     * The unique microchip identification number implanted in the pet.
-     * Must be unique across all pets. Optional during initial registration,
-     * but likely required for activation or certificate generation.
-     * Indexed for efficient lookup.
+     * Represents the unique microchip identifier for a pet.
+     * The microchip must be exactly 15 characters in length.
+     * This field is unique across the system and is used for identifying pets.
      */
-    @Size(max = 50, message = "Microchip number cannot exceed 50 characters")
-    @Column(name = "microchip", unique = true, length = 50)
+    @Pattern(regexp = "^\\d{15}$", message = "Microchip must be exactly 15 digits and contain only numbers.")
+    @Column(name = "microchip", unique = true, length = 15)
     private String microchip;
 
     /**
@@ -93,6 +89,24 @@ public class Pet extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private PetStatus status;
+
+    /**
+     * Represents the date of the pet's last entry into the European Union (EU).
+     * This field is mapped to the "last_eu_entry_date" column in the database.
+     * It stores the most recent date when the pet entered EU territory.
+     * The value is expected to be a valid date or null if the information has not been provided.
+     */
+    @Column(name = "last_eu_entry_date")
+    private LocalDate lastEuEntryDate;
+
+    /**
+     * Represents the date of the pet's last exit from the European Union (EU) territory.
+     * Mapped to the "last_eu_exit_date" column in the database, it stores the most recent
+     * date when the pet exited the EU.
+     * The value can be null if the information is not available.
+     */
+    @Column(name = "last_eu_exit_date")
+    private LocalDate lastEuExitDate;
 
     /**
      * Determines equality based solely on the entity's unique identifier (ID).

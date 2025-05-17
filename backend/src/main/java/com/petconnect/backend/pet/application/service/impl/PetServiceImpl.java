@@ -33,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.lang.Nullable;
 import java.io.IOException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -85,6 +86,11 @@ public class PetServiceImpl implements PetService {
             }
         } else {
             log.debug("No image file provided for registration, will use default determined by mapper/entity.");
+        }
+
+        if (StringUtils.hasText(registrationDto.microchip()) && petRepository.existsByMicrochip(registrationDto.microchip())) {
+            log.warn("Attempt to register pet with existing microchip: {}", registrationDto.microchip());
+            throw new MicrochipAlreadyExistsException(registrationDto.microchip());
         }
 
         Pet newPet = Pet.builder()
@@ -245,6 +251,33 @@ public class PetServiceImpl implements PetService {
         validateMicrochipUpdate(updateDto.microchip(), petToUpdate);
 
         boolean otherFieldsChanged = petMapper.updateFromOwnerDto(updateDto, petToUpdate, resolvedBreed);
+        boolean travelDatesChanged = false;
+        if (updateDto.newEuEntryDate() != null) {
+            LocalDate newEntry = updateDto.newEuEntryDate();
+            if (petToUpdate.getLastEuExitDate() != null && !newEntry.isAfter(petToUpdate.getLastEuExitDate())) {
+                throw new IllegalArgumentException("New EU entry date must be after the last EU exit date.");
+            }
+            if (!newEntry.equals(petToUpdate.getLastEuEntryDate())) {
+                petToUpdate.setLastEuEntryDate(newEntry);
+                travelDatesChanged = true;
+                log.info("Pet {} EU entry date updated to: {}", petId, newEntry);
+            }
+        }
+
+        if (updateDto.newEuExitDate() != null) {
+            LocalDate newExit = updateDto.newEuExitDate();
+            if (petToUpdate.getLastEuEntryDate() == null) {
+                throw new IllegalArgumentException("Cannot set EU exit date without an EU entry date.");
+            }
+            if (!newExit.isAfter(petToUpdate.getLastEuEntryDate())) {
+                throw new IllegalArgumentException("EU exit date must be after the current EU entry date.");
+            }
+            if (!newExit.equals(petToUpdate.getLastEuExitDate())) {
+                petToUpdate.setLastEuExitDate(newExit);
+                travelDatesChanged = true;
+                log.info("Pet {} EU exit date updated to: {}", petId, newExit);
+            }
+        }
 
         Pet updatedPet = petToUpdate;
         if (imageChanged || otherFieldsChanged) {

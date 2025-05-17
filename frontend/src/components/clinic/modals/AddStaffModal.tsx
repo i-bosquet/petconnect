@@ -1,10 +1,12 @@
-import { useState, FormEvent, ChangeEvent, JSX, useRef} from 'react'; 
+import { useState, FormEvent, ChangeEvent, JSX, useRef, useEffect} from 'react'; 
 import Modal from '@/components/common/Modal';
-import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2, Eye, EyeOff, CircleX, SaveAll  } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Briefcase, KeySquare, Upload, Loader2, Eye, EyeOff, CircleX, SaveAll, KeyRound} from 'lucide-react';
 import { RoleEnum, ClinicStaffCreationPayload } from '@/types/apiTypes';
 import { createClinicStaff } from '@/services/clinicStaffService';
 import { useAuth } from '@/hooks/useAuth'; 
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { toast } from 'sonner';
 
 interface AddStaffModalProps {
     isOpen: boolean;
@@ -46,10 +48,31 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
     const [confirmPassword, setConfirmPassword] = useState<string>('');
     const [showPassword, setShowPassword] = useState<boolean>(false); 
     const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false); 
+
     const [selectedPublicKeyFile, setSelectedPublicKeyFile] = useState<File | null>(null);
     const publicKeyFileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedPrivateKeyFile, setSelectedPrivateKeyFile] = useState<File | null>(null); 
+    const privateKeyFileInputRef = useRef<HTMLInputElement>(null);
+
     const [error, setError] = useState<string>('');
+    const [fileError, setFileError] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false)
+
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(initialFormData);
+            setConfirmPassword('');
+            setShowPassword(false);
+            setShowConfirmPassword(false);
+            setSelectedPublicKeyFile(null);
+            setSelectedPrivateKeyFile(null);
+            if (publicKeyFileInputRef.current) publicKeyFileInputRef.current.value = '';
+            if (privateKeyFileInputRef.current) privateKeyFileInputRef.current.value = '';
+            setError('');
+            setFileError('');
+            setIsLoading(false);
+        }
+    }, [isOpen, clinicId]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -60,25 +83,31 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
         }
     };
 
-    const handlePublicKeyFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleKeyFileChange = ( e: ChangeEvent<HTMLInputElement>, 
+        setFileState: React.Dispatch<React.SetStateAction<File | null>>,
+        keyType: 'Public' | 'Encrypted Private') => {
+        setFileError('');
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.type === 'application/x-x509-ca-cert' || file.type === 'application/pkix-cert' || file.name.endsWith('.pem') || file.name.endsWith('.crt')) {
-                setSelectedPublicKeyFile(file);
-                setError('');
-            } else {
-                setSelectedPublicKeyFile(null);
-                e.target.value = ''; 
-                setError('Invalid file type. Please select a .pem or .crt file.');
+            // Permitir .pem y .crt (común para claves)
+            const allowedExtensions = [".pem", ".crt"]; // Puedes añadir .p12, .pfx si son formatos encriptados comunes que manejas
+            const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+
+            if (!allowedExtensions.includes(fileExtension)) {
+                setFileState(null);
+                e.target.value = "";
+                setFileError(`Invalid ${keyType} Key file. Allowed: ${allowedExtensions.join(", ")}.`);
+                return;
             }
+            setFileState(file);
         } else {
-            setSelectedPublicKeyFile(null);
+            setFileState(null);
         }
     };
 
-    const triggerPublicKeyFileInput = () => {
-        publicKeyFileInputRef.current?.click();
-    };
+    const triggerPublicKeyFileInput = () => {publicKeyFileInputRef.current?.click();};
+
+    const triggerPrivateKeyFileInput = () => privateKeyFileInputRef.current?.click(); 
 
     const validateForm = (): boolean => {
         if (!formData.username || !formData.email || !formData.password || !confirmPassword || !formData.name || !formData.surname) {
@@ -103,6 +132,10 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                 setError("Public Key file (.pem) is required for VET role.");
                 return false;
             }
+            if (!selectedPrivateKeyFile) { 
+                setError("Encrypted Private Key file is required for VET role."); 
+                return false; 
+            }
         }
         return true;
     };
@@ -110,6 +143,7 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
+        setFileError('');
         if (!validateForm()) return;
         if (!token) { setError("Authentication error."); return; }
 
@@ -132,17 +166,27 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
 
         submissionFormData.append('dto', new Blob([JSON.stringify(staffDtoPayload)], { type: 'application/json' }));
 
-        if (formData.role === RoleEnum.VET && selectedPublicKeyFile) {
-            submissionFormData.append('publicKeyFile', selectedPublicKeyFile, selectedPublicKeyFile.name);
+        if (formData.role === RoleEnum.VET) {
+            if (selectedPublicKeyFile) {
+                submissionFormData.append('publicKeyFile', selectedPublicKeyFile, selectedPublicKeyFile.name);
+            }
+            if (selectedPrivateKeyFile) { 
+                submissionFormData.append('privateKeyFile', selectedPrivateKeyFile, selectedPrivateKeyFile.name);
+            }
         }
 
         try {
             await createClinicStaff(token, submissionFormData);
+            toast.success(`Staff member ${formData.username} created successfully!`);
             onStaffAdded();
             console.log("Adding staff for clinic ID:", clinicId);
+            onClose();
         } catch (err) {
             console.error("Failed to add staff:", err);
-            setError(err instanceof Error ? err.message : 'Could not add staff member.');
+            const errMsg = err instanceof Error ? err.message : 'Could not add staff member.';
+            setError(errMsg);
+            toast.error(errMsg);
+        } finally {
             setIsLoading(false);
         } 
     };
@@ -158,6 +202,11 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                         {error}
                     </div>
                 )}
+                {fileError && (
+                <div className="p-2 mt-2 bg-orange-800/40 text-orange-300 rounded-md text-xs text-center">
+                    {fileError}
+                </div>
+            )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Username */}
@@ -259,7 +308,7 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                         </div>
                         {/* Vet Public Key File Upload */}
                         <div className="space-y-1">
-                             <label htmlFor="vetPublicKeyFile" className="block text-sm font-medium text-gray-300">Public Key File (.pem/.crt) *</label>
+                             <Label htmlFor="vetPublicKeyFile" className="block text-sm font-medium text-gray-300">Public Key File (.pem/.crt) *</Label>
                              <div className="mt-1 flex items-center gap-2">
                                 <Button type="button"  onClick={triggerPublicKeyFileInput} disabled={isLoading}
                                         className="border-[#FFECAB]/50 text-sm px-3 py-1.5 text-[#FFECAB]  hover:text-cyan-800 hover:bg-gray-300 border cursor-pointer">
@@ -273,12 +322,36 @@ const AddStaffModal = ({ isOpen, onClose, onStaffAdded, clinicId  }: AddStaffMod
                                     ref={publicKeyFileInputRef}
                                     className="hidden"
                                     accept=".pem,.crt,application/x-x509-ca-cert,application/pkix-cert"
-                                    onChange={handlePublicKeyFileChange}
+                                    onChange={(e) => handleKeyFileChange(e, setSelectedPublicKeyFile, 'Encrypted Private')}
                                     disabled={isLoading}
                                 />
                                  {selectedPublicKeyFile && <span className="text-xs text-gray-400 truncate max-w-xs">{selectedPublicKeyFile.name}</span>}
                                  {!selectedPublicKeyFile && <span className="text-xs text-gray-500">No file selected</span>}
                              </div>
+                        </div>
+                        {/* Encrypted Private Key File Upload */}
+                         <div className="space-y-1">
+                            <Label htmlFor="vetPrivateKeyFileEnc" className="text-gray-300 flex items-center gap-1.5">
+                                <KeyRound size={16} className="text-orange-400" /> Encrypted Private Key File (.pem/.crt) *
+                            </Label>
+                            <div className="mt-1 flex items-center gap-2">
+                                <Button type="button" onClick={triggerPrivateKeyFileInput} disabled={isLoading}
+                                    className="border-[#FFECAB]/50 text-sm px-3 py-1.5 text-[#FFECAB]  hover:text-cyan-800 hover:bg-gray-300 border cursor-pointer">
+                                    <Upload size={16} className="mr-2"/>
+                                    {selectedPrivateKeyFile ? "Change Encrypted Key" : "Select Encrypted Key"}
+                                </Button>
+                                <input
+                                    id="vetPrivateKeyFileEnc"
+                                    type="file"
+                                    ref={privateKeyFileInputRef}
+                                    className="hidden"
+                                    accept=".pem,.crt" // Ajusta según los tipos de archivo que esperas
+                                    onChange={(e) => handleKeyFileChange(e, setSelectedPrivateKeyFile, 'Encrypted Private')}
+                                    disabled={isLoading}
+                                />
+                                {selectedPrivateKeyFile && <span className="text-xs text-gray-400 truncate max-w-xs">{selectedPrivateKeyFile.name}</span>}
+                                {!selectedPrivateKeyFile && <span className="text-xs text-gray-500">No file selected</span>}
+                            </div>
                         </div>
                     </div>
                 )}

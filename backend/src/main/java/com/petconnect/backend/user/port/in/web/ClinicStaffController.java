@@ -36,9 +36,11 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
     @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ClinicStaffProfileDto> createClinicStaff(
             @RequestPart("dto") @Valid ClinicStaffCreationDto creationDTO,
-            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile) {
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile,
+            @RequestPart(value = "privateKeyFile", required = false) @Nullable MultipartFile privateKeyFile) {
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
-        ClinicStaffProfileDto createdStaff = clinicStaffService.createClinicStaff(creationDTO, publicKeyFile, currentAdminId);
+        ClinicStaffProfileDto createdStaff = clinicStaffService.createClinicStaff(
+                creationDTO, publicKeyFile, privateKeyFile, currentAdminId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdStaff);
     }
 
@@ -50,10 +52,11 @@ public class ClinicStaffController implements ClinicStaffControllerApi {
     public ResponseEntity<ClinicStaffProfileDto> updateClinicStaff(
             @PathVariable Long staffId,
             @RequestPart("dto") @Valid ClinicStaffUpdateDto updateDTO,
-            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile) {
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile,
+            @RequestPart(value = "privateKeyFile", required = false) @Nullable MultipartFile privateKeyFile) {
         Long currentAdminId = userAuthenticationHelper.getAuthenticatedUserId();
-
-        ClinicStaffProfileDto updatedStaff = clinicStaffService.updateClinicStaff(staffId, updateDTO, publicKeyFile, currentAdminId);
+        ClinicStaffProfileDto updatedStaff = clinicStaffService.updateClinicStaff(
+                staffId, updateDTO, publicKeyFile, privateKeyFile, currentAdminId);
         return ResponseEntity.ok(updatedStaff);
     }
 

@@ -36,6 +36,7 @@ public record ClinicStaffProfileDto(
         // Only for vets:
         String licenseNumber,
         String vetPublicKey,
+        Boolean hasPrivateKeyConfigured, //flag
         LocalDateTime createdAt,
         String createdBy,
         LocalDateTime updatedAt,

@@ -143,9 +143,9 @@ public class RecordHelper {
      * @return The Base64 encoded signature.
      * @throws RuntimeException if signing fails.
      */
-    public String signWithVetKey(Vet vet, String dataToSign) {
+    public String signWithVetKey(Vet vet, String dataToSign, char[] vetKeyPassword) {
         try {
-            return signingService.generateVetSignature(vet, dataToSign);
+            return signingService.generateVetSignature(vet, dataToSign, vetKeyPassword);
         } catch (RuntimeException e) {
             log.error("Failed to generate Vet signature for Pet by Vet ID {}: {}", vet.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate Vet digital signature.", e);
@@ -161,9 +161,9 @@ public class RecordHelper {
      * @return The Base64 encoded signature.
      * @throws RuntimeException if signing fails.
      */
-    public String signWithClinicKey(Clinic clinic, String dataToSign) {
+    public String signWithClinicKey(Clinic clinic, String dataToSign, char[] clinicKeyPassword) {
         try {
-            return signingService.generateClinicSignature(clinic, dataToSign);
+            return signingService.generateClinicSignature(clinic, dataToSign, clinicKeyPassword);
         } catch (RuntimeException e) {
             log.error("Failed to generate Clinic signature for Clinic ID {}: {}", clinic.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate Clinic digital signature.", e);

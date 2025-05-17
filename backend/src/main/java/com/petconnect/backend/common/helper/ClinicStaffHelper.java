@@ -1,7 +1,5 @@
 package com.petconnect.backend.common.helper;
 
-import com.petconnect.backend.exception.LicenseNumberAlreadyExistsException;
-import com.petconnect.backend.exception.VetPublicKeyAlreadyExistsException;
 import com.petconnect.backend.user.application.dto.ClinicStaffCreationDto;
 import com.petconnect.backend.user.application.dto.ClinicStaffUpdateDto;
 import com.petconnect.backend.user.domain.model.*;
@@ -39,38 +37,52 @@ public class ClinicStaffHelper {
     private String defaultUserImagePathBase;
 
     /**
-     * Builds a new {@link Vet} or {@link ClinicStaff} (for ADMIN role) entity based on the provided DTO and clinic.
-     * This method populates common fields and role-specific fields (for Vet), including validation.
-     * It does *not* save the entity to the database.
+     * Creates a new instance of {@link ClinicStaff} based on the provided clinic staff creation data.
+     * Depending on the specified role, a {@link Vet} or a general {@link ClinicStaff} entity is created.
+     * Ensures that all required fields and role-specific validations are properly handled.
      *
-     * @param dto The DTO containing the data for the new staff member.
-     * @param targetClinic The {@link Clinic} the new staff member will belong to.
-     * @return The constructed (but not persisted) {@link ClinicStaff} or {@link Vet} entity.
-     * @throws IllegalArgumentException if VET role-specific fields (license, key) are invalid or missing.
-     * @throws LicenseNumberAlreadyExistsException if the VET license number is already in use.
-     * @throws VetPublicKeyAlreadyExistsException if the VET public key is already in use.
+     * @param dto The {@link ClinicStaffCreationDto} containing details necessary for creating a new staff member.
+     *            Includes general details like name, surname, role, and, for VET roles, an optional license number.
+     * @param publicKeyPath The file path to the uploaded public key file for VET roles.
+     *                      Can be null, but required when creating a {@link Vet}.
+     * @param privateKeyPath The file path to the encrypted private key file for VET roles.
+     *                       Can be null, but required when creating a {@link Vet}.
+     * @param targetClinic The {@link Clinic} entity with which the new staff member will be associated.
+     *                     This parameter cannot be null.
+     * @return A new {@link ClinicStaff} instance representing the created staff member.
+     *         The instance is either of type {@link Vet} or general {@link ClinicStaff}, depending on the role specified.
+     * @throws IllegalArgumentException If required fields specific to the VET role are missing or invalid.
      */
-    public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto, @Nullable String publicKeyPath, Clinic targetClinic) {
+    public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto,
+                                           @Nullable String publicKeyPath,
+                                           @Nullable String privateKeyPath,
+                                           Clinic targetClinic) {
         ClinicStaff newStaff;
         String defaultAvatarPath;
 
-        if (dto.role() == RoleEnum.VET) {
-
-            Vet newVet = new Vet();
-            setCommonStaffFields(newVet, dto, targetClinic); // Populate common fields
-            // Set Vet specific fields
-            newVet.setLicenseNumber(dto.licenseNumber());
-            if (!StringUtils.hasText(publicKeyPath)) {
-                throw new IllegalStateException("Internal Error: PublicKey path is missing for VET creation."); // Defensive check
+        if (dto.role() == RoleEnum.VET) { // VET
+            if (!StringUtils.hasText(dto.licenseNumber())) {
+                throw new IllegalArgumentException("License number is required for VET role.");
             }
+            if (!StringUtils.hasText(publicKeyPath)) {
+                throw new IllegalArgumentException("Public key file processing failed or path is missing for VET role.");
+            }
+            if (!StringUtils.hasText(privateKeyPath)) {
+                throw new IllegalArgumentException("Internal error: Encrypted private key path missing for VET after storage attempt.");
+            }
+            Vet newVet = new Vet();
+            setCommonStaffFields(newVet, dto, targetClinic);
+            newVet.setLicenseNumber(dto.licenseNumber());
             newVet.setVetPublicKey(publicKeyPath);
+            newVet.setVetPrivateKey(privateKeyPath);
             defaultAvatarPath = getDefaultAvatarPath("vet.png");
             newVet.setAvatar(defaultAvatarPath);
             newStaff = newVet;
+
         } else { // ADMIN
             ClinicStaff newAdmin = new ClinicStaff();
             setCommonStaffFields(newAdmin, dto, targetClinic); // Populate common fields
-            defaultAvatarPath = getDefaultAvatarPath("admin.png"); 
+            defaultAvatarPath = getDefaultAvatarPath("admin.png");
             newAdmin.setAvatar(defaultAvatarPath);
             newStaff = newAdmin;
         }
@@ -118,10 +130,13 @@ public class ClinicStaffHelper {
      * @param newPublicKeyPath Optional path to a newly uploaded public key file (null if not changed).
      * @return true if any field on the entity was actually changed, false otherwise.
      */
-    public boolean applyStaffUpdates(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO, @Nullable String newPublicKeyPath) {
+    public boolean applyStaffUpdates(ClinicStaff staffToUpdate,
+                                     ClinicStaffUpdateDto updateDTO,
+                                     @Nullable String newPublicKeyPath,
+                                     @Nullable String newPrivateKeyPath) {
         boolean nameChanged = updateNameAndSurname(staffToUpdate, updateDTO);
         boolean rolesChanged = updateRoles(staffToUpdate, updateDTO);
-        boolean vetFieldsChanged = updateVetSpecificFields(staffToUpdate, updateDTO, newPublicKeyPath);
+        boolean vetFieldsChanged = updateVetSpecificFields(staffToUpdate, updateDTO, newPublicKeyPath, newPrivateKeyPath);
 
         return nameChanged || rolesChanged || vetFieldsChanged;
     }
@@ -173,16 +188,23 @@ public class ClinicStaffHelper {
     }
 
     /**
-     * Updates Vet-specific fields (license number, public key path) if the staff member
-     * is a Vet and has the VET role assigned after potential role updates.
-     * Handles consistency checks.
+     * Updates vet-specific fields (license number, public key, and private key) of a ClinicStaff entity
+     * if applicable. This method ensures that only valid updates are applied to entities representing
+     * veterinarians. It also verifies role consistency and handles potential data discrepancies.
      *
-     * @param staffToUpdate The entity to update.
-     * @param updateDTO The DTO with potential updates.
-     * @param newPublicKeyPath Optional path to a newly uploaded public key file.
-     * @return true if any Vet-specific field was changed, false otherwise.
+     * @param staffToUpdate The ClinicStaff entity to update.
+     * @param updateDTO The DTO containing the updated data.
+     * @param newPublicKeyPath An optional new path for the vet's public key file (can be null if not provided).
+     * @param newPrivateKeyPath An optional new path for the vet's private key file (can be null if not provided).
+     * @return true if one or more vet-specific fields were successfully updated, false otherwise.
+     * @throws IllegalStateException if the entity does not match the expected type for a veterinarian
+     *                               while the role indicates it should.
      */
-    private boolean updateVetSpecificFields(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO, @Nullable String newPublicKeyPath) {
+    private boolean updateVetSpecificFields(ClinicStaff staffToUpdate,
+                                            ClinicStaffUpdateDto updateDTO,
+                                            @Nullable String newPublicKeyPath,
+                                            @Nullable String newPrivateKeyPath) {
+
         boolean changed = false;
         Set<RoleEnum> currentOrUpdatedRoles = staffToUpdate.getRoles().stream()
                 .map(RoleEntity::getRoleEnum)
@@ -203,6 +225,12 @@ public class ClinicStaffHelper {
                     vetToUpdate.setVetPublicKey(newPublicKeyPath);
                     changed = true;
                 }
+                // Update Private key if a new file was provided and a path is different
+                if (StringUtils.hasText(newPrivateKeyPath) && !Objects.equals(newPrivateKeyPath, vetToUpdate.getVetPrivateKey())) {
+                    log.info("Updating vetPrivateKey path for Vet ID {} to {}", vetToUpdate.getId(), newPrivateKeyPath);
+                    vetToUpdate.setVetPrivateKey(newPrivateKeyPath);
+                    changed = true;
+            }
             } else {
                 log.warn("Staff ID {} is instance of Vet but no longer has VET role assigned. Vet-specific fields not updated/cleared.", staffToUpdate.getId());
             }
@@ -214,6 +242,13 @@ public class ClinicStaffHelper {
         return changed;
     }
 
+    /**
+     * Constructs the full default avatar path by appending the given filename to the base path.
+     * Ensures the base path ends with a '/' character before concatenation.
+     *
+     * @param filename The name of the avatar file to include in the path.
+     * @return The complete default avatar file path as a string.
+     */
     private String getDefaultAvatarPath(String filename) {
         String basePath = defaultUserImagePathBase.endsWith("/") ? defaultUserImagePathBase : defaultUserImagePathBase + '/';
         return basePath + filename;

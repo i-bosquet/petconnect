@@ -132,11 +132,35 @@ public class GlobalExceptionHandler {
      * @return A ResponseEntity containing the standardized error body and status 500.
      */
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        log.error("An unexpected error occurred: {}", ex.getMessage(), ex);
-        Map<String, Object> body = createErrorBody(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred. Please try again later.");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        String errorMessage = "An unexpected error occurred. Please try again later.";
+        String errorTitle = "Internal Server Error";
+
+        if (ex instanceof RuntimeException) {
+            String exMessage = ex.getMessage();
+            if (exMessage != null) {
+                if (exMessage.startsWith("Failed to decrypt Vet private key") ||
+                        exMessage.startsWith("Failed to decrypt Clinic private key")) {
+
+                    errorMessage = "Incorrect private key password or invalid key file format. Please try again.";
+                    status = HttpStatus.BAD_REQUEST;
+                    errorTitle = "Invalid Credentials or Key";
+                    log.warn("Decryption failed for private key, likely incorrect password: {}", exMessage);
+                } else if (exMessage.startsWith("Failed to generate Vet digital signature") ||
+                        exMessage.startsWith("Failed to generate Clinic digital signature")) {
+                    errorMessage = "Could not generate digital signature. Ensure key paths are correct and keys are valid.";
+                    errorTitle = "Signature Generation Failed";
+                    log.error("Signature generation failed: {}", exMessage, ex);
+                }
+            }
+        }
+        if (status == HttpStatus.INTERNAL_SERVER_ERROR) {
+            log.error("An unexpected error occurred: {}", ex.getMessage(), ex);
+        }
+
+        Map<String, Object> body = createErrorBody(status, errorTitle, errorMessage);
+        return ResponseEntity.status(status).body(body);
     }
 
     /**

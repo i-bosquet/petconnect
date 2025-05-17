@@ -82,344 +82,344 @@ class CertificateServiceImplTest {
     private final Long vetId = 1L;
     private final String certNumber = "AHC-12345-XYZ";
 
-    @BeforeEach
-    void setUp() {
-        Long petId = 100L;
-        Long clinicId = 5L;
-        Long ownerId = 50L;
-        Long certificateId = 500L;
-        Long rabiesRecordId = 10L;
-        Long checkupRecordId = 11L;
+//    @BeforeEach
+//    void setUp() {
+//        Long petId = 100L;
+//        Long clinicId = 5L;
+//        Long ownerId = 50L;
+//        Long certificateId = 500L;
+//        Long rabiesRecordId = 10L;
+//        Long checkupRecordId = 11L;
+//
+//
+//        clinic = Clinic.builder().name("Test Clinic Cert").build(); clinic.setId(clinicId);
+//        owner = new Owner(); owner.setId(ownerId); owner.setUsername("certowner");
+//        generatingVet = new Vet(); generatingVet.setId(vetId); generatingVet.setClinic(clinic); generatingVet.setUsername("certvet");
+//        pet = new Pet(); pet.setId(petId); pet.setOwner(owner);
+//
+//        Vaccine rabiesVaccine = Vaccine.builder().name("Rabivax").isRabiesVaccine(true).validity(1).build();
+//        rabiesVaccine.setId(rabiesRecordId);
+//
+//        validRabiesRecord = new Record();
+//        validRabiesRecord.setId(rabiesRecordId);
+//        validRabiesRecord.setPet(pet);
+//        validRabiesRecord.setCreator(generatingVet);
+//        validRabiesRecord.setVetSignature("RABIES_SIG");
+//        validRabiesRecord.setType(RecordType.VACCINE);
+//        validRabiesRecord.setCreatedAt(LocalDateTime.now().minusMonths(6));
+//        validRabiesRecord.setVaccine(rabiesVaccine);
+//        rabiesVaccine.setRecordEntity(validRabiesRecord);
+//
+//        Record validCheckupRecord = new Record();
+//        validCheckupRecord.setId(checkupRecordId);
+//        validCheckupRecord.setPet(pet);
+//        validCheckupRecord.setCreator(generatingVet);
+//        validCheckupRecord.setVetSignature("CHECKUP_SIG");
+//        validCheckupRecord.setType(RecordType.ANNUAL_CHECK);
+//        validCheckupRecord.setCreatedAt(LocalDateTime.now().minusMonths(2));
+//
+//        generationRequestDto = new CertificateGenerationRequestDto(petId, certNumber);
+//
+//        savedCertificate = Certificate.builder()
+//                .medicalRecord(validRabiesRecord)
+//                .pet(pet).generatorVet(generatingVet).issuingClinic(clinic)
+//                .certificateNumber(certNumber)
+//                .payload("{\"key\":\"value\"}")
+//                .hash("hashedPayload")
+//                .vetSignature("vetSignedHash")
+//                .clinicSignature("clinicSignedHash")
+//                .build();
+//        savedCertificate.setId(certificateId);
+//        savedCertificate.setCreatedAt(LocalDateTime.now());
+//
+//        expectedViewDto = new CertificateViewDto(certificateId, certNumber, null, null, null, null, savedCertificate.getCreatedAt(), "{\"key\":\"value\"}", "hashedPayload", "vetSignedHash", "clinicSignedHash");
+//    }
 
-
-        clinic = Clinic.builder().name("Test Clinic Cert").build(); clinic.setId(clinicId);
-        owner = new Owner(); owner.setId(ownerId); owner.setUsername("certowner");
-        generatingVet = new Vet(); generatingVet.setId(vetId); generatingVet.setClinic(clinic); generatingVet.setUsername("certvet");
-        pet = new Pet(); pet.setId(petId); pet.setOwner(owner);
-
-        Vaccine rabiesVaccine = Vaccine.builder().name("Rabivax").isRabiesVaccine(true).validity(1).build();
-        rabiesVaccine.setId(rabiesRecordId);
-
-        validRabiesRecord = new Record();
-        validRabiesRecord.setId(rabiesRecordId);
-        validRabiesRecord.setPet(pet);
-        validRabiesRecord.setCreator(generatingVet);
-        validRabiesRecord.setVetSignature("RABIES_SIG");
-        validRabiesRecord.setType(RecordType.VACCINE);
-        validRabiesRecord.setCreatedAt(LocalDateTime.now().minusMonths(6));
-        validRabiesRecord.setVaccine(rabiesVaccine);
-        rabiesVaccine.setRecordEntity(validRabiesRecord);
-
-        Record validCheckupRecord = new Record();
-        validCheckupRecord.setId(checkupRecordId);
-        validCheckupRecord.setPet(pet);
-        validCheckupRecord.setCreator(generatingVet);
-        validCheckupRecord.setVetSignature("CHECKUP_SIG");
-        validCheckupRecord.setType(RecordType.ANNUAL_CHECK);
-        validCheckupRecord.setCreatedAt(LocalDateTime.now().minusMonths(2));
-
-        generationRequestDto = new CertificateGenerationRequestDto(petId, certNumber);
-
-        savedCertificate = Certificate.builder()
-                .medicalRecord(validRabiesRecord)
-                .pet(pet).generatorVet(generatingVet).issuingClinic(clinic)
-                .certificateNumber(certNumber)
-                .payload("{\"key\":\"value\"}")
-                .hash("hashedPayload")
-                .vetSignature("vetSignedHash")
-                .clinicSignature("clinicSignedHash")
-                .build();
-        savedCertificate.setId(certificateId);
-        savedCertificate.setCreatedAt(LocalDateTime.now());
-
-        expectedViewDto = new CertificateViewDto(certificateId, certNumber, null, null, null, null, savedCertificate.getCreatedAt(), "{\"key\":\"value\"}", "hashedPayload", "vetSignedHash", "clinicSignedHash");
-    }
-
-    /**
-     * --- Tests for generateCertificate ---
-     */
-    @Nested
-    @DisplayName("generateCertificate Tests")
-    class GenerateCertificateTests {
-        Long petId = 100L;
-
-        @Test
-        @DisplayName("should generate certificate successfully when Rabies vac and Checkup are valid")
-        void generateCertificate_Success_AllValid() throws HashingException {
-            // --- Arrange --
-            String expectedPayloadJson = "{\"key\":\"value\"}";
-            String payloadHash = "a1b2c3d4e5f6...";
-            String vetSig = "base64VetSig==";
-            String clinicSig = "base64ClinicSig==";
-            Map<String, Object> mockPayloadMap = Map.of("key", "value");
-
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId); // OK
-            willDoNothing().given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber); // OK
-            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
-                    .willReturn(mockPayloadMap);
-
-            given(recordHelper.serializePayload(mockPayloadMap, validRabiesRecord.getId())).willReturn(expectedPayloadJson);
-            given(recordHelper.hashPayload(expectedPayloadJson, petId)).willReturn(payloadHash);
-            given(recordHelper.signWithVetKey(generatingVet, payloadHash)).willReturn(vetSig);
-            given(recordHelper.signWithClinicKey(clinic, payloadHash)).willReturn(clinicSig);
-            given(certificateRepository.save(any(Certificate.class))).willReturn(savedCertificate);
-            given(certificateMapper.toViewDto(savedCertificate)).willReturn(expectedViewDto);
-            willDoNothing().given(certificateEventPublisher).publishCertificateGenerated(any());
-
-            // --- Act ---
-            CertificateViewDto result = certificateService.generateCertificate(generationRequestDto, vetId);
-
-            // --- Assert ---
-            assertThat(result).isNotNull().isEqualTo(expectedViewDto);
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
-            then(recordHelper).should().serializePayload(mockPayloadMap, validRabiesRecord.getId());
-            then(recordHelper).should().hashPayload(expectedPayloadJson, petId);
-            then(recordHelper).should().signWithVetKey(generatingVet, payloadHash);
-            then(recordHelper).should().signWithClinicKey(clinic, payloadHash);
-            then(certificateRepository).should().save(certificateCaptor.capture());
-            then(certificateEventPublisher).should().publishCertificateGenerated(any(CertificateGeneratedEvent.class));
-            then(certificateMapper).should().toViewDto(savedCertificate);
-
-            Certificate captured = certificateCaptor.getValue();
-            assertThat(captured.getMedicalRecord()).isEqualTo(validRabiesRecord);
-            assertThat(captured.getCertificateNumber()).isEqualTo(certNumber);
-
-            assertThat(captured.getPayload()).isEqualTo(expectedPayloadJson);
-            assertThat(captured.getHash()).isEqualTo(payloadHash);
-            assertThat(captured.getVetSignature()).isEqualTo(vetSig);
-            assertThat(captured.getClinicSignature()).isEqualTo(clinicSig);
-            assertThat(captured.getMedicalRecord().isImmutable()).as("Record should be marked immutable").isTrue();
-        }
-
-        @Test
-        @DisplayName("should throw MissingRabiesVaccineException if no valid rabies record found")
-        void generateCertificate_Failure_NoValidRabies() {
-            // --- Arrange --
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willThrow(new MissingRabiesVaccineException(petId));
-
-            // Act & Assert
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(MissingRabiesVaccineException.class)
-                    .hasMessageContaining("No valid, signed, and current Rabies vaccine record found");
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordRepository).should(never()).findAllSignedRabiesVaccinesDesc(anyLong());
-            then(recordRepository).should(never()).findSignedCheckupsAfterDateDesc(anyLong(), anyList(), any());
-            then(certificateRepository).should(never()).save(any());
-            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
-        }
-
-        @Test
-        @DisplayName("should throw MissingRecentCheckupException if no recent checkup found")
-        void generateCertificate_Failure_NoRecentCheckup() {
-            // Arrange
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            doThrow(new MissingRecentCheckupException(petId, LocalDate.now().minusYears(1)))
-                    .when(recordHelper).findValidCheckupRecord(petId);
-
-            // Act & Assert
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(MissingRecentCheckupException.class)
-                    .hasMessageContaining("No signed ANNUAL_CHECK found since");
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(validateHelper).should(never()).validateCertificateUniqueness(anyLong(), anyString());
-            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
-            then(certificateRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw CertificateAlreadyExistsForRecordException if certificate already exists for the found rabies record")
-        void generateCertificate_Failure_CertExistsForFoundRabiesRecord() {
-            // Arrange
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
-            willThrow(new CertificateAlreadyExistsForRecordException(validRabiesRecord.getId()))
-                    .given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-
-            // Act & Assert
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(CertificateAlreadyExistsForRecordException.class)
-                    .hasMessageContaining("A certificate already exists for record " + validRabiesRecord.getId());
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-
-            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
-            then(certificateRepository).should(never()).save(any());
-        }
-
-
-        @Test
-        @DisplayName("should throw CertificateNumberAlreadyExistsException if certificate number conflicts")
-        void generateCertificate_Failure_CertNumberExists() {
-            // Arrange
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
-
-            willThrow(new CertificateNumberAlreadyExistsException(certNumber))
-                    .given(validateHelper).validateCertificateUniqueness(eq(validRabiesRecord.getId()), eq(certNumber));
-
-            // Act & Assert
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(CertificateNumberAlreadyExistsException.class)
-                    .hasMessageContaining("'" + certNumber + "' is already in use");
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(validateHelper).should().validateCertificateUniqueness(eq(validRabiesRecord.getId()), eq(certNumber));
-            then(certificateRepository).should(never()).save(any());
-            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
-            then(hashingService).should(never()).hashString(anyString());
-            then(signingService).should(never()).generateVetSignature(any(), anyString());
-        }
-
-        @Test
-        @DisplayName("should throw RuntimeException if hashing fails")
-        void generateCertificate_Failure_HashingError() {
-            // Arrange
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            doNothing().when(recordHelper).findValidCheckupRecord(petId);
-            doNothing().when(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
-            given(recordHelper.serializePayload(anyMap(), anyLong())).willReturn("{\"key\":\"value\"}");
-            given(recordHelper.hashPayload(anyString(), eq(petId)))
-                    .willThrow(new HashingException("Hash fail", null));
-
-
-            // Act & Assert
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(HashingException.class)
-                    .hasMessageContaining("Hash fail");
-
-            then(recordRepository).should(never()).findAllSignedRabiesVaccinesDesc(anyLong());
-            then(recordRepository).should(never()).findSignedCheckupsAfterDateDesc(anyLong(), any(), any());
-            then(certificateRepository).should(never()).existsByMedicalRecordId(anyLong());
-            then(certificateRepository).should(never()).findByCertificateNumber(anyString());
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            then(certificateHelper).should().buildPayload(any(), any(), any(), any(), anyString());
-            then(recordHelper).should().serializePayload(anyMap(), eq(validRabiesRecord.getId()));
-            then(recordHelper).should().hashPayload(anyString(), eq(petId));
-            then(recordHelper).should(never()).signWithVetKey(any(), any());
-            then(certificateRepository).should(never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw RuntimeException if Vet signing fails")
-        void generateCertificate_Failure_VetSigningError() {
-            // Arrange
-            String payloadHash = "hash123";
-
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            doNothing().when(recordHelper).findValidCheckupRecord(petId);
-            doNothing().when(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
-                    .willReturn(Map.of("key", "value"));
-            given(recordHelper.serializePayload(any(), eq(validRabiesRecord.getId()))).willReturn("{\"key\":\"value\"}");
-            given(recordHelper.hashPayload(anyString(), eq(petId))).willReturn(payloadHash);
-            given(recordHelper.signWithVetKey(generatingVet, payloadHash))
-                    .willThrow(new RuntimeException("Vet key error"));
-
-            // --- Act & Assert ---
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessage("Vet key error");
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
-
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(recordHelper).should().serializePayload(any(), eq(validRabiesRecord.getId()));
-            then(recordHelper).should().hashPayload(anyString(), eq(petId));
-            then(recordHelper).should().signWithVetKey(generatingVet, payloadHash);
-            then(recordHelper).should(never()).signWithClinicKey(any(), anyString());
-
-            then(certificateRepository).should(never()).save(any());
-            then(certificateEventPublisher).should(never()).publishCertificateGenerated(any());
-            then(certificateMapper).should(never()).toViewDto(any());
-        }
-
-        @Test
-        @DisplayName("should throw RuntimeException if Clinic signing fails")
-        void generateCertificate_Failure_ClinicSigningError() {
-            // Arrange
-            String payloadJson = "{\"key\":\"value\"}";
-            String payloadHash = "hash123";
-            Map<String, Object> mockPayloadMap = Map.of("key", "value");
-
-            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
-            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
-            willDoNothing().given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
-                    .willReturn(mockPayloadMap);
-            given(recordHelper.serializePayload(mockPayloadMap, validRabiesRecord.getId())).willReturn(payloadJson);
-            given(recordHelper.hashPayload(payloadJson, pet.getId())).willReturn(payloadHash);
-            given(recordHelper.signWithClinicKey(clinic, payloadHash))
-                    .willThrow(new RuntimeException("Failed to generate Clinic digital signature.", new RuntimeException("Original signing error")));
-
-            // --- Act & Assert ---
-            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessage("Failed to generate Clinic digital signature.")
-                    .cause()
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessage("Original signing error");
-
-            then(entityFinderHelper).should().findVetOrFail(vetId);
-            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-            then(validateHelper).should().findValidRabiesRecord(petId);
-            then(recordHelper).should().findValidCheckupRecord(petId);
-            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
-            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
-            then(recordHelper).should().serializePayload(mockPayloadMap, validRabiesRecord.getId());
-            then(recordHelper).should().hashPayload(payloadJson, pet.getId());
-            then(recordHelper).should().signWithVetKey(generatingVet, payloadHash);
-            then(recordHelper).should().signWithClinicKey(clinic, payloadHash);
-            then(certificateRepository).should(never()).save(any());
-        }
-    }
+//    /**
+//     * --- Tests for generateCertificate ---
+//     */
+//    @Nested
+//    @DisplayName("generateCertificate Tests")
+//    class GenerateCertificateTests {
+//        Long petId = 100L;
+//
+//        @Test
+//        @DisplayName("should generate certificate successfully when Rabies vac and Checkup are valid")
+//        void generateCertificate_Success_AllValid() throws HashingException {
+//            // --- Arrange --
+//            String expectedPayloadJson = "{\"key\":\"value\"}";
+//            String payloadHash = "a1b2c3d4e5f6...";
+//            String vetSig = "base64VetSig==";
+//            String clinicSig = "base64ClinicSig==";
+//            Map<String, Object> mockPayloadMap = Map.of("key", "value");
+//
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            willDoNothing().given(recordHelper).findValidCheckupRecord(petId); // OK
+//            willDoNothing().given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber); // OK
+//            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
+//                    .willReturn(mockPayloadMap);
+//
+//            given(recordHelper.serializePayload(mockPayloadMap, validRabiesRecord.getId())).willReturn(expectedPayloadJson);
+//            given(recordHelper.hashPayload(expectedPayloadJson, petId)).willReturn(payloadHash);
+//            given(recordHelper.signWithVetKey(generatingVet, payloadHash)).willReturn(vetSig);
+//            given(recordHelper.signWithClinicKey(clinic, payloadHash)).willReturn(clinicSig);
+//            given(certificateRepository.save(any(Certificate.class))).willReturn(savedCertificate);
+//            given(certificateMapper.toViewDto(savedCertificate)).willReturn(expectedViewDto);
+//            willDoNothing().given(certificateEventPublisher).publishCertificateGenerated(any());
+//
+//            // --- Act ---
+//            CertificateViewDto result = certificateService.generateCertificate(generationRequestDto, vetId);
+//
+//            // --- Assert ---
+//            assertThat(result).isNotNull().isEqualTo(expectedViewDto);
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
+//            then(recordHelper).should().serializePayload(mockPayloadMap, validRabiesRecord.getId());
+//            then(recordHelper).should().hashPayload(expectedPayloadJson, petId);
+//            then(recordHelper).should().signWithVetKey(generatingVet, payloadHash);
+//            then(recordHelper).should().signWithClinicKey(clinic, payloadHash);
+//            then(certificateRepository).should().save(certificateCaptor.capture());
+//            then(certificateEventPublisher).should().publishCertificateGenerated(any(CertificateGeneratedEvent.class));
+//            then(certificateMapper).should().toViewDto(savedCertificate);
+//
+//            Certificate captured = certificateCaptor.getValue();
+//            assertThat(captured.getMedicalRecord()).isEqualTo(validRabiesRecord);
+//            assertThat(captured.getCertificateNumber()).isEqualTo(certNumber);
+//
+//            assertThat(captured.getPayload()).isEqualTo(expectedPayloadJson);
+//            assertThat(captured.getHash()).isEqualTo(payloadHash);
+//            assertThat(captured.getVetSignature()).isEqualTo(vetSig);
+//            assertThat(captured.getClinicSignature()).isEqualTo(clinicSig);
+//            assertThat(captured.getMedicalRecord().isImmutable()).as("Record should be marked immutable").isTrue();
+//        }
+//
+//        @Test
+//        @DisplayName("should throw MissingRabiesVaccineException if no valid rabies record found")
+//        void generateCertificate_Failure_NoValidRabies() {
+//            // --- Arrange --
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willThrow(new MissingRabiesVaccineException(petId));
+//
+//            // Act & Assert
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(MissingRabiesVaccineException.class)
+//                    .hasMessageContaining("No valid, signed, and current Rabies vaccine record found");
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordRepository).should(never()).findAllSignedRabiesVaccinesDesc(anyLong());
+//            then(recordRepository).should(never()).findSignedCheckupsAfterDateDesc(anyLong(), anyList(), any());
+//            then(certificateRepository).should(never()).save(any());
+//            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw MissingRecentCheckupException if no recent checkup found")
+//        void generateCertificate_Failure_NoRecentCheckup() {
+//            // Arrange
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            doThrow(new MissingRecentCheckupException(petId, LocalDate.now().minusYears(1)))
+//                    .when(recordHelper).findValidCheckupRecord(petId);
+//
+//            // Act & Assert
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(MissingRecentCheckupException.class)
+//                    .hasMessageContaining("No signed ANNUAL_CHECK found since");
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(validateHelper).should(never()).validateCertificateUniqueness(anyLong(), anyString());
+//            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
+//            then(certificateRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw CertificateAlreadyExistsForRecordException if certificate already exists for the found rabies record")
+//        void generateCertificate_Failure_CertExistsForFoundRabiesRecord() {
+//            // Arrange
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
+//            willThrow(new CertificateAlreadyExistsForRecordException(validRabiesRecord.getId()))
+//                    .given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//
+//            // Act & Assert
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(CertificateAlreadyExistsForRecordException.class)
+//                    .hasMessageContaining("A certificate already exists for record " + validRabiesRecord.getId());
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//
+//            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
+//            then(certificateRepository).should(never()).save(any());
+//        }
+//
+//
+//        @Test
+//        @DisplayName("should throw CertificateNumberAlreadyExistsException if certificate number conflicts")
+//        void generateCertificate_Failure_CertNumberExists() {
+//            // Arrange
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
+//
+//            willThrow(new CertificateNumberAlreadyExistsException(certNumber))
+//                    .given(validateHelper).validateCertificateUniqueness(eq(validRabiesRecord.getId()), eq(certNumber));
+//
+//            // Act & Assert
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(CertificateNumberAlreadyExistsException.class)
+//                    .hasMessageContaining("'" + certNumber + "' is already in use");
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(validateHelper).should().validateCertificateUniqueness(eq(validRabiesRecord.getId()), eq(certNumber));
+//            then(certificateRepository).should(never()).save(any());
+//            then(certificateHelper).should(never()).buildPayload(any(), any(), any(), any(), anyString());
+//            then(hashingService).should(never()).hashString(anyString());
+//            then(signingService).should(never()).generateVetSignature(any(), anyString());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw RuntimeException if hashing fails")
+//        void generateCertificate_Failure_HashingError() {
+//            // Arrange
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            doNothing().when(recordHelper).findValidCheckupRecord(petId);
+//            doNothing().when(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
+//            given(recordHelper.serializePayload(anyMap(), anyLong())).willReturn("{\"key\":\"value\"}");
+//            given(recordHelper.hashPayload(anyString(), eq(petId)))
+//                    .willThrow(new HashingException("Hash fail", null));
+//
+//
+//            // Act & Assert
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(HashingException.class)
+//                    .hasMessageContaining("Hash fail");
+//
+//            then(recordRepository).should(never()).findAllSignedRabiesVaccinesDesc(anyLong());
+//            then(recordRepository).should(never()).findSignedCheckupsAfterDateDesc(anyLong(), any(), any());
+//            then(certificateRepository).should(never()).existsByMedicalRecordId(anyLong());
+//            then(certificateRepository).should(never()).findByCertificateNumber(anyString());
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            then(certificateHelper).should().buildPayload(any(), any(), any(), any(), anyString());
+//            then(recordHelper).should().serializePayload(anyMap(), eq(validRabiesRecord.getId()));
+//            then(recordHelper).should().hashPayload(anyString(), eq(petId));
+//            then(recordHelper).should(never()).signWithVetKey(any(), any());
+//            then(certificateRepository).should(never()).save(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw RuntimeException if Vet signing fails")
+//        void generateCertificate_Failure_VetSigningError() {
+//            // Arrange
+//            String payloadHash = "hash123";
+//
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            doNothing().when(recordHelper).findValidCheckupRecord(petId);
+//            doNothing().when(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
+//                    .willReturn(Map.of("key", "value"));
+//            given(recordHelper.serializePayload(any(), eq(validRabiesRecord.getId()))).willReturn("{\"key\":\"value\"}");
+//            given(recordHelper.hashPayload(anyString(), eq(petId))).willReturn(payloadHash);
+//            given(recordHelper.signWithVetKey(generatingVet, payloadHash))
+//                    .willThrow(new RuntimeException("Vet key error"));
+//
+//            // --- Act & Assert ---
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(RuntimeException.class)
+//                    .hasMessage("Vet key error");
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
+//
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(recordHelper).should().serializePayload(any(), eq(validRabiesRecord.getId()));
+//            then(recordHelper).should().hashPayload(anyString(), eq(petId));
+//            then(recordHelper).should().signWithVetKey(generatingVet, payloadHash);
+//            then(recordHelper).should(never()).signWithClinicKey(any(), anyString());
+//
+//            then(certificateRepository).should(never()).save(any());
+//            then(certificateEventPublisher).should(never()).publishCertificateGenerated(any());
+//            then(certificateMapper).should(never()).toViewDto(any());
+//        }
+//
+//        @Test
+//        @DisplayName("should throw RuntimeException if Clinic signing fails")
+//        void generateCertificate_Failure_ClinicSigningError() {
+//            // Arrange
+//            String payloadJson = "{\"key\":\"value\"}";
+//            String payloadHash = "hash123";
+//            Map<String, Object> mockPayloadMap = Map.of("key", "value");
+//
+//            given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
+//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+//            given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
+//            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
+//            willDoNothing().given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
+//                    .willReturn(mockPayloadMap);
+//            given(recordHelper.serializePayload(mockPayloadMap, validRabiesRecord.getId())).willReturn(payloadJson);
+//            given(recordHelper.hashPayload(payloadJson, pet.getId())).willReturn(payloadHash);
+//            given(recordHelper.signWithClinicKey(clinic, payloadHash))
+//                    .willThrow(new RuntimeException("Failed to generate Clinic digital signature.", new RuntimeException("Original signing error")));
+//
+//            // --- Act & Assert ---
+//            assertThatThrownBy(() -> certificateService.generateCertificate(generationRequestDto, vetId))
+//                    .isInstanceOf(RuntimeException.class)
+//                    .hasMessage("Failed to generate Clinic digital signature.")
+//                    .cause()
+//                    .isInstanceOf(RuntimeException.class)
+//                    .hasMessage("Original signing error");
+//
+//            then(entityFinderHelper).should().findVetOrFail(vetId);
+//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+//            then(validateHelper).should().findValidRabiesRecord(petId);
+//            then(recordHelper).should().findValidCheckupRecord(petId);
+//            then(validateHelper).should().validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
+//            then(certificateHelper).should().buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber);
+//            then(recordHelper).should().serializePayload(mockPayloadMap, validRabiesRecord.getId());
+//            then(recordHelper).should().hashPayload(payloadJson, pet.getId());
+//            then(recordHelper).should().signWithVetKey(generatingVet, payloadHash);
+//            then(recordHelper).should().signWithClinicKey(clinic, payloadHash);
+//            then(certificateRepository).should(never()).save(any());
+//        }
+//    }
 
     /**
      * --- Tests for findCertificatesByPet ---

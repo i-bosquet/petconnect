@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.springframework.lang.Nullable;
 
 /**
  * DTO for creating new Clinic Staff (Vet or Admin) by an existing Admin.
@@ -18,7 +19,6 @@ import jakarta.validation.constraints.Size;
  * @param surname Staff's last name.
  * @param role RoleEnum assigned (VET or ADMIN).
  * @param licenseNumber (Optional, only for VET) Vet's license number.
- * @param vetPublicKey (Optional, only for VET) Vet's public key.
  *
  * @author ibosquet
  */
@@ -35,7 +35,6 @@ public record ClinicStaffCreationDto(
         @Size(max = 100) String surname,
         @NotNull(message = "Role cannot be null") RoleEnum role , // Must be VET or ADMIN
         // Vet specific fields - validation might depend on role='VET'
-        String licenseNumber, // Required if a role is VET
-        String vetPublicKey   // Required if a role is VET
+        @Nullable String licenseNumber// Required if a role is VET
 ) {
 }

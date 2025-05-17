@@ -45,19 +45,19 @@ public interface ClinicService {
     ClinicDto findClinicById(Long id);
 
     /**
-     * Updates the specified clinic's details based on the provided update data and optional public key file.
-     * The operation is performed under the authority of an admin user identified by their ID.
+     * Updates the details of an existing clinic.
      *
      * @param id The unique identifier of the clinic to update.
-     * @param clinicUpdateDTO An object containing the updated clinic details, such as name, address, city, country, and phone.
-     * @param publicKeyFile An optional file representing the clinic's new public key (nullable).
-     * @param updatingAdminId The ID of the admin user performing the update.
+     * @param clinicUpdateDTO The data transfer object containing updated clinic details.
+     * @param publicKeyFile Optional file containing the clinic's new public key.
+     * @param privateKeyFile Optional file containing the clinic's new private key.
+     * @param updatingAdminId The unique identifier of the admin performing the update.
      * @return A {@link ClinicDto} object representing the updated clinic information.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if the clinic with the specified ID does not exist.
      * @throws AccessDeniedException if the updating admin does not have sufficient permissions.
      * @throws IllegalArgumentException if the provided update data is invalid.
      */
-    ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, @Nullable MultipartFile publicKeyFile, Long updatingAdminId);
+    ClinicDto updateClinic(Long id, ClinicUpdateDto clinicUpdateDTO, @Nullable MultipartFile publicKeyFile, @Nullable MultipartFile privateKeyFile, Long updatingAdminId);
 
     /**
      * Retrieves a distinct list of countries where clinics currently exist.

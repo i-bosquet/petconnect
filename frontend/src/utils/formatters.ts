@@ -64,3 +64,65 @@ export const getRecordTypeDisplay = (type: RecordType | undefined): string => {
     if (!type) return 'N/A';
     return type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 };
+
+export const getAhcValidityInfo = (
+    issueDateStr: string,
+    petLastEuEntryDateStr?: string | null,
+    certificateTravelExpiryDateStr?: string | null 
+): {
+    entryEuExpiry: string;
+    travelEuExpiry: string; 
+    isStillValidForEntry: boolean;
+    isCurrentlyValidForEuTravel: boolean;
+    overallStatus: 'VALID_FOR_TRAVEL' | 'VALID_FOR_ENTRY' | 'EXPIRED' | 'UNKNOWN';
+    statusMessage: string;
+} => {
+    const issueDate = new Date(issueDateStr);
+    issueDate.setHours(0, 0, 0, 0);
+
+    const entryEuExpiryDate = new Date(issueDate);
+    entryEuExpiryDate.setDate(issueDate.getDate() + 10);
+    const travelEuExpiryDateFromCert = certificateTravelExpiryDateStr ? new Date(certificateTravelExpiryDateStr) : null;
+    if (travelEuExpiryDateFromCert) travelEuExpiryDateFromCert.setHours(0,0,0,0);
+
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isStillValidForEntry = today <= entryEuExpiryDate;
+    let isCurrentlyValidForEuTravel = false;
+    let statusMessage = `Valid for EU entry until ${entryEuExpiryDate.toLocaleDateString('en-GB')}.`;
+    let overallStatus: 'VALID_FOR_TRAVEL' | 'VALID_FOR_ENTRY' | 'EXPIRED' | 'UNKNOWN' = 'UNKNOWN';
+
+    const petEuEntryDate = petLastEuEntryDateStr ? new Date(petLastEuEntryDateStr) : null;
+    if (petEuEntryDate) petEuEntryDate.setHours(0, 0, 0, 0);
+
+    if (petEuEntryDate && petEuEntryDate >= issueDate && petEuEntryDate <= entryEuExpiryDate) {
+        if (travelEuExpiryDateFromCert && today <= travelEuExpiryDateFromCert) {
+            isCurrentlyValidForEuTravel = true;
+            statusMessage = `Active for EU travel. Valid until ${travelEuExpiryDateFromCert.toLocaleDateString('en-GB')}.`;
+            overallStatus = 'VALID_FOR_TRAVEL';
+        } else if (travelEuExpiryDateFromCert) {
+            statusMessage = `EU travel period expired on ${travelEuExpiryDateFromCert.toLocaleDateString('en-GB')}.`;
+            overallStatus = 'EXPIRED';
+        } else { 
+            statusMessage = `EU travel period status unclear (missing travel expiry date from certificate).`;
+            overallStatus = 'EXPIRED'; 
+        }
+    } else if (isStillValidForEntry) {
+        statusMessage = `Valid for EU entry until ${entryEuExpiryDate.toLocaleDateString('en-GB')}. Register entry to activate 4-month travel period.`;
+        overallStatus = 'VALID_FOR_ENTRY';
+    } else {
+        statusMessage = `Expired for EU entry (was valid until ${entryEuExpiryDate.toLocaleDateString('en-GB')}).`;
+        overallStatus = 'EXPIRED';
+    }
+
+    return {
+        entryEuExpiry: entryEuExpiryDate.toLocaleDateString('en-GB'),
+        travelEuExpiry: travelEuExpiryDateFromCert ? travelEuExpiryDateFromCert.toLocaleDateString('en-GB') : 'N/A',
+        isStillValidForEntry,
+        isCurrentlyValidForEuTravel,
+        overallStatus,
+        statusMessage,
+    };
+};

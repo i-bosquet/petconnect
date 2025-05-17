@@ -2,6 +2,8 @@ package com.petconnect.backend.user.application.dto;
 
 import com.petconnect.backend.user.domain.model.RoleEnum;
 import jakarta.validation.constraints.Size;
+import org.springframework.lang.Nullable;
+
 import java.util.Set;
 
 /**
@@ -17,8 +19,8 @@ import java.util.Set;
 public record ClinicStaffUpdateDto(
         @Size(max = 100) String name,
         @Size(max = 100) String surname,
-        Set<RoleEnum> roles,
+        @Nullable Set<RoleEnum> roles,
         // Include Vet fields if they are updatable by Admin
-        String licenseNumber
+        @Nullable String licenseNumber
 ) {
 }

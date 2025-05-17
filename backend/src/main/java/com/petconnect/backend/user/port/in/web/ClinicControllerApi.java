@@ -121,7 +121,8 @@ public interface ClinicControllerApi {
     ResponseEntity<ClinicDto> updateClinic(
             @PathVariable Long id,
             @RequestPart("dto") @Valid ClinicUpdateDto clinicUpdateDTO,
-            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile);
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile,
+            @RequestPart(value = "privateKeyFile", required = false) @Nullable MultipartFile privateKeyFile);
 
     /**
      * Retrieves a list of all staff members (active and inactive) for a specific clinic.

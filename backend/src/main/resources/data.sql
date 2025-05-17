@@ -125,8 +125,8 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 -- Pre-hashed password for 'password' is $2a$10$f9WJgO/vnifQCKzS3UAbAeehX78zXqRjA5cRA7L5wO9F0jKjdQ9.e
 
 -- Clinic 1 (ID=1) & Admin 1 (ID=2)
-INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (1, 'The London Vet Clinic', '123 Regent Street', 'London', 'UNITED_KINGDOM', '+44 20 1234 5678', 'clinics/lon_pub_key.pem', NOW(), 'system')
+INSERT INTO clinic (id, name, address, city, country, phone, public_key, private_key, created_at, created_by) VALUES
+    (1, 'The London Vet Clinic', '123 Regent Street', 'London', 'UNITED_KINGDOM', '+44 20 1234 5678', 'clinics/lon_pub_key.pem','clinics/lon_pri_key.pem', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (2, 'admin_london', 'admin.london@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -136,8 +136,8 @@ INSERT INTO clinic_staff (user_id, name, surname, is_active, clinic_id) VALUES
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 2 (ID=3) & Admin 2 (ID=4)
-INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (3, 'Manchester Pet Hospital', '45 Market Street', 'Manchester', 'UNITED_KINGDOM', '+44 161 987 6543', 'clinics/man_pub_key.pem', NOW(), 'system')
+INSERT INTO clinic (id, name, address, city, country, phone, public_key, private_key, created_at, created_by) VALUES
+    (3, 'Manchester Pet Hospital', '45 Market Street', 'Manchester', 'UNITED_KINGDOM', '+44 161 987 6543', 'clinics/man_pub_key.pem', 'clinics/man_pri_key.pem', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (4, 'admin_manchester', 'admin.manchester@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -147,8 +147,8 @@ INSERT INTO clinic_staff (user_id, name, surname, is_active, clinic_id) VALUES
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 3 (ID=5) & Admin 3 (ID=6) - Barcelona
-INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (5, 'Clinica Veterinaria Barcelona Gracia', 'Carrer Gran de Gràcia 70', 'Barcelona', 'SPAIN', '+34 93 111 4455', 'clinics/bcn_pub_key.pem', NOW(), 'system')
+INSERT INTO clinic (id, name, address, city, country, phone, public_key, private_key, created_at, created_by) VALUES
+    (5, 'Clinica Veterinaria Barcelona Gracia', 'Carrer Gran de Gràcia 70', 'Barcelona', 'SPAIN', '+34 93 111 4455', 'clinics/bcn_pub_key.pem','clinics/bcn_pri_key.pem', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (6, 'admin_barcelona', 'admin.barcelona@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -158,8 +158,8 @@ INSERT INTO clinic_staff (user_id, name, surname, is_active, clinic_id) VALUES
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 4 (ID=7) & Admin 4 (ID=8) - Paris
-INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (7, 'Clinique Vétérinaire Paris Étoile', '10 Avenue des Champs-Élysées', 'Paris', 'FRANCE', '+33 1 8888 9900', 'clinics/par_pub_key.pem', NOW(), 'system')
+INSERT INTO clinic (id, name, address, city, country, phone, public_key, private_key, created_at, created_by) VALUES
+    (7, 'Clinique Vétérinaire Paris Étoile', '10 Avenue des Champs-Élysées', 'Paris', 'FRANCE', '+33 1 8888 9900', 'clinics/par_pub_key.pem','clinics/par_pri_key.pem', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (8, 'admin_paris', 'admin.paris@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')
@@ -169,8 +169,8 @@ INSERT INTO clinic_staff (user_id, name, surname, is_active, clinic_id) VALUES
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Clinic 5 (ID=9) & Admin 5 (ID=10) - Berlin
-INSERT INTO clinic (id, name, address, city, country, phone, public_key, created_at, created_by) VALUES
-    (9, 'Tierklinik Berlin Mitte', 'Friedrichstraße 100', 'Berlin', 'GERMANY', '+49 30 555 6677', 'clinics/ber_pub_key.pem', NOW(), 'system')
+INSERT INTO clinic (id, name, address, city, country, phone, public_key, private_key, created_at, created_by) VALUES
+    (9, 'Tierklinik Berlin Mitte', 'Friedrichstraße 100', 'Berlin', 'GERMANY', '+49 30 555 6677', 'clinics/ber_pub_key.pem','clinics/ber_pri_key.pem', NOW(), 'system')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO users (id, username, email, password, avatar, is_enabled, account_non_expired, account_non_locked, credentials_non_expired, created_at, created_by) VALUES
     (10, 'admin_berlin', 'admin_berlin@petconnect.dev', '$2a$10$H9Lb.tMSwYl.Fa3F/aTqeuL8zP6racB694g49wkPrnm5pRqzDyX/e', 'images/avatars/users/admin.png', true, true, true, true, NOW(), 'system')

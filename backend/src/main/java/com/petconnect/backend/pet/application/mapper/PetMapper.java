@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -129,7 +130,9 @@ public class PetMapper {
                 pendingClinicName,
                 vetSummaries,
                 ownerDetails,
-                canRequestAhc
+                canRequestAhc,
+                pet.getLastEuEntryDate(),
+                pet.getLastEuExitDate()
         );
     }
 
@@ -174,6 +177,12 @@ public class PetMapper {
              log.debug("Mapper updateFromOwnerDto - Checking 'breed': ResolvedBreedId='{}', CurrentBreedId='{}'",
                      resolvedBreed.getId(), (pet.getBreed() != null ? pet.getBreed().getId() : null));
              changed |= Utils.updateFieldIfChanged(pet, resolvedBreed, pet::getBreed, Pet::setBreed, FIELD_BREED);
+         }
+
+         if (dto.newEuEntryDate() != null && !Objects.equals(dto.newEuEntryDate(), pet.getLastEuEntryDate()))
+             changed = true;
+         if (dto.newEuExitDate() != null && !Objects.equals(dto.newEuExitDate(), pet.getLastEuExitDate())) {
+             changed = true;
          }
          return changed;
      }

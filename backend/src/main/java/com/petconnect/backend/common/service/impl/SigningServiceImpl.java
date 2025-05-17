@@ -1,8 +1,10 @@
 package com.petconnect.backend.common.service.impl;
 
+import com.petconnect.backend.common.service.KeyStorageService;
 import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.Vet;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -14,14 +16,15 @@ import org.bouncycastle.operator.InputDecryptorProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.pkcs.PKCSException;
 import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.KeyFactory;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.spec.RSAPublicKeySpec;
 
 import java.io.FileReader;
 import java.nio.charset.StandardCharsets;
@@ -38,28 +41,11 @@ import java.util.Base64;
  * @author ibosquet
  */
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class SigningServiceImpl implements SigningService {
-    // --- Injected Configuration ---
-    @Value("${app.security.vet.privatekey.path}")
-    private String vetPrivateKeyPath;
-    @Value("${app.security.vet.privatekey.password}")
-    private char[] vetPrivateKeyPassword;
 
-    @Value("${app.security.clinic.privatekey.path}")
-    private String clinicPrivateKeyPath;
-    @Value("${app.security.clinic.privatekey.password}")
-    private char[] clinicPrivateKeyPassword;
-
-    // logs messages
-    private static final String MSG_VET_KEY_LOADED = "Simulated Vet private key loaded successfully.";
-    private static final String MSG_CLINIC_KEY_LOADED = "Simulated Clinic private key loaded successfully.";
-    private static final String MSG_TFG_ONLY_VET = "LOADING SIMULATED VET PRIVATE KEY FROM {}";
-    private static final String MSG_TFG_ONLY_CLINIC = "LOADING SIMULATED CLINIC PRIVATE KEY FROM {}";
-
-    // --- Key Caches ---
-    private PrivateKey simulatedVetPrivateKey;
-    private PrivateKey simulatedClinicPrivateKey;
+    private final KeyStorageService keyStorageService;
 
     // --- Static Initializer for BouncyCastle ---
     static {
@@ -73,14 +59,34 @@ public class SigningServiceImpl implements SigningService {
      * {@inheritDoc}
      */
     @Override
-    public String generateVetSignature(Vet vet, String dataToSign) { // Renombrado para claridad
+    public String generateVetSignature(Vet vet, String dataToSign, char[] vetKeyPassword) {
+        if (vet == null || !StringUtils.hasText(vet.getVetPrivateKey())) {
+            log.error("Vet or vetPrivateKey path is missing for Vet ID: {}", vet != null ? vet.getId() : "null");
+            throw new IllegalArgumentException("Veterinarian's private key path not configured.");
+        }
+        if (vetKeyPassword == null || vetKeyPassword.length == 0) {
+            log.error("Password for Vet's private key (ID: {}) was not provided.", vet.getId());
+            throw new IllegalArgumentException("Password for veterinarian's private key is required for signing.");
+        }
+
         log.info("Attempting to generate Vet signature for Vet ID: {}", vet.getId());
+        PrivateKey vetPrivateKeyLoaded;
         try {
-            PrivateKey key = getOrLoadVetPrivateKey();
-            return signData(key, dataToSign);
+            Path privateKeyAbsolutePath = keyStorageService.getAbsolutePathForPrivateKey(vet.getVetPrivateKey());
+            vetPrivateKeyLoaded = loadPrivateKeyFromPEM(privateKeyAbsolutePath.toString(), vetKeyPassword);
+            return signData(vetPrivateKeyLoaded, dataToSign);
         } catch (Exception e) {
             log.error("Error generating Vet signature for Vet ID {}: {}", vet.getId(), e.getMessage(), e);
-            throw new RuntimeException("Failed to generate Vet digital signature.", e);
+            if (e instanceof PEMException ||
+                    e instanceof PKCSException ||
+                    (e.getCause() instanceof IOException &&
+                            e.getCause().getMessage() !=
+                                    null && e.getCause().getMessage().contains("AEADBadTagException"))) {
+                throw new RuntimeException("Failed to decrypt Vet private key. Incorrect password or key format for Vet ID " + vet.getId() + ".", e);
+            }
+            throw new RuntimeException("Failed to generate Vet digital signature for Vet ID " + vet.getId() + ".", e);
+        } finally {
+            Arrays.fill(vetKeyPassword, ' ');
         }
     }
 
@@ -88,14 +94,77 @@ public class SigningServiceImpl implements SigningService {
      * {@inheritDoc}
      */
     @Override
-    public String generateClinicSignature(Clinic clinic, String dataToSign) {
+    public String generateClinicSignature(Clinic clinic, String dataToSign, char[] clinicKeyPassword ) {
+        if (clinic == null || !StringUtils.hasText(clinic.getPrivateKey())) {
+            log.error("Clinic or privateKey path is missing for Clinic ID: {}", clinic != null ? clinic.getId() : "null");
+            throw new IllegalArgumentException("Clinic's private key path not configured.");
+        }
+        if (clinicKeyPassword == null || clinicKeyPassword.length == 0) {
+            log.error("Password for Clinic's private key (ID: {}) was not provided.", clinic.getId());
+            throw new IllegalArgumentException("Password for clinic's private key is required for signing.");
+        }
         log.info("Attempting to generate Clinic signature for Clinic ID: {}", clinic.getId());
+        PrivateKey clinicPkLoaded;
         try {
-            PrivateKey key = getOrLoadClinicPrivateKey();
-            return signData(key, dataToSign);
+            Path privateKeyAbsolutePath = keyStorageService.getAbsolutePathForPrivateKey(clinic.getPrivateKey());
+            clinicPkLoaded = loadPrivateKeyFromPEM(privateKeyAbsolutePath.toString(), clinicKeyPassword);
+            return signData(clinicPkLoaded, dataToSign);
         } catch (Exception e) {
             log.error("Error generating Clinic signature for Clinic ID {}: {}", clinic.getId(), e.getMessage(), e);
-            throw new RuntimeException("Failed to generate Clinic digital signature.", e);
+            if (e instanceof PEMException || e instanceof PKCSException || (e.getCause() instanceof IOException && e.getCause().getMessage() != null && e.getCause().getMessage().contains("AEADBadTagException"))) {
+                throw new RuntimeException("Failed to decrypt Clinic private key. Incorrect password or key format for Clinic ID " + clinic.getId() + ".", e);
+            }
+            throw new RuntimeException("Failed to generate Clinic digital signature for Clinic ID " + clinic.getId() + ".", e);
+        } finally {
+            Arrays.fill(clinicKeyPassword, ' ');
+        }
+    }
+
+    @Override
+    public PublicKey getVetPublicKey(Vet vet) {
+        if (vet == null || !StringUtils.hasText(vet.getVetPublicKey())) {
+            log.error("Vet entity or vetPublicKey path is null/empty for vet ID: {}", (vet != null ? vet.getId() : "null"));
+            throw new IllegalArgumentException("Vet or Vet's public key path is missing.");
+        }
+        String publicKeyRelativePath = vet.getVetPublicKey();
+        log.info("Attempting to load Vet public key from relative path: {}", publicKeyRelativePath);
+        try {
+            Path publicKeyAbsolutePath = keyStorageService.getAbsolutePathForPublicKey(publicKeyRelativePath);
+            String publicKeyPemContent = Files.readString(publicKeyAbsolutePath, StandardCharsets.UTF_8);
+            return loadPublicKeyFromPemString(publicKeyPemContent);
+        } catch (IOException e) {
+            log.error("IOException loading Vet public key from path {}: {}", publicKeyRelativePath, e.getMessage(), e);
+            throw new RuntimeException("Could not read Vet public key file: " + publicKeyRelativePath, e);
+        } catch (GeneralSecurityException e) {
+            log.error("SecurityException parsing Vet public key from path {}: {}", publicKeyRelativePath, e.getMessage(), e);
+            throw new RuntimeException("Could not parse Vet public key: " + publicKeyRelativePath, e);
+        } catch (Exception e) {
+            log.error("Unexpected error loading Vet public key from path {}: {}", publicKeyRelativePath, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error loading Vet public key: " + publicKeyRelativePath, e);
+        }
+    }
+
+    @Override
+    public PublicKey getClinicPublicKey(Clinic clinic) {
+        if (clinic == null || !StringUtils.hasText(clinic.getPublicKey())) {
+            log.error("Clinic entity or publicKey path is null/empty for clinic ID: {}", (clinic != null ? clinic.getId() : "null"));
+            throw new IllegalArgumentException("Clinic or Clinic's public key path is missing.");
+        }
+        String publicKeyRelativePath = clinic.getPublicKey();
+        log.info("Attempting to load Clinic public key from relative path: {}", publicKeyRelativePath);
+        try {
+            Path publicKeyAbsolutePath = keyStorageService.getAbsolutePathForPublicKey(publicKeyRelativePath);
+            String publicKeyPemContent = Files.readString(publicKeyAbsolutePath, StandardCharsets.UTF_8);
+            return loadPublicKeyFromPemString(publicKeyPemContent);
+        } catch (IOException e) {
+            log.error("IOException loading Clinic public key from path {}: {}", publicKeyRelativePath, e.getMessage(), e);
+            throw new RuntimeException("Could not read Clinic public key file: " + publicKeyRelativePath, e);
+        } catch (GeneralSecurityException e) {
+            log.error("SecurityException parsing Clinic public key from path {}: {}", publicKeyRelativePath, e.getMessage(), e);
+            throw new RuntimeException("Could not parse Clinic public key: " + publicKeyRelativePath, e);
+        } catch (Exception e) {
+            log.error("Unexpected error loading Clinic public key from path {}: {}", publicKeyRelativePath, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error loading Clinic public key: " + publicKeyRelativePath, e);
         }
     }
 
@@ -105,7 +174,7 @@ public class SigningServiceImpl implements SigningService {
     @Override
     public boolean verifySignature(String publicKeyPemB64, String originalData, String signatureB64) {
         if (!StringUtils.hasText(publicKeyPemB64) || !StringUtils.hasText(originalData) || !StringUtils.hasText(signatureB64)) {
-            log.warn("Verification skipped: Missing public key, data, or signature.");
+            log.warn("Verification skipped: Missing public key content, data, or signature.");
             return false;
         }
         log.debug("Verifying signature...");
@@ -120,161 +189,58 @@ public class SigningServiceImpl implements SigningService {
             boolean isValid = signature.verify(signatureBytes);
             log.debug("Signature verification result: {}", isValid);
             return isValid;
-
         } catch (Exception e) {
-            log.error("Error verifying signature: {}", e.getMessage());
+            log.error("Error verifying signature: {}", e.getMessage(), e);
             return false;
         }
-    }
-
-    @Override
-    public PrivateKey getVetPrivateKey(Vet vet) {
-        try {
-            return getOrLoadVetPrivateKey();
-        } catch (Exception e) {
-            log.error("Failed to get Vet private key for Vet ID {}: {}", vet.getId(), e.getMessage(), e);
-            throw new RuntimeException("Could not load Vet private key.", e);
-        }
-    }
-
-    @Override
-    public PublicKey getVetPublicKey(Vet vet) {
-        try {
-            PrivateKey privateKey = getOrLoadVetPrivateKey();
-            if (privateKey instanceof RSAPrivateCrtKey rsaPrivateKey) {
-                KeyFactory kf = KeyFactory.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
-                RSAPublicKeySpec spec = new RSAPublicKeySpec(rsaPrivateKey.getModulus(), rsaPrivateKey.getPublicExponent());
-                return kf.generatePublic(spec);
-            } else {
-                throw new RuntimeException("Cannot derive public key from Vet private key of type: " + privateKey.getClass());
-            }
-        } catch (Exception e) {
-            log.error("Failed to get Vet public key for Vet ID {}: {}", vet.getId(), e.getMessage(), e);
-            throw new RuntimeException("Could not load/derive Vet public key.", e);
-        }
-    }
-
-    @Override
-    public PrivateKey getClinicPrivateKey(Clinic clinic) {
-        try {
-            return getOrLoadClinicPrivateKey();
-        } catch (Exception e) {
-            log.error("Failed to get Clinic private key for Clinic ID {}: {}", clinic.getId(), e.getMessage(), e);
-            throw new RuntimeException("Could not load Clinic private key.", e);
-        }
-    }
-
-    @Override
-    public PublicKey getClinicPublicKey(Clinic clinic) {
-        try {
-            PrivateKey privateKey = getOrLoadClinicPrivateKey();
-            if (privateKey instanceof RSAPrivateCrtKey rsaPrivateKey) {
-                KeyFactory kf = KeyFactory.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
-                RSAPublicKeySpec spec = new RSAPublicKeySpec(rsaPrivateKey.getModulus(), rsaPrivateKey.getPublicExponent());
-                return kf.generatePublic(spec);
-            } else {
-                throw new RuntimeException("Cannot derive public key from Clinic private key of type: " + privateKey.getClass());
-            }
-        } catch (Exception e) {
-            log.error("Failed to get Clinic public key for Clinic ID {}: {}", clinic.getId(), e.getMessage(), e);
-            throw new RuntimeException("Could not load/derive Clinic public key.", e);
-        }
-    }
-
-    /**
-     * Loads the Vet's private key from the configured PEM file path, caching it.
-     * FOR TFG/DEMO PURPOSES ONLY.
-     *
-     * @return The PrivateKey object for the Vet.
-     * @throws Exception if loading or decryption fails.
-     */
-    private PrivateKey getOrLoadVetPrivateKey() throws Exception {
-        if (this.simulatedVetPrivateKey == null) {
-            log.warn(MSG_TFG_ONLY_VET, vetPrivateKeyPath);
-            this.simulatedVetPrivateKey = loadPrivateKeyFromPEM(vetPrivateKeyPath, vetPrivateKeyPassword);
-            log.info(MSG_VET_KEY_LOADED);
-            Arrays.fill(vetPrivateKeyPassword, ' ');
-        }
-        return this.simulatedVetPrivateKey;
-    }
-
-    /**
-     * Loads the Clinic's private key from the configured PEM file path, caching it.
-     *
-     * @return The PrivateKey object for the Clinic (system-wide).
-     * @throws Exception if loading or decryption fails.
-     */
-    private PrivateKey getOrLoadClinicPrivateKey() throws Exception {
-        if (this.simulatedClinicPrivateKey == null) {
-            log.warn(MSG_TFG_ONLY_CLINIC, clinicPrivateKeyPath);
-            this.simulatedClinicPrivateKey = loadPrivateKeyFromPEM(clinicPrivateKeyPath, clinicPrivateKeyPassword);
-            log.info(MSG_CLINIC_KEY_LOADED);
-            Arrays.fill(clinicPrivateKeyPassword, ' ');
-        }
-        return this.simulatedClinicPrivateKey;
     }
 
     /**
      * Generic method to load a private key from a PEM file.
      * Handles different PEM formats (PKCS#8, traditional, encrypted/unencrypted).
      *
-     * @param keyPath Path to the PEM file.
+     * @param keyPathOnServer Path to the PEM file.
      * @param password Password for the PEM file (can be null or empty if not encrypted).
      * @return The loaded PrivateKey.
      * @throws Exception if loading fails.
      */
-    private PrivateKey loadPrivateKeyFromPEM(String keyPath, char[] password) throws Exception {
+    private PrivateKey loadPrivateKeyFromPEM(String keyPathOnServer, char[] password) throws Exception {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
-        try (FileReader keyReader = new FileReader(keyPath);
+        try (FileReader keyReader = new FileReader(keyPathOnServer);
              PEMParser pemParser = new PEMParser(keyReader)) {
-
             Object pemObject = pemParser.readObject();
             if (pemObject == null) {
-                throw new GeneralSecurityException("No key found in PEM file: " + keyPath);
+                throw new GeneralSecurityException("No key found in PEM file: " + keyPathOnServer);
             }
-
-            log.debug("Object read from PEM ({}): {}", keyPath, pemObject.getClass().getName());
             JcaPEMKeyConverter converter = new JcaPEMKeyConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME);
             PrivateKey privateKey;
-
             switch (pemObject) {
-                case PrivateKeyInfo keyInfo -> { // Unencrypted PKCS#8
-                    log.debug("Loading unencrypted PKCS8 private key from {}", keyPath);
-                    privateKey = converter.getPrivateKey(keyInfo);
+                case PrivateKeyInfo keyInfo -> privateKey = converter.getPrivateKey(keyInfo);
+                case PEMKeyPair pemKeyPair -> privateKey = converter.getKeyPair(pemKeyPair).getPrivate();
+                case PKCS8EncryptedPrivateKeyInfo encryptedInfo -> {
+                    if (password == null || password.length == 0) throw new PEMException("Password required for encrypted key in " + keyPathOnServer);
+                    InputDecryptorProvider decryptProvider = new JceOpenSSLPKCS8DecryptorProviderBuilder().build(password);
+                    PrivateKeyInfo keyInfoDecrypted = encryptedInfo.decryptPrivateKeyInfo(decryptProvider);
+                    privateKey = converter.getPrivateKey(keyInfoDecrypted);
                 }
-                case PEMKeyPair pemKeyPair -> {
-                    log.debug("Loading PEMKeyPair (Unencrypted PKCS#1) from {}", keyPath);
-                    privateKey = convertPemKeyPair(converter, pemKeyPair);
-                }
-                case PKCS8EncryptedPrivateKeyInfo encryptedInfo -> { // Encrypted PKCS#8
-                    log.debug("Loading encrypted PKCS8 private key from {}", keyPath);
-                    if (password == null || password.length == 0) throw new PEMException("Password required for encrypted key in " + keyPath);
-                    InputDecryptorProvider decryptorProvider = new JceOpenSSLPKCS8DecryptorProviderBuilder().build(password);
-                    PrivateKeyInfo keyInfo = encryptedInfo.decryptPrivateKeyInfo(decryptorProvider);
-                    privateKey = converter.getPrivateKey(keyInfo);
-                }
-                case PEMEncryptedKeyPair encryptedKeyPair -> { // Encrypted PKCS#1 (Legacy)
-                    log.debug("Loading PEMEncryptedKeyPair (Legacy encrypted) from {}", keyPath);
-                    if (password == null || password.length == 0) throw new PEMException("Password required for encrypted key pair in " + keyPath);
+                case PEMEncryptedKeyPair encryptedKeyPair -> {
+                    if (password == null || password.length == 0) throw new PEMException("Password required for encrypted key pair in " + keyPathOnServer);
                     PEMDecryptorProvider pemDecryptorProvider = new JcePEMDecryptorProviderBuilder().build(password);
                     PEMKeyPair decryptedKeyPair = encryptedKeyPair.decryptKeyPair(pemDecryptorProvider);
                     privateKey = converter.getKeyPair(decryptedKeyPair).getPrivate();
                 }
                 default -> throw new GeneralSecurityException("Unsupported private key format in PEM file: " + pemObject.getClass().getName());
             }
-
-            if (privateKey == null) {
-                throw new GeneralSecurityException("Failed to extract private key from PEM object in " + keyPath);
-            }
+            if (privateKey == null) throw new GeneralSecurityException("Failed to extract private key from " + keyPathOnServer);
+            log.info("Private key loaded successfully from path: {}", keyPathOnServer);
             return privateKey;
-
         } catch (PEMException | PKCSException | OperatorCreationException | GeneralSecurityException e) {
-            log.error("Security error loading or decrypting private key from {}: {}", keyPath, e.getMessage(), e);
-            throw new RuntimeException("Security error processing private key from " + keyPath + ": " + e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("Failed to load private key from {}: {}", keyPath, e.getMessage(), e);
+            log.error("Security error loading or decrypting private key from {}: {}", keyPathOnServer, e.getMessage());
+            throw e;
+        } catch (IOException e) {
+            log.error("IOException reading private key file {}: {}", keyPathOnServer, e.getMessage());
             throw e;
         }
     }
@@ -288,34 +254,24 @@ public class SigningServiceImpl implements SigningService {
      * @throws GeneralSecurityException If a signing error occurs.
      */
     private String signData(PrivateKey privateKey, String dataToSign) throws GeneralSecurityException {
-        try {
-            Signature signature = Signature.getInstance("SHA256withRSA", BouncyCastleProvider.PROVIDER_NAME);
-            signature.initSign(privateKey);
-            signature.update(dataToSign.getBytes(StandardCharsets.UTF_8));
-            byte[] signatureBytes = signature.sign();
-            return Base64.getEncoder().encodeToString(signatureBytes);
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
-            log.error("Cryptographic error during signing: {}", e.getMessage(), e);
-            throw new GeneralSecurityException("Failed to sign data.", e);
-        }
+        Signature signature = Signature.getInstance("SHA256withRSA", BouncyCastleProvider.PROVIDER_NAME);
+        signature.initSign(privateKey);
+        signature.update(dataToSign.getBytes(StandardCharsets.UTF_8));
+        byte[] signatureBytes = signature.sign();
+        return Base64.getEncoder().encodeToString(signatureBytes);
     }
 
     /**
      * Loads a PublicKey from its Base64 PEM string representation (without headers/footers).
      */
     private PublicKey loadPublicKeyFromPemString(String publicKeyPemB64) throws Exception {
-        byte[] keyBytes = Base64.getDecoder().decode(publicKeyPemB64.replaceAll("\\s+", ""));
+        String pureBase64 = publicKeyPemB64
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replaceAll("\\s+", "");
+        byte[] keyBytes = Base64.getDecoder().decode(pureBase64);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
         return kf.generatePublic(spec);
-    }
-
-    private PrivateKey convertPemKeyPair(JcaPEMKeyConverter converter, PEMKeyPair pemKeyPair) throws PEMException {
-        try {
-            return converter.getKeyPair(pemKeyPair).getPrivate();
-        } catch (Exception e) {
-            log.error("Failed to convert unencrypted PEMKeyPair: {}", e.getMessage());
-            throw new PEMException("Could not process unencrypted PEMKeyPair.", e);
-        }
     }
 }

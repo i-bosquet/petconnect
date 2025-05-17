@@ -2,13 +2,16 @@ package com.petconnect.backend.certificate.application.mapper;
 
 import com.petconnect.backend.certificate.application.dto.CertificateViewDto;
 import com.petconnect.backend.certificate.domain.model.Certificate;
+import com.petconnect.backend.pet.application.dto.PetProfileDto;
 import com.petconnect.backend.pet.application.mapper.PetMapper;
-import com.petconnect.backend.record.application.mapper.RecordSummaryMapper;
-import com.petconnect.backend.user.application.mapper.ClinicMapper;
+import com.petconnect.backend.record.application.dto.RecordViewDto;
+import com.petconnect.backend.record.application.mapper.RecordMapper;
+import com.petconnect.backend.user.application.dto.VetSummaryDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -24,9 +27,8 @@ import java.util.Objects;
 public class CertificateMapper {
 
     private final PetMapper petMapper;
-    private final RecordSummaryMapper recordSummaryMapper;
+    private final RecordMapper recordMapper;
     private final UserMapper userMapper;
-    private final ClinicMapper clinicMapper;
 
     /**
      * Converts a {@link Certificate} entity to a {@link CertificateViewDto}.
@@ -40,21 +42,33 @@ public class CertificateMapper {
             return null;
         }
 
-        var petDto = Objects.requireNonNull(entity.getPet(), "Certificate entity must have a non-null Pet association.") ;
-        var medicalRecordDto = Objects.requireNonNull(entity.getMedicalRecord(), "Certificate entity must have a non-null Record association.");
-        var generatorVetDto = Objects.requireNonNull(entity.getGeneratorVet(), "Certificate entity must have a non-null generating Vet.");
-        var issuingClinicDto = Objects.requireNonNull(entity.getIssuingClinic(), "Certificate entity must have a non-null issuing Clinic.");
+        PetProfileDto petDto = petMapper.toProfileDto(
+                Objects.requireNonNull(entity.getPet(), "Certificate entity must have a non-null Pet association.")
+        );
+        RecordViewDto originatingRecordDto = recordMapper.toViewDto(
+                Objects.requireNonNull(entity.getMedicalRecord(), "Certificate entity must have a non-null Record association.")
+        );
+        VetSummaryDto generatorVetDto = userMapper.toVetSummaryDto(
+                Objects.requireNonNull(entity.getGeneratorVet(), "Certificate entity must have a non-null generating Vet.")
+        );
+
+        LocalDate initialEuEntryExpiryDate = null;
+        LocalDate travelValidityEndDate = null;
+        if (entity.getCreatedAt() != null) {
+            LocalDate createdAtDate = entity.getCreatedAt().toLocalDate();
+            initialEuEntryExpiryDate = createdAtDate.plusDays(10);
+            travelValidityEndDate = createdAtDate.plusMonths(4);
+        }
 
         return new CertificateViewDto(
                 entity.getId(),
                 entity.getCertificateNumber(),
-
-                petMapper.toProfileDto(petDto),
-                recordSummaryMapper.toSummaryDto(medicalRecordDto),
-                userMapper.toVetSummaryDto(generatorVetDto),
-                clinicMapper.toDto(issuingClinicDto),
-
+                petDto,
+                originatingRecordDto,
+                generatorVetDto,
                 entity.getCreatedAt(),
+                initialEuEntryExpiryDate,
+                travelValidityEndDate,
                 entity.getPayload(),
                 entity.getHash(),
                 entity.getVetSignature(),

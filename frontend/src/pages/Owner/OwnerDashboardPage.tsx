@@ -16,6 +16,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOwnerLayoutContext } from "@/hooks/useOwnerLayoutContext";
 import { Loader2 } from "lucide-react";
 import RequestActivationModal from "@/components/pet/modals/RequestActivationModal";
+import PetTravelStatusCard from '@/components/pet/PetTravelStatusCard'; 
+import RegisterEuEntryModal from '@/components/pet/modals/RegisterEuEntryModal'; 
+import RegisterEuExitModal from '@/components/pet/modals/RegisterEuExitModal'; 
+import { toast } from 'sonner';
 
 /**
  * OwnerDashboardPage - Main container for the owner's pet management view.
@@ -27,6 +31,7 @@ import RequestActivationModal from "@/components/pet/modals/RequestActivationMod
 const OwnerDashboardPage = (): JSX.Element => {
   const { token, isLoading: isLoadingAuth } = useAuth();
   const [pets, setPets] = useState<PetProfileDto[]>([]);
+  const [showTravelModal, setShowTravelModal] = useState<null | { type: 'entry' | 'exit', pet: PetProfileDto }>(null); 
   const [selectedPet, setSelectedPet] = useState<PetProfileDto | null>(null);
   const [isLoadingPets, setIsLoadingPets] = useState<boolean>(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
@@ -41,6 +46,7 @@ const OwnerDashboardPage = (): JSX.Element => {
   const [showRequestActivationModal, setShowRequestActivationModal] = useState<boolean>(false);
   const [petToRequestActivation, setPetToRequestActivation] = useState<PetProfileDto | null>(null);
   const [isRequestingActivation, setIsRequestingActivation] = useState<boolean>(false);
+  const [targetPetDetailTab, setTargetPetDetailTab] = useState<string>('home');
 
   /**
    * Fetches the owner's pets from the API.
@@ -272,7 +278,10 @@ const OwnerDashboardPage = (): JSX.Element => {
       {!isLoadingPets && !selectedPet && (
         <PetList
           pets={pets}
-          onSelectPet={(petId) => handleSelectPet(petId)}
+          onSelectPet={(petId) =>{ 
+            handleSelectPet(petId);
+            setTargetPetDetailTab('home');
+          }}
           onAddPet={() => setShowAddModal(true)}
           showInactive={showInactivePets}
           onToggleShowInactive={(checked) => {
@@ -280,6 +289,28 @@ const OwnerDashboardPage = (): JSX.Element => {
           }}
         />
       )}
+
+      {!isLoadingPets && !selectedPet && pets.filter(p => p.status === PetStatus.ACTIVE).length > 0 && (
+                 <div className="mt-8">
+                    <h2 className="text-2xl font-semibold text-[#FFECAB] mb-4">Pets' Travel Status & AHC Validity</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {pets.filter(p => p.status === PetStatus.ACTIVE).map(pet => (
+                            <PetTravelStatusCard
+                                key={pet.id}
+                                pet={pet}
+                                onNavigateToCertificates={() => {
+                                    if (pet) {
+                                      handleSelectPet(pet.id); 
+                                      setTargetPetDetailTab('certificates'); 
+                                  }   
+                                    toast.info(`Navigate to certificates tab for ${pet.name} (after pet selection).`);
+                                }}
+                                onTravelStatusUpdated={handlePetAddedOrUpdated} 
+                            />
+                        ))}
+                    </div>
+                </div>
+       )}
 
       {isLoadingDetail && selectedPet && (
         <div className="text-center py-10 text-gray-400">
@@ -300,6 +331,7 @@ const OwnerDashboardPage = (): JSX.Element => {
           <PetDetailTabs 
           pet={selectedPet}
           onAssociationChanged={handlePetAddedOrUpdated}
+          defaultActiveTab={targetPetDetailTab} 
           />
         </div>
       )}
@@ -366,6 +398,22 @@ const OwnerDashboardPage = (): JSX.Element => {
             isLoadingRequest={isRequestingActivation}
         />
       )}
+
+      {showTravelModal && showTravelModal.pet && (
+                showTravelModal.type === 'entry' ?
+                <RegisterEuEntryModal
+                    isOpen={true}
+                    onClose={() => setShowTravelModal(null)}
+                    pet={showTravelModal.pet}
+                    onEntryRegistered={handlePetAddedOrUpdated } 
+                /> :
+                <RegisterEuExitModal
+                    isOpen={true}
+                    onClose={() => setShowTravelModal(null)}
+                    pet={showTravelModal.pet}
+                    onExitRegistered={handlePetAddedOrUpdated } 
+                />
+            )}
 
     </div>
   );

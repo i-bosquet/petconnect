@@ -4,21 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText,  Loader2, AlertCircle, QrCode, Send, ShieldCheck, InfoIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { findCertificatesByPet, getCertificateQrData } from '@/services/certificateService';
+import { findCertificatesByPet} from '@/services/certificateService';
 import { requestCertificateGeneration } from '@/services/petService'; 
 import { toast } from 'sonner';
-import { formatDateTime, getRecordTypeDisplay } from '@/utils/formatters';
+import { formatDateTime, getRecordTypeDisplay, getAhcValidityInfo } from '@/utils/formatters';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import SelectClinicForCertificateRequestModal from '@/components/pet/modals/SelectClinicForCertificateRequestModal';
-import ShowQrModal from '@/components/common/ShowQrModal'; 
-
-interface QrModalState {
-    isOpen: boolean;
-    qrDataString: string | null;
-    title: string;
-    infoText?: string; 
-}
+import ViewCertificateModal  from '@/components/common/ViewCertificateModal'; 
 
 /**
  * PetCertificatesTab - Displays a list of certificates for the pet.
@@ -34,8 +27,8 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
     const [error, setError] = useState<string>('');
     const [showSelectClinicModal, setShowSelectClinicModal] = useState<boolean>(false);
     const [isRequesting, setIsRequesting] = useState<boolean>(false);
-    const [qrModal, setQrModal] = useState<QrModalState>({ isOpen: false, qrDataString: null, title: '' });
-    const [isLoadingQr, setIsLoadingQr] = useState<boolean>(false);
+    const [showViewCertificateModal, setShowViewCertificateModal] = useState<boolean>(false);
+    const [selectedCertificateForView, setSelectedCertificateForView] = useState<CertificateViewDto | null>(null);
 
     const isOwner = user?.id === pet.ownerId;
 
@@ -69,20 +62,50 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
 
     const canRequestFromAnyClinic = isOwner && canMeetPreRequisites && hasAssociatedVets && !pet.pendingCertificateClinicId;
 
-    let requestButtonTooltip = "";
+    const latestCertificate = useMemo(() => {
+        if (!certificates || certificates.length === 0) return null;
+        return certificates[0];
+    }, [certificates]);
 
+    let isRecentAhcStillPotentiallyValid = false;
+    
+    if (latestCertificate) {
+        const issueDate = new Date(latestCertificate.createdAt);
+        const fourMonthsAgo = new Date();
+        fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+        if (issueDate > fourMonthsAgo) {
+            const travelExpiry = latestCertificate.travelValidityEndDate ? new Date(latestCertificate.travelValidityEndDate) : null;
+            const today = new Date();
+            if (travelExpiry && today <= travelExpiry) {
+                 isRecentAhcStillPotentiallyValid = true;
+            } else if (!travelExpiry && issueDate > fourMonthsAgo) { 
+                isRecentAhcStillPotentiallyValid = true;
+            }
+        }
+    }
+
+
+    const canRequestNewCertificate = isOwner &&
+                                  canMeetPreRequisites &&
+                                  hasAssociatedVets &&
+                                  !pet.pendingCertificateClinicId &&
+                                  !isRecentAhcStillPotentiallyValid; 
+
+    let requestButtonTooltip = "";
     if (isOwner) {
         if (pet.pendingCertificateClinicId) {
             requestButtonTooltip = `A certificate request is already pending at ${pet.pendingCertificateClinicName || 'a clinic'}.`;
+        } else if (isRecentAhcStillPotentiallyValid && latestCertificate) {
+            requestButtonTooltip = `A recent certificate (#${latestCertificate.certificateNumber.slice(0,8)}...) issued on ${formatDateTime(latestCertificate.createdAt)} might still be valid.`;
         } else if (!hasAssociatedVets) {
             requestButtonTooltip = "Associate a veterinarian with your pet to request a certificate.";
-        }else if (!canMeetPreRequisites) {
-            requestButtonTooltip = "Pet does not meet AHC requirements (missing valid rabies vaccine or recent checkup).";
-        } 
-}
+        } else if (!canMeetPreRequisites) {
+            requestButtonTooltip = "Pet does not meet AHC requirements (check rabies vaccine and health checkup status).";
+        }
+    }  
 
     const handleRequestCertificateClick = () => {
-        if (!canRequestFromAnyClinic) return; // Doble chequeo
+        if (!canRequestFromAnyClinic) return; 
 
         if (uniqueAssociatedClinics.length === 1) {
             const singleClinicId = uniqueAssociatedClinics[0].id;
@@ -133,7 +156,7 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
         }
     }, [token, pet?.id]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (token && pet?.id) {
         fetchCertificates();
     } else {
@@ -141,42 +164,15 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
         setIsLoading(false); 
         setError('');      
     }
-}, [fetchCertificates, pet?.id, token]);
+    }, [fetchCertificates, pet?.id, token]);
 
-    const handleViewQr = async (certificate: CertificateViewDto) => {
-        if (!token) {
-            toast.error("Authentication required.");
-            return;
-        }
-        setIsLoadingQr(true);
-        try {
-            const qrData = await getCertificateQrData(token, certificate.id);
-            setQrModal({
-                isOpen: true,
-                qrDataString: qrData,
-                title: "Certificate",
-                infoText: `Certificate No: ${certificate.certificateNumber} - Issued on: ${formatDateTime(certificate.createdAt)}`,
-            });
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to load QR data.");
-        } finally {
-            setIsLoadingQr(false);
-        }
-    };
-    
-    const getAhcValidityInfo = (issueDateStr: string): {entryEuExpiry: string, travelEuExpiry: string, isExpiredForEntry: boolean } => {
-             const issueDate = new Date(issueDateStr);
-        const entryEuExpiryDate = new Date(issueDate);
-        entryEuExpiryDate.setDate(issueDate.getDate() + 10);
-        const travelEuExpiryDate = new Date(issueDate);
-        travelEuExpiryDate.setMonth(issueDate.getMonth() + 4);
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        return {
-            entryEuExpiry: entryEuExpiryDate.toLocaleDateString('en-GB'),
-            travelEuExpiry: travelEuExpiryDate.toLocaleDateString('en-GB'),
-            isExpiredForEntry: today > entryEuExpiryDate
-        };
+     /**
+     * Opens the modal to view certificate details and QR.
+     * @param {CertificateViewDto} certificate - The certificate to view.
+     */
+    const handleOpenViewCertificateModal = (certificate: CertificateViewDto) => {
+        setSelectedCertificateForView(certificate);
+        setShowViewCertificateModal(true);
     };
 
     const onPetProfileShouldRefresh = () => {
@@ -193,22 +189,22 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
                         Health Certificates for {pet.name}
                     </CardTitle>
                      {isOwner && (
-                        <Tooltip open={!canRequestFromAnyClinic && !!requestButtonTooltip ? undefined : false} >
+                        <Tooltip open={!canRequestNewCertificate  && !!requestButtonTooltip ? undefined : false} >
                             <TooltipTrigger asChild>
                                 <div className="inline-block self-start sm:self-center">
                                     <Button
                                         onClick={handleRequestCertificateClick}
                                         size="sm"
                                         className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={!canRequestFromAnyClinic || isRequesting}
-                                        aria-disabled={!canRequestFromAnyClinic}
+                                        disabled={!canRequestNewCertificate  || isRequesting}
+                                        aria-disabled={!canRequestNewCertificate }
                                     >
                                         {isRequesting ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <Send size={16} className="mr-2" />}
                                         {isRequesting ? "Sending..." : "Request New Certificate"}
                                     </Button>
                                 </div>
                             </TooltipTrigger>
-                            {!canRequestFromAnyClinic && requestButtonTooltip && (
+                            {!canRequestNewCertificate  && requestButtonTooltip && (
                                 <TooltipContent className="bg-gray-950 text-white border  border-red-700">
                                     <p>{requestButtonTooltip}</p>
                                 </TooltipContent>
@@ -237,29 +233,40 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
                 {!isLoading && !error && certificates.length > 0 && (
                     <div className="space-y-3">
                         {certificates.map(cert => {
+                            console.log("PetCertificatesTab rendering cert, pet.lastEuEntryDate:", pet.lastEuEntryDate);
                             const validityInfo = getAhcValidityInfo(cert.createdAt);
                             return (
-                                <div key={cert.id} className={`bg-gray-800/60 p-3 sm:p-4 rounded-lg border hover:border-cyan-600/50 ${validityInfo.isExpiredForEntry ? 'border-red-700/50 opacity-70' : 'border-gray-700'}`}>
+                                <div key={cert.id} className={`bg-gray-800/60 p-3 sm:p-4 rounded-lg border hover:border-cyan-600/50 ${validityInfo.entryEuExpiry ? 'border-red-700/50 opacity-70' : 'border-gray-700'}`}>
                                     <div className="flex flex-col sm:flex-row justify-between items-start">
                                         <div>
                                             <h4 className="font-semibold text-base text-white mb-0.5 flex items-center gap-1.5">
-                                                <ShieldCheck size={16} className={validityInfo.isExpiredForEntry ? "text-red-400" : "text-green-400"}/>
+                                                <ShieldCheck size={16} className={
+                                                    validityInfo.overallStatus === 'VALID_FOR_TRAVEL' ? "text-green-400" :
+                                                    validityInfo.overallStatus === 'VALID_FOR_ENTRY' ? "text-yellow-400" :
+                                                    "text-red-400"
+                                                }/>
                                                 Certificate No: {cert.certificateNumber}
-                                                {validityInfo.isExpiredForEntry && <Badge variant="destructive" className="ml-2 text-xs">Expired for EU Entry</Badge>}
+                                                {validityInfo.overallStatus === 'VALID_FOR_TRAVEL' && <Badge className="ml-2 text-xs bg-green-600">Active for EU Travel</Badge>}
+                                                {validityInfo.overallStatus === 'VALID_FOR_ENTRY' && <Badge variant="outline" className="ml-2 text-xs border-yellow-500 text-yellow-300">Valid for EU Entry Only</Badge>}
+                                                {validityInfo.overallStatus === 'EXPIRED' && <Badge variant="destructive" className="ml-2 text-xs">Expired</Badge>}
                                             </h4>
+                                            <p className="text-xs text-amber-400 mt-1">{validityInfo.statusMessage}</p> 
                                             <p className="text-xs text-gray-400">Issued: {formatDateTime(cert.createdAt)}</p>
-                                            <p className="text-xs text-gray-400">By: Dr. {cert.generatorVet.name} {cert.generatorVet.surname} ({cert.issuingClinic.name})</p>
-                                            <p className="text-xs text-gray-400 mt-1">Based on Record: {getRecordTypeDisplay(cert.originatingRecord.type)} ({formatDateTime(cert.originatingRecord.createdAt)})</p>
-                                            <p className="text-xs text-amber-400 mt-1">EU Entry Valid Until: {validityInfo.entryEuExpiry}</p>
+                                            <p className="text-xs text-gray-400">
+                                                By: Dr. {cert.generatorVet?.name} {cert.generatorVet?.surname}
+                                                {cert.generatorVet?.clinicName && ` (${cert.generatorVet.clinicName})`}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                Based on Record: {getRecordTypeDisplay(cert.originatingRecord?.type)}
+                                                {cert.originatingRecord?.createdAt && ` (${formatDateTime(cert.originatingRecord.createdAt)})`}
+                                            </p>
                                         </div>
                                         <div className="flex gap-1.5 mt-3 sm:mt-0 self-start sm:self-center">
                                             <Button
                                                 className="px-2 py-1 h-auto text-sm bg-[#FFECAB] text-[#090D1A] border-2 border-[#FFECAB] hover:bg-cyan-800 hover:text-[#FFECAB] cursor-pointer"
-                                                onClick={() => handleViewQr(cert)}
-                                                disabled={isLoadingQr}
+                                                onClick={() => handleOpenViewCertificateModal(cert)}
                                             >
-                                                {isLoadingQr && qrModal.title.includes(cert.certificateNumber) ? <Loader2 className="h-4 w-4 animate-spin"/> : <QrCode size={14} className="mr-1"/>}
-                                                View QR
+                                                <QrCode size={14} className="mr-1"/> View Details & QR
                                             </Button>
                                         </div>
                                     </div>
@@ -280,13 +287,11 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
                 />
             )}
 
-            {qrModal.isOpen && qrModal.qrDataString && (
-                <ShowQrModal
-                    isOpen={qrModal.isOpen}
-                    onClose={() => setQrModal({ isOpen: false, qrDataString: null, title: '' })}
-                    qrData={qrModal.qrDataString}
-                    title={qrModal.title}
-                    infoText={qrModal.infoText}
+            {showViewCertificateModal && selectedCertificateForView && (
+                <ViewCertificateModal 
+                    isOpen={showViewCertificateModal}
+                    onClose={() => { setShowViewCertificateModal(false); setSelectedCertificateForView(null); }}
+                    certificate={selectedCertificateForView}
                 />
             )}
         </Card>

@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { PetProfileDto, CertificateGenerationRequestDto } from '@/types/apiTypes';
 import { generateCertificate } from '@/services/certificateService'; 
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, FileSignature, CircleX, InfoIcon } from 'lucide-react';
+import { Loader2, FileSignature, CircleX, InfoIcon, LockKeyhole, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface GenerateCertificateModalProps {
     isOpen: boolean;
@@ -28,14 +29,23 @@ const GenerateCertificateModal = ({
     pet,
     onCertificateGenerated
 }: GenerateCertificateModalProps): JSX.Element | null => {
-    const { token } = useAuth();
+    const { token, user} = useAuth();
     const [certificateNumber, setCertificateNumber] = useState<string>('');
+    const [vetPassword, setVetPassword] = useState<string>(''); 
+    const [showVetPassword, setShowVetPassword] = useState<boolean>(false); 
+    const [clinicPassword, setClinicPassword] = useState<string>('');
+    const [showClinicPassword, setShowClinicPassword] = useState<boolean>(false); 
+
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
 
     useEffect(() => {
         if (isOpen) {
             setCertificateNumber('');
+            setVetPassword('');
+            setShowVetPassword(false);
+            setClinicPassword('');
+            setShowClinicPassword(false);
             setError('');
             setIsLoading(false);
         }
@@ -43,14 +53,11 @@ const GenerateCertificateModal = ({
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!token) {
-            setError("Authentication error. Please log in again.");
-            return;
-        }
-        if (!certificateNumber.trim()) {
-            setError("Official Certificate Number is required.");
-            return;
-        }
+        if (!token) { setError("Authentication error. Please log in again.");return;}
+        if (!user?.roles?.includes('VET')) { setError("Only veterinarians can generate certificates."); return;}
+        if (!certificateNumber.trim()) {setError("Official Certificate Number is required.");return;}
+        if (!vetPassword.trim()) { setError("Your signing password is required."); return; }
+        if (!clinicPassword.trim()) { setError("Clinic's signing password is required."); return;}
 
         setIsLoading(true);
         setError('');
@@ -58,17 +65,19 @@ const GenerateCertificateModal = ({
         const payload: CertificateGenerationRequestDto = {
             petId: pet.id,
             certificateNumber: certificateNumber.trim(),
+            vetPrivateKeyPassword: vetPassword,
+            clinicPrivateKeyPassword: clinicPassword,
         };
 
         try {
-            await generateCertificate(token, payload); // Usar el servicio de certificado
-            // toast.success se llamará en el padre (ClinicDashboardPage) a través de onCertificateGenerated
-            onCertificateGenerated(); // Esto cerrará el modal y refrescará la lista
+            await generateCertificate(token, payload); 
+            toast.success("Certificate generated successfully.");
+            onCertificateGenerated(); 
         } catch (err) {
             const errMsg = err instanceof Error ? err.message : "Could not generate certificate.";
             console.error("Failed to generate certificate:", err);
             setError(errMsg);
-            // No mostramos toast de error aquí, se muestra en el modal
+            toast.error(errMsg); 
         } finally {
             setIsLoading(false);
         }
@@ -94,13 +103,9 @@ const GenerateCertificateModal = ({
                     and a recent, signed Health Checkup on record before issuing the certificate.
                 </div>
 
+                {error && (<div className="p-3 bg-red-900/30 text-red-300 rounded-lg text-sm text-center">{error}</div>)}
 
-                {error && (
-                    <div className="p-3 bg-red-900/30 text-red-300 rounded-lg text-sm text-center">
-                        {error}
-                    </div>
-                )}
-
+                {/* Certificate Number */}
                 <div className="space-y-1.5">
                     <Label htmlFor="certificateNumber" className="text-gray-300">
                         Official Certificate Number (AHC Number) *
@@ -118,6 +123,44 @@ const GenerateCertificateModal = ({
                     />
                 </div>
 
+                 {/* Vet password */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="vetCertPassword" className="text-gray-300 flex items-center">
+                        <LockKeyhole size={16} className="mr-2 text-orange-400" /> Your Signing Password *
+                    </Label>
+                    <div className="relative">
+                        <Input id="vetCertPassword" type={showVetPassword ? "text" : "password"} value={vetPassword}
+                               onChange={(e) => setVetPassword(e.target.value)}
+                               placeholder="Your private key password" required disabled={isLoading}
+                               className="bg-[#070913] border-gray-700 pr-10"/>
+                        <button type="button" onClick={() => setShowVetPassword(!showVetPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-200">
+                            {showVetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Clinic password */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="clinicCertPassword" className="text-gray-300 flex items-center">
+                        <LockKeyhole size={16} className="mr-2 text-red-400" /> Clinic's Signing Password *
+                    </Label>
+                     <p className="text-xs text-gray-400">
+                        Enter the password for the clinic's private signing key.
+                    </p>
+                    <div className="relative">
+                        <Input id="clinicCertPassword" type={showClinicPassword ? "text" : "password"} value={clinicPassword}
+                               onChange={(e) => setClinicPassword(e.target.value)}
+                               placeholder="Clinic's private key password" required disabled={isLoading}
+                               className="bg-[#070913] border-gray-700 pr-10"/>
+                        <button type="button" onClick={() => setShowClinicPassword(!showClinicPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-200">
+                            {showClinicPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Action buttons*/}
                 <div className="flex justify-end gap-3 pt-4 border-t border-[#FFECAB]/20 mt-5">
                     <Button
                         type="button"

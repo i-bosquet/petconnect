@@ -204,7 +204,7 @@ const ClinicDashboardPage = (): JSX.Element => {
 
             <div className="mt-8 p-6 border border-dashed border-gray-600 rounded-lg">
                  <h3 className="text-lg font-semibold text-gray-300 mb-2">Clinic overview</h3>
-                 <p className="text-gray-400">(More clinic stats, quick links, etc. will be here)</p>
+                 <p className="text-gray-400">(Next appointments will be here)</p>
             </div>
 
             {/* Modals */}

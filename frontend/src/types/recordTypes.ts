@@ -1,5 +1,5 @@
 import { RecordType, Specie } from './enumTypes';
-import { UserProfile } from './authTypes'; 
+import { ClinicStaffProfile } from './authTypes'; 
 
 /**
  * Detailed view of Vaccine information within a Record.
@@ -24,7 +24,7 @@ export interface RecordViewDto {
     createdBy?: string | null;
     updatedAt?: string | null; 
     updatedBy?: string | null;
-    creator: UserProfile; 
+    creator: ClinicStaffProfile; 
     vaccine?: VaccineViewDto | null;
     createdInClinicId?: number | string | null;
     createdInClinicName?: string | null;
@@ -41,6 +41,7 @@ export interface RecordSummaryDto {
     type: RecordType;
     description?: string | null;
     createdAt?: string | null; 
+    vacine?: VaccineViewDto | null;
 }
 
 // --- DTOs mirroring backend API Payloads ---
@@ -64,6 +65,7 @@ export interface RecordCreatePayload {
     type: RecordType;
     description?: string | null;
     vaccine?: VaccineCreatePayload | null; 
+    vetPrivateKeyPassword?: string | null;
 }
 
 /**

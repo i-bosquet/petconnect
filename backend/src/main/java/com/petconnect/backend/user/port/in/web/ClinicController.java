@@ -75,10 +75,10 @@ public class ClinicController implements ClinicControllerApi {
     public ResponseEntity<ClinicDto> updateClinic(
             @PathVariable Long id,
             @RequestPart("dto") @Valid ClinicUpdateDto clinicUpdateDTO,
-            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile) {
+            @RequestPart(value = "publicKeyFile", required = false) @Nullable MultipartFile publicKeyFile,
+            @RequestPart(value = "privateKeyFile", required = false) @Nullable MultipartFile privateKeyFile) {
         Long currentAdminId = userServiceHelper.getAuthenticatedUserId();
-        // Pasar archivo al servicio
-        ClinicDto updatedClinic = clinicService.updateClinic(id, clinicUpdateDTO, publicKeyFile, currentAdminId);
+        ClinicDto updatedClinic = clinicService.updateClinic(id, clinicUpdateDTO, publicKeyFile, privateKeyFile, currentAdminId);
         return ResponseEntity.ok(updatedClinic);
     }
 
