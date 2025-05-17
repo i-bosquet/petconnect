@@ -17,6 +17,9 @@ import ClinicManagementPage from '@/pages/Clinic/ClinicManagementPage';
 import PetManagementPage from '@/pages/Clinic/PetManagementPage'; 
 import VerifyRecordsPage from '@/pages/Verify/VerifyRecordsPage'; 
 import NotFoundPage from '@/pages/NotFound/NotFoundPage';
+// Protected routes
+import OwnerProtectedRoute from '@/routes/OwnerProtectedRoute';
+import ClinicProtectedRoute from '@/routes/ClinicProtectedRoute';
 
 
 /**
@@ -34,24 +37,30 @@ const AppRouter = (): JSX.Element => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* This route is public and allows access to the verification page via a token */}
+      <Route path="/verify-pet-records" element={<VerifyRecordsPage />} /> 
 
        {/* Authenticated Routes*/}
        {/* Owner Routes */}
-       <Route path="/pet" element={<OwnerLayout />}>
-        <Route path="/pet" element={<OwnerDashboardPage />} />
+       <Route element={<OwnerProtectedRoute />}>
+        <Route path="/pet" element={<OwnerLayout />}>
+          <Route path="/pet" element={<OwnerDashboardPage />} />
+        </Route>
       </Route>
+
       {/* Clinic Routes */}
-      <Route path="/clinic" element={<ClinicLayout />}> 
-        <Route index element={<ClinicDashboardPage />} />
-        <Route path="dashboard" element={<ClinicDashboardPage />} />
-        <Route path="staff" element={<StaffManagementPage />} /> 
-        <Route path="pets" element={<PetManagementPage />} />
-        <Route path="records" element={<RecordManagementPage />} /> 
-        <Route path="certificates" element={<CertificateManagementPage />} /> 
-        <Route path="settings" element={<ClinicManagementPage />} />
+      <Route element={<ClinicProtectedRoute />}> 
+        <Route path="/clinic" element={<ClinicLayout />}> 
+          <Route index element={<ClinicDashboardPage />} />
+          <Route path="dashboard" element={<ClinicDashboardPage />} />
+          <Route path="staff" element={<StaffManagementPage />} /> 
+          <Route path="pets" element={<PetManagementPage />} />
+          <Route path="records" element={<RecordManagementPage />} /> 
+          <Route path="certificates" element={<CertificateManagementPage />} /> 
+          <Route path="settings" element={<ClinicManagementPage />} />
+        </Route>
       </Route>
-      {/* This route is public and allows access to the verification page via a token */}
-      <Route path="/verify-pet-records" element={<VerifyRecordsPage />} /> 
+      
       {/* Catch-all Not Found Route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
