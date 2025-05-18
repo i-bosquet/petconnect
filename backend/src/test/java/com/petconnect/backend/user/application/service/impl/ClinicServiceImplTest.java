@@ -196,126 +196,133 @@ class ClinicServiceImplTest {
         }
     }
 
-//    /**
-//     * --- Tests for updateClinic ---
-//     */
-//    @Nested
-//    @DisplayName("updateClinic Tests")
-//    class UpdateClinicTests { // Renombrado
-//        @Test
-//        @DisplayName("should update and return DTO when admin is authorized")
-//        void updateClinic_shouldUpdateAndReturnDto_whenAdminIsAuthorized() {
-//            // Arrange
-//            ClinicDto dtoResultadoEsperado = new ClinicDto(clinicId, "Updated Name", "Updated Addr", "Updated City", Country.SPAIN, "999", "PUB1");
-//            given(entityFinderHelper.findUserOrFail(adminId)).willReturn(adminUser);
-//            given(entityFinderHelper.findClinicOrFail(clinicId)).willReturn(existingClinic);
-//            given(clinicRepository.save(any(Clinic.class))).willAnswer(invocation -> invocation.getArgument(0));
-//            given(clinicMapper.toDto(any(Clinic.class))).willReturn(dtoResultadoEsperado);
-//            doNothing().when(clinicMapper).updateFromDto((updateDto), (existingClinic));
-//
-//            // Act
-//            ClinicDto result = clinicService.updateClinic(clinicId, updateDto, adminId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(dtoResultadoEsperado);
-//
-//            then(entityFinderHelper).should().findUserOrFail(eq(adminId));
-//            then(entityFinderHelper).should().findClinicOrFail(eq(clinicId));
-//            then(clinicMapper).should().updateFromDto((updateDto), (existingClinic));
-//            then(clinicRepository).should().save(clinicCaptor.capture());
-//            then(clinicMapper).should().toDto(any(Clinic.class));
-//
-//            Clinic savedClinic = clinicCaptor.getValue();
-//            assertThat(savedClinic.getId()).isEqualTo(clinicId);
-//        }
-//
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException when admin user not found")
-//        void updateClinic_shouldThrowEntityNotFoundException_whenAdminUserNotFound() {
-//            // Arrange
-//            Long nonExistentAdminId = 99L;
-//            given(entityFinderHelper.findUserOrFail(nonExistentAdminId))
-//                    .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), nonExistentAdminId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> clinicService.updateClinic(clinicId, updateDto, nonExistentAdminId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("UserEntity not found with id: 99");
-//
-//            then(entityFinderHelper).should(never()).findClinicOrFail(anyLong());
-//            then(clinicRepository).should(never()).save(any());
-//            then(clinicMapper).should(never()).updateFromDto(any(), any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException when clinic not found")
-//        void updateClinic_shouldThrowEntityNotFoundException_whenClinicNotFound() {
-//            // Arrange
-//            Long nonExistentClinicId = 99L;
-//            given(entityFinderHelper.findUserOrFail(adminId)).willReturn(adminUser);
-//            given(entityFinderHelper.findClinicOrFail(nonExistentClinicId))
-//                    .willThrow(new EntityNotFoundException(Clinic.class.getSimpleName(), nonExistentClinicId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> clinicService.updateClinic(nonExistentClinicId, updateDto, adminId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Clinic not found with id: 99");
-//
-//            then(entityFinderHelper).should().findUserOrFail(eq(adminId));
-//            then(entityFinderHelper).should().findClinicOrFail(eq(nonExistentClinicId));
-//            then(clinicRepository).should(never()).save(any());
-//            then(clinicMapper).should(never()).updateFromDto(any(), any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw AccessDeniedException when user is not an Admin")
-//        void updateClinic_shouldThrowAccessDeniedException_whenUserIsNotAdmin() {
-//            // Arrange
-//            Long vetUserId = 11L;
-//            ClinicStaff vetUser = new Vet();
-//            vetUser.setId(vetUserId);
-//            vetUser.setClinic(existingClinic);
-//            RoleEntity vetRole = RoleEntity.builder().id(2L).roleEnum(RoleEnum.VET).build();
-//            vetUser.setRoles(Set.of(vetRole));
-//            given(entityFinderHelper.findUserOrFail(vetUserId)).willReturn(vetUser);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> clinicService.updateClinic(clinicId, updateDto, vetUserId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not authorized to update clinic information");
-//
-//            then(entityFinderHelper).should().findUserOrFail(eq(vetUserId));
-//            then(entityFinderHelper).should(never()).findClinicOrFail(anyLong());
-//            then(clinicRepository).should(never()).save(any());
-//            then(clinicMapper).should(never()).updateFromDto(any(), any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw AccessDeniedException when Admin is from a different clinic")
-//        void updateClinic_shouldThrowAccessDeniedException_whenAdminIsFromDifferentClinic() {
-//            // Arrange
-//            Long clinicIdToUpdate = 1L;
-//            Long adminFromAnotherClinicId = 12L;
-//            Clinic anotherClinic = Clinic.builder().name("Paris").build(); anotherClinic.setId(2L);
-//            ClinicStaff adminFromAnotherClinic = new ClinicStaff();
-//            adminFromAnotherClinic.setId(adminFromAnotherClinicId);
-//            adminFromAnotherClinic.setClinic(anotherClinic);
-//            RoleEntity adminRole = RoleEntity.builder().id(3L).roleEnum(RoleEnum.ADMIN).build();
-//            adminFromAnotherClinic.setRoles(Set.of(adminRole));
-//            given(entityFinderHelper.findUserOrFail(adminFromAnotherClinicId)).willReturn(adminFromAnotherClinic);
-//            given(entityFinderHelper.findClinicOrFail(clinicIdToUpdate)).willReturn(existingClinic);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> clinicService.updateClinic(clinicIdToUpdate, updateDto, adminFromAnotherClinicId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not authorized to update clinic 1");
-//
-//            then(entityFinderHelper).should().findUserOrFail(eq(adminFromAnotherClinicId));
-//            then(entityFinderHelper).should().findClinicOrFail(eq(clinicIdToUpdate));
-//            then(clinicRepository).should(never()).save(any());
-//            then(clinicMapper).should(never()).updateFromDto(any(), any());
-//        }
-//    }
+    /**
+     * --- Tests for updateClinic ---
+     */
+    @Nested
+    @DisplayName("updateClinic Tests")
+    class UpdateClinicTests {
+        @Test
+        @DisplayName("should update and return DTO when admin is authorized")
+        void updateClinic_shouldUpdateAndReturnDto_whenAdminIsAuthorized() {
+            // Arrange
+            ClinicDto dtoResultadoEsperado = new ClinicDto(
+                    clinicId,
+                    "Updated Name",
+                    "Updated Addr",
+                    "Updated City",
+                    Country.SPAIN,
+                    "999",
+                    existingClinic.getPublicKey()
+            );
+            given(entityFinderHelper.findAdminStaffOrFail(adminId, "update clinic information")).willReturn(adminUser);
+            given(entityFinderHelper.findClinicOrFail(clinicId)).willReturn(existingClinic);
+            given(clinicRepository.save(any(Clinic.class))).willAnswer(invocation -> invocation.getArgument(0));
+            given(clinicMapper.toDto(any(Clinic.class))).willReturn(dtoResultadoEsperado);
+
+            // Act
+            ClinicDto result = clinicService.updateClinic(clinicId, updateDto, null, null, adminId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(dtoResultadoEsperado);
+            then(entityFinderHelper).should().findAdminStaffOrFail(eq(adminId), eq("update clinic information"));
+            then(entityFinderHelper).should().findClinicOrFail(eq(clinicId));
+            then(clinicRepository).should().save(clinicCaptor.capture());
+            Clinic savedClinic = clinicCaptor.getValue();
+            assertThat(savedClinic.getName()).isEqualTo(updateDto.name());
+            assertThat(savedClinic.getAddress()).isEqualTo(updateDto.address());
+            assertThat(savedClinic.getCity()).isEqualTo(updateDto.city());
+            assertThat(savedClinic.getCountry()).isEqualTo(updateDto.country());
+            assertThat(savedClinic.getPhone()).isEqualTo(updateDto.phone());
+            assertThat(savedClinic.getPublicKey()).isEqualTo(existingClinic.getPublicKey());
+            assertThat(savedClinic.getPrivateKey()).isEqualTo(existingClinic.getPrivateKey());
+            then(clinicMapper).should().toDto(eq(savedClinic));
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException when admin user not found")
+        void updateClinic_shouldThrowEntityNotFoundException_whenAdminUserNotFound() {
+            // Arrange
+            Long nonExistentAdminId = 99L;
+            given(entityFinderHelper.findAdminStaffOrFail(nonExistentAdminId, "update clinic information"))
+                    .willThrow(new EntityNotFoundException(ClinicStaff.class.getSimpleName(), nonExistentAdminId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> clinicService.updateClinic(clinicId, updateDto, null, null, nonExistentAdminId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("ClinicStaff not found with id: " + nonExistentAdminId);
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(eq(nonExistentAdminId), anyString());
+            then(entityFinderHelper).should(never()).findClinicOrFail(anyLong());
+            then(clinicRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException when clinic not found")
+        void updateClinic_shouldThrowEntityNotFoundException_whenClinicNotFound() {
+            // Arrange
+            Long nonExistentClinicId = 99L;
+            given(entityFinderHelper.findAdminStaffOrFail(adminId, "update clinic information")).willReturn(adminUser);
+            given(entityFinderHelper.findClinicOrFail(nonExistentClinicId))
+                    .willThrow(new EntityNotFoundException(Clinic.class.getSimpleName(), nonExistentClinicId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> clinicService.updateClinic(nonExistentClinicId, updateDto, null, null, adminId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Clinic not found with id: " + nonExistentClinicId);
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(eq(adminId), anyString());
+            then(entityFinderHelper).should().findClinicOrFail(eq(nonExistentClinicId));
+            then(clinicRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException when user is not an Admin")
+        void updateClinic_shouldThrowAccessDeniedException_whenUserIsNotAdmin() {
+            // Arrange
+            Long vetUserId = 11L;
+            given(entityFinderHelper.findAdminStaffOrFail(vetUserId, "update clinic information"))
+                    .willThrow(new AccessDeniedException("User " + vetUserId + " is not an authorized Admin to perform action [update clinic information]."));
+
+            // Act & Assert
+            assertThatThrownBy(() -> clinicService.updateClinic(clinicId, updateDto, null, null, vetUserId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not an authorized Admin");
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(eq(vetUserId), anyString());
+            then(entityFinderHelper).should(never()).findClinicOrFail(anyLong());
+            then(clinicRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException when Admin is from a different clinic")
+        void updateClinic_shouldThrowAccessDeniedException_whenAdminIsFromDifferentClinic() {
+            // Arrange
+            Long clinicIdToUpdate = 1L; 
+            Long adminFromAnotherClinicId = 12L;
+            Clinic anotherClinic = Clinic.builder().name("Paris Clinic").build();
+            anotherClinic.setId(2L);
+
+            ClinicStaff adminFromAnotherClinic = new ClinicStaff();
+            adminFromAnotherClinic.setId(adminFromAnotherClinicId);
+            adminFromAnotherClinic.setClinic(anotherClinic);
+            RoleEntity adminRole = RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build();
+            adminFromAnotherClinic.setRoles(Set.of(adminRole));
+
+            given(entityFinderHelper.findAdminStaffOrFail(adminFromAnotherClinicId, "update clinic information"))
+                    .willReturn(adminFromAnotherClinic);
+            given(entityFinderHelper.findClinicOrFail(clinicIdToUpdate)).willReturn(existingClinic);
+
+            // Act & Assert
+            assertThatThrownBy(() -> clinicService.updateClinic(clinicIdToUpdate, updateDto, null, null, adminFromAnotherClinicId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Admin user " + adminFromAnotherClinicId + " is not authorized to update clinic " + clinicIdToUpdate);
+
+            then(entityFinderHelper).should().findAdminStaffOrFail(eq(adminFromAnotherClinicId), anyString());
+            then(entityFinderHelper).should().findClinicOrFail(eq(clinicIdToUpdate));
+            then(clinicRepository).should(never()).save(any());
+        }
+    }
 
     /**
      * --- Tests for getDistinctClinicCountries ---

@@ -1,27 +1,32 @@
 package com.petconnect.backend.common.service.impl;
 
+import com.petconnect.backend.common.service.KeyStorageService;
 import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.Vet;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
 import java.util.Base64;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for {@link SigningServiceImpl}. // Probar la implementación
+ * Unit tests for {@link SigningServiceImpl}.
  * Verifies the signature generation (Vet & Clinic) and verification logic using test keys.
  * Assumes test keys are available in the specified paths relative to the project root.
  *
@@ -30,16 +35,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ExtendWith(MockitoExtension.class)
 class SigningServiceImplTest {
 
+    @Mock
+    private KeyStorageService keyStorageService;
+
     @InjectMocks
     private SigningServiceImpl signingService;
 
-    private static final String TEST_VET_PRIVATE_KEY_PATH = "../keys/vet_private_key.pem";
-    private static final String TEST_VET_PUBLIC_KEY_PATH = "../keys/vet_public_key.pem";
+    private static final String TEST_VET_RELATIVE_PRIVATE_KEY_PATH = "keys_for_test/vet_private_key.pem";
+    private static final String TEST_VET_RELATIVE_PUBLIC_KEY_PATH = "keys_for_test/vet_public_key.pem";
     private static final String TEST_VET_PRIVATE_KEY_PASSWORD = "1234";
 
-    private static final String TEST_CLINIC_PRIVATE_KEY_PATH = "../keys/clinic_private_key.pem";
-    private static final String TEST_CLINIC_PUBLIC_KEY_PATH = "../keys/clinic_public_key.pem";
+    private static final String TEST_CLINIC_RELATIVE_PRIVATE_KEY_PATH = "keys_for_test/clinic_private_key.pem";
+    private static final String TEST_CLINIC_RELATIVE_PUBLIC_KEY_PATH = "keys_for_test/clinic_public_key.pem";
     private static final String TEST_CLINIC_PRIVATE_KEY_PASSWORD = "1234";
+
+    private static Path vetTestPrivateKeyFile;
+    private static Path vetTestPublicKeyFile;
+    private static Path clinicTestPrivateKeyFile;
+    private static Path clinicTestPublicKeyFile;
 
     private static String testVetPublicKeyPemB64;
     private static String testClinicPublicKeyPemB64;
@@ -52,332 +65,289 @@ class SigningServiceImplTest {
      * Genera nuevas claves de test si no existen.
      */
     @BeforeAll
-    static void setUpClass() throws Exception {
+    static void setUpClass()  {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
 
-        testVetPublicKeyPemB64 = loadPublicKeyForTest(TEST_VET_PUBLIC_KEY_PATH, TEST_VET_PRIVATE_KEY_PATH, TEST_VET_PRIVATE_KEY_PASSWORD);
-        testClinicPublicKeyPemB64 = loadPublicKeyForTest(TEST_CLINIC_PUBLIC_KEY_PATH, TEST_CLINIC_PRIVATE_KEY_PATH, TEST_CLINIC_PRIVATE_KEY_PASSWORD);
+        vetTestPrivateKeyFile = Paths.get("src/test/resources/" + TEST_VET_RELATIVE_PRIVATE_KEY_PATH).toAbsolutePath();
+        vetTestPublicKeyFile = Paths.get("src/test/resources/" + TEST_VET_RELATIVE_PUBLIC_KEY_PATH).toAbsolutePath();
+        clinicTestPrivateKeyFile = Paths.get("src/test/resources/" + TEST_CLINIC_RELATIVE_PRIVATE_KEY_PATH).toAbsolutePath();
+        clinicTestPublicKeyFile = Paths.get("src/test/resources/" + TEST_CLINIC_RELATIVE_PUBLIC_KEY_PATH).toAbsolutePath();
 
-    }
-
-    private static String loadPublicKeyForTest(String publicKeyPath, String privateKeyPath, String password) throws Exception {
-            Path pubPath = Paths.get(publicKeyPath);
-            Path privPath = Paths.get(privateKeyPath);
-
-            if (!Files.exists(privPath) || !Files.exists(pubPath)) {
-                System.err.println("WARNING: Test keys not found at " + privateKeyPath + " / " + publicKeyPath);
-                System.err.println("Please generate test keys using OpenSSL:");
-                System.err.println("openssl genpkey -algorithm RSA -spi " + privateKeyPath + " -aes256 -pass pass:" + password + " -pkeyopt rsa_keygen_bits:2048");
-                System.err.println("openssl rsa -pubout -in " + privateKeyPath + " -spi " + publicKeyPath + " -passin pass:" + password);
-                return null;
-            } else {
-                String publicKeyPemContent = Files.readString(pubPath);
-                String publicKeyB64 = publicKeyPemContent
-                        .replace("-----BEGIN PUBLIC KEY-----", "")
-                        .replace("-----END PUBLIC KEY-----", "")
-                        .replaceAll("\\s+", "");
-                assertThat(publicKeyB64).isNotBlank();
-                System.out.println("Test Public Key loaded successfully from: " + publicKeyPath);
-                return publicKeyB64;
-            }
+        try {
+            assumeTrue(Files.exists(vetTestPrivateKeyFile), "Vet private test key file missing: " + vetTestPrivateKeyFile);
+            assumeTrue(Files.exists(vetTestPublicKeyFile), "Vet public test key file missing: " + vetTestPublicKeyFile);
+            testVetPublicKeyPemB64 = Files.readString(vetTestPublicKeyFile, StandardCharsets.UTF_8)
+                    .replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s+", "");
+        } catch (IOException e) {
+            System.err.println("FATAL: Could not read Vet test public key: " + e.getMessage());
+            testVetPublicKeyPemB64 = null;
+        } catch (Exception e) {
+            System.err.println("FATAL: Unexpected error loading Vet test public key: " + e.getMessage());
+            testVetPublicKeyPemB64 = null;
         }
 
-    /**
-     * Sets up the test Vet instance and injects test key configuration into the service.
-     */
+        try {
+            assumeTrue(Files.exists(clinicTestPrivateKeyFile), "Clinic private test key file missing: " + clinicTestPrivateKeyFile);
+            assumeTrue(Files.exists(clinicTestPublicKeyFile), "Clinic public test key file missing: " + clinicTestPublicKeyFile);
+            testClinicPublicKeyPemB64 = Files.readString(clinicTestPublicKeyFile, StandardCharsets.UTF_8)
+                    .replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replaceAll("\\s+", "");
+        } catch (IOException e) {
+            System.err.println("FATAL: Could not read Clinic test public key: " + e.getMessage());
+            testClinicPublicKeyPemB64 = null;
+        } catch (Exception e) {
+            System.err.println("FATAL: Unexpected error loading Clinic test public key: " + e.getMessage());
+            testClinicPublicKeyPemB64 = null;
+        }
+    }
+
     @BeforeEach
     void setUp() {
         testVet = new Vet();
         testVet.setId(99L);
-        testVet.setUsername("testsignvet");
+        testVet.setUsername("investigate");
+        testVet.setVetPrivateKey(TEST_VET_RELATIVE_PRIVATE_KEY_PATH);
+        testVet.setVetPublicKey(TEST_VET_RELATIVE_PUBLIC_KEY_PATH);
 
         testClinic = new Clinic();
         testClinic.setId(1L);
         testClinic.setName("Test Signing Clinic");
+        testClinic.setPrivateKey(TEST_CLINIC_RELATIVE_PRIVATE_KEY_PATH);
+        testClinic.setPublicKey(TEST_CLINIC_RELATIVE_PUBLIC_KEY_PATH);
 
-        ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", TEST_VET_PRIVATE_KEY_PATH);
-        ReflectionTestUtils.setField(signingService, "vetPrivateKeyPassword", TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray());
-        ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", TEST_CLINIC_PRIVATE_KEY_PATH);
-        ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPassword", TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray());
-
-        ReflectionTestUtils.setField(signingService, "simulatedVetPrivateKey", null);
-        ReflectionTestUtils.setField(signingService, "simulatedClinicPrivateKey", null);
+        lenient().when(keyStorageService.getAbsolutePathForPrivateKey(TEST_VET_RELATIVE_PRIVATE_KEY_PATH))
+                .thenReturn(vetTestPrivateKeyFile);
+        lenient().when(keyStorageService.getAbsolutePathForPublicKey(TEST_VET_RELATIVE_PUBLIC_KEY_PATH))
+                .thenReturn(vetTestPublicKeyFile);
+        lenient().when(keyStorageService.getAbsolutePathForPrivateKey(TEST_CLINIC_RELATIVE_PRIVATE_KEY_PATH))
+                .thenReturn(clinicTestPrivateKeyFile);
+        lenient().when(keyStorageService.getAbsolutePathForPublicKey(TEST_CLINIC_RELATIVE_PUBLIC_KEY_PATH))
+                .thenReturn(clinicTestPublicKeyFile);
     }
 
-//    /**
-//     * --- Tests for generateVetSignature ---
-//     */
-//    @Nested
-//    @DisplayName("Vet Signature Generation")
-//    class VetSignatureGeneration {
-//        @Test
-//        @DisplayName("generateVetSignature should produce a non-blank Base64 string")
-//        void generateVetSignature_Success() {
-//            String data = "Vet signature data.";
-//            assumeVetKeysAvailable();
-//            String signature = signingService.generateVetSignature(testVet, data);
-//            assertThat(signature).isNotBlank();
-//            assertThat(Base64.getDecoder().decode(signature)).isNotEmpty();
-//        }
-//
-//        @Test
-//        @DisplayName("generateVetSignature should throw RuntimeException if private key file not found")
-//        void generateVetSignature_Failure_KeyFileNotFound() {
-//            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "static/keys/non_existent_vet_key.pem");
-//            assertThatThrownBy(() -> signingService.generateVetSignature(testVet, "data"))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Failed to generate Vet digital signature");
-//        }
-//
-//        @Test
-//        @DisplayName("generateVetSignature should throw RuntimeException if private key password incorrect")
-//        void generateVetSignature_Failure_WrongPassword() {
-//            assumeVetKeysAvailable();
-//            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPassword", "WRONGPASS".toCharArray());
-//            assertThatThrownBy(() -> signingService.generateVetSignature(testVet, "data"))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Failed to generate Vet digital signature");
-//        }
-//    }
-
-//    /**
-//     * --- Tests for generateClinicSignature
-//     */
-//    @Nested
-//    @DisplayName("Clinic Signature Generation")
-//    class ClinicSignatureGeneration {
-//        @Test
-//        @DisplayName("generateClinicSignature should produce a non-blank Base64 string")
-//        void generateClinicSignature_Success() {
-//            String data = "Clinic signature data.";
-//            assumeClinicKeysAvailable();
-//            String signature = signingService.generateClinicSignature(testClinic, data);
-//            assertThat(signature).isNotBlank();
-//            assertThat(Base64.getDecoder().decode(signature)).isNotEmpty();
-//        }
-//
-//        @Test
-//        @DisplayName("generateClinicSignature should throw RuntimeException if private key file not found")
-//        void generateClinicSignature_Failure_KeyFileNotFound() {
-//            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "static/keys/non_existent_clinic_key.pem");
-//            assertThatThrownBy(() -> signingService.generateClinicSignature(testClinic, "data"))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Failed to generate Clinic digital signature");
-//        }
-//
-//        @Test
-//        @DisplayName("generateClinicSignature should throw RuntimeException if private key password incorrect")
-//        void generateClinicSignature_Failure_WrongPassword() {
-//            assumeClinicKeysAvailable();
-//            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPassword", "WRONGPASS".toCharArray());
-//            assertThatThrownBy(() -> signingService.generateClinicSignature(testClinic, "data"))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Failed to generate Clinic digital signature");
-//        }
-//    }
-//
-//    /**
-//     * --- Tests for verifySignature ---
-//     */
-//    @Nested
-//    @DisplayName("Signature Verification")
-//    class SignatureVerification {
-//        @Test
-//        @DisplayName("verifySignature should return true for a valid VET signature")
-//        void verifyVetSignature_Success_Valid() {
-//            String data = "Data signed by Vet.";
-//            assumeVetKeysAvailable();
-//            String signature = signingService.generateVetSignature(testVet, data);
-//            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, data, signature);
-//            assertThat(isValid).isTrue();
-//        }
-//
-//        @Test
-//        @DisplayName("verifySignature should return true for a valid CLINIC signature")
-//        void verifyClinicSignature_Success_Valid() {
-//            String data = "Data signed by Clinic.";
-//            assumeClinicKeysAvailable();
-//            String signature = signingService.generateClinicSignature(testClinic, data);
-//            boolean isValid = signingService.verifySignature(testClinicPublicKeyPemB64, data, signature);
-//            assertThat(isValid).isTrue();
-//        }
-//
-//        @Test
-//        @DisplayName("verifySignature should return false if VET signature data is altered")
-//        void verifyVetSignature_Failure_DataAltered() {
-//            String originalData = "Sign this.";
-//            String alteredData = "Sign that.";
-//            assumeVetKeysAvailable();
-//            String signature = signingService.generateVetSignature(testVet, originalData);
-//            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, alteredData, signature);
-//            assertThat(isValid).isFalse();
-//        }
-//
-//        @Test
-//        @DisplayName("verifySignature should return false if CLINIC signature data is altered")
-//        void verifyClinicSignature_Failure_DataAltered() {
-//            String originalData = "Sign this by clinic.";
-//            String alteredData = "Sign that by clinic.";
-//            assumeClinicKeysAvailable();
-//            String signature = signingService.generateClinicSignature(testClinic, originalData);
-//            boolean isValid = signingService.verifySignature(testClinicPublicKeyPemB64, alteredData, signature);
-//            assertThat(isValid).isFalse();
-//        }
-//
-//        @Test
-//        @DisplayName("verifySignature should return false if signature is invalid/corrupted")
-//        void verifySignature_Failure_SignatureCorrupted() {
-//            String data = "Some data.";
-//            assumeVetKeysAvailable(); // Need a valid public key for the test
-//            String invalidSignature = "NotABase64SignatureOrJustWrong==";
-//            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, data, invalidSignature);
-//            assertThat(isValid).isFalse();
-//        }
-//
-//        @Test
-//        @DisplayName("verifySignature should return false if public key is incorrect (Vet Sig)")
-//        void verifyVetSignature_Failure_WrongPublicKey() {
-//            String data = "Data for Vet Sig.";
-//            assumeVetKeysAvailable();
-//            assumeClinicKeysAvailable();
-//            String signature = signingService.generateVetSignature(testVet, data);
-//
-//            boolean isValid = signingService.verifySignature(testClinicPublicKeyPemB64, data, signature);
-//            assertThat(isValid).isFalse();
-//        }
-//
-//        @Test
-//        @DisplayName("verifySignature should return false if public key is incorrect (Clinic Sig)")
-//        void verifyClinicSignature_Failure_WrongPublicKey() {
-//            String data = "Data for Clinic Sig.";
-//            assumeVetKeysAvailable();
-//            assumeClinicKeysAvailable();
-//            String signature = signingService.generateClinicSignature(testClinic, data);
-//
-//            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, data, signature);
-//            assertThat(isValid).isFalse();
-//        }
-//    }
-
-//    /**
-//     * --- Tests for getVetPrivateKey ---
-//     */
-//    @Nested
-//    @DisplayName("getVetPrivateKey Tests")
-//    class GetVetPrivateKeyTests {
-//
-//        @Test
-//        @DisplayName("should return non-null PrivateKey when key file exists")
-//        void getVetPrivateKey_Success() {
-//            assumeVetKeysAvailable(); // Ensure test keys exist for loading
-//
-//            PrivateKey key = signingService.getVetPrivateKey(testVet);
-//
-//            assertThat(key).isNotNull();
-//            assertThat(key.getAlgorithm()).isEqualTo("RSA"); // Check algorithm
-//        }
-//
-//        @Test
-//        @DisplayName("should throw RuntimeException when key file not found")
-//        void getVetPrivateKey_Failure_NotFound() {
-//            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "non/existent/path.pem");
-//            ReflectionTestUtils.setField(signingService, "simulatedVetPrivateKey", null); // Reset cache
-//
-//            assertThatThrownBy(() -> signingService.getVetPrivateKey(testVet))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Could not load Vet private key");
-//        }
-//    }
 
     /**
-     * --- Tests for getVetPublicKey ---
+     * --- Tests for generateVetSignature ---
      */
     @Nested
-    @DisplayName("getVetPublicKey Tests")
-    class GetVetPublicKeyTests {
+    @DisplayName("Vet Signature Generation")
+    class VetSignatureGeneration {
+        @Test
+        @DisplayName("generateVetSignature should produce a non-blank Base64 string")
+        void generateVetSignature_Success() {
+            String data = "Vet signature data.";
+            String signature = signingService.generateVetSignature(testVet, data, TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray());
+            assertThat(signature).isNotBlank();
+            assertThat(Base64.getDecoder().decode(signature)).isNotEmpty();
+        }
 
         @Test
-        @DisplayName("should return non-null PublicKey when key file exists")
-        void getVetPublicKey_Success() {
+        @DisplayName("generateVetSignature should throw RuntimeException if key file resolution fails")
+        void generateVetSignature_Failure_KeyFileResolutionError() {
+            when(keyStorageService.getAbsolutePathForPrivateKey(TEST_VET_RELATIVE_PRIVATE_KEY_PATH))
+                    .thenThrow(new IllegalArgumentException("Simulated path resolution error"));
+            Throwable thrown = catchThrowable(() -> signingService.generateVetSignature(testVet, "data", TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray()));
+            assertThat(thrown)
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to generate Vet digital signature");
+        }
+
+        @Test
+        @DisplayName("generateVetSignature should throw RuntimeException if key file is not found by FileReader")
+        void generateVetSignature_Failure_KeyFileNotFoundByFileReader() {
+            when(keyStorageService.getAbsolutePathForPrivateKey(TEST_VET_RELATIVE_PRIVATE_KEY_PATH))
+                    .thenReturn(Paths.get("src/test/resources/keys_for_test/non_existent_vet_key.pem").toAbsolutePath());
+
+            Throwable thrown = catchThrowable(() ->signingService.generateVetSignature(testVet, "data", TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray()));
+            assertThat(thrown)
+                .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to generate Vet digital signature")
+                    .hasCauseInstanceOf(FileNotFoundException.class);
+        }
+
+
+        @Test
+        @DisplayName("generateVetSignature should throw RuntimeException if private key password incorrect")
+        void generateVetSignature_Failure_WrongPassword() {
+            Throwable thrown = catchThrowable(() -> signingService.generateVetSignature(testVet, "data", "WRONGNESS".toCharArray()));
+            assertThat(thrown)
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to decrypt Vet private key");
+        }
+    }
+
+    /**
+     * --- Tests for generateClinicSignature
+     */
+    @Nested
+    @DisplayName("Clinic Signature Generation")
+    class ClinicSignatureGeneration {
+        @Test
+        @DisplayName("generateClinicSignature should produce a non-blank Base64 string")
+        void generateClinicSignature_Success() {
+            String data = "Clinic signature data.";
+            String signature = signingService.generateClinicSignature(testClinic, data, TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray());
+            assertThat(signature).isNotBlank();
+            assertThat(Base64.getDecoder().decode(signature)).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("generateClinicSignature should throw RuntimeException if key file resolution fails")
+        void generateClinicSignature_Failure_KeyFileResolutionError() {
+            when(keyStorageService.getAbsolutePathForPrivateKey(TEST_CLINIC_RELATIVE_PRIVATE_KEY_PATH))
+                    .thenThrow(new IllegalArgumentException("Simulated path resolution error"));
+            Throwable thrown = catchThrowable(() -> signingService.generateClinicSignature(testClinic, "data", TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray()));
+            assertThat(thrown)
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to generate Clinic digital signature");
+        }
+
+        @Test
+        @DisplayName("generateClinicSignature should throw RuntimeException if key file is not found by FileReader")
+        void generateClinicSignature_Failure_KeyFileNotFoundByFileReader() {
+            when(keyStorageService.getAbsolutePathForPrivateKey(TEST_CLINIC_RELATIVE_PRIVATE_KEY_PATH))
+                    .thenReturn(Paths.get("src/test/resources/keys_for_test/non_existent_clinic_key.pem").toAbsolutePath());
+            Throwable thrown = catchThrowable(() -> signingService.generateClinicSignature(testClinic, "data", TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray()));
+            assertThat(thrown)
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to generate Clinic digital signature")
+                    .hasCauseInstanceOf(FileNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("generateClinicSignature should throw RuntimeException if private key password incorrect")
+        void generateClinicSignature_Failure_WrongPassword() {
+            Throwable thrown = catchThrowable(() -> signingService.generateClinicSignature(testClinic, "data", "WRONGNESS".toCharArray()));
+            assertThat(thrown)
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to decrypt Clinic private key");
+        }
+    }
+
+    /**
+     * --- Tests for verifySignature ---
+     */
+    @Nested
+    @DisplayName("Signature Verification")
+    class SignatureVerification {
+        @Test
+        @DisplayName("verifySignature should return true for a valid VET signature")
+        void verifyVetSignature_Success_Valid() {
+            String data = "Data signed by Vet.";
+            String signature = signingService.generateVetSignature(testVet, data, TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray());
+            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, data, signature);
+            assertThat(isValid).isTrue();
+        }
+
+        @Test
+        @DisplayName("verifySignature should return true for a valid CLINIC signature")
+        void verifyClinicSignature_Success_Valid() {
+            String data = "Data signed by Clinic.";
+            String signature = signingService.generateClinicSignature(testClinic, data, TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray());
+            boolean isValid = signingService.verifySignature(testClinicPublicKeyPemB64, data, signature);
+            assertThat(isValid).isTrue();
+        }
+
+        @Test
+        @DisplayName("verifySignature should return false if VET signature data is altered")
+        void verifyVetSignature_Failure_DataAltered() {
+            String originalData = "Sign this.";
+            String alteredData = "Sign that.";
             assumeVetKeysAvailable();
+            String signature = signingService.generateVetSignature(testVet, originalData, TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray());
+            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, alteredData, signature);
+            assertThat(isValid).isFalse();
+        }
 
+        @Test
+        @DisplayName("verifySignature should return false if CLINIC signature data is altered")
+        void verifyClinicSignature_Failure_DataAltered() {
+            String originalData = "Sign this by clinic.";
+            String alteredData = "Sign that by clinic.";
+            assumeClinicKeysAvailable();
+            String signature = signingService.generateClinicSignature(testClinic, originalData, TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray());
+            boolean isValid = signingService.verifySignature(testClinicPublicKeyPemB64, alteredData, signature);
+            assertThat(isValid).isFalse();
+        }
+
+        @Test
+        @DisplayName("verifySignature should return false if signature is invalid/corrupted")
+        void verifySignature_Failure_SignatureCorrupted() {
+            String data = "Some data.";
+            assumeVetKeysAvailable();
+            String invalidSignature = "NotABase64SignatureOrJustWrong==";
+            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, data, invalidSignature);
+            assertThat(isValid).isFalse();
+        }
+
+        @Test
+        @DisplayName("verifySignature should return false if public key is incorrect (Vet Sig)")
+        void verifyVetSignature_Failure_WrongPublicKey() {
+            String data = "Data for Vet Sig.";
+            assumeVetKeysAvailable();
+            assumeClinicKeysAvailable();
+            String signature = signingService.generateVetSignature(testVet, data, TEST_VET_PRIVATE_KEY_PASSWORD.toCharArray());
+
+            boolean isValid = signingService.verifySignature(testClinicPublicKeyPemB64, data, signature);
+            assertThat(isValid).isFalse();
+        }
+
+        @Test
+        @DisplayName("verifySignature should return false if public key is incorrect (Clinic Sig)")
+        void verifyClinicSignature_Failure_WrongPublicKey() {
+            String data = "Data for Clinic Sig.";
+            assumeVetKeysAvailable();
+            assumeClinicKeysAvailable();
+            String signature = signingService.generateClinicSignature(testClinic, data, TEST_CLINIC_PRIVATE_KEY_PASSWORD.toCharArray());
+
+            boolean isValid = signingService.verifySignature(testVetPublicKeyPemB64, data, signature);
+            assertThat(isValid).isFalse();
+        }
+    }
+
+    /**
+     * --- Tests for getPublicKey ---
+     */
+    @Nested
+    @DisplayName("Get Public Key Methods")
+    class GetPublicKeyMethods {
+        @Test
+        @DisplayName("getVetPublicKey should return PublicKey when key file exists")
+        void getVetPublicKey_Success() {
             PublicKey key = signingService.getVetPublicKey(testVet);
-
             assertThat(key).isNotNull();
             assertThat(key.getAlgorithm()).isEqualTo("RSA");
         }
 
         @Test
-        @DisplayName("should throw RuntimeException when key file not found for derivation")
-        void getVetPublicKey_Failure_NotFound() {
-            ReflectionTestUtils.setField(signingService, "vetPrivateKeyPath", "non/existent/path.pem");
-            ReflectionTestUtils.setField(signingService, "simulatedVetPrivateKey", null); // Reset cache
+        @DisplayName("getVetPublicKey should throw RuntimeException when KeyStorageService fails to resolve or read public key path")
+        void getVetPublicKey_Failure_KeyStorageError() {
+            when(keyStorageService.getAbsolutePathForPublicKey(TEST_VET_RELATIVE_PUBLIC_KEY_PATH))
+                    .thenThrow(new RuntimeException("Simulated KeyStorageService error"));
 
             assertThatThrownBy(() -> signingService.getVetPublicKey(testVet))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Could not load/derive Vet public key");
+                    .hasMessageContaining("Unexpected error loading Vet public key: " + TEST_VET_RELATIVE_PUBLIC_KEY_PATH);
         }
-    }
-
-//    /**
-//     * --- Tests for getClinicPrivateKey
-//     */
-//    @Nested
-//    @DisplayName("getClinicPrivateKey Tests")
-//    class GetClinicPrivateKeyTests {
-//
-//        @Test
-//        @DisplayName("should return non-null PrivateKey when key file exists")
-//        void getClinicPrivateKey_Success() {
-//            assumeClinicKeysAvailable();
-//
-//            PrivateKey key = signingService.getClinicPrivateKey(testClinic);
-//
-//            assertThat(key).isNotNull();
-//            assertThat(key.getAlgorithm()).isEqualTo("RSA");
-//        }
-//
-//        @Test
-//        @DisplayName("should throw RuntimeException when key file not found")
-//        void getClinicPrivateKey_Failure_NotFound() {
-//            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "non/existent/path.pem");
-//            ReflectionTestUtils.setField(signingService, "simulatedClinicPrivateKey", null); // Reset cache
-//
-//            assertThatThrownBy(() -> signingService.getClinicPrivateKey(testClinic))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Could not load Clinic private key");
-//        }
-//    }
-
-    /**
-     * --- Tests for getClinicPublicKey
-     */
-    @Nested
-    @DisplayName("getClinicPublicKey Tests")
-    class GetClinicPublicKeyTests {
 
         @Test
-        @DisplayName("should return non-null PublicKey when key file exists")
+        @DisplayName("getClinicPublicKey should return PublicKey when key file exists")
         void getClinicPublicKey_Success() {
-            assumeClinicKeysAvailable();
-
             PublicKey key = signingService.getClinicPublicKey(testClinic);
-
             assertThat(key).isNotNull();
             assertThat(key.getAlgorithm()).isEqualTo("RSA");
         }
 
         @Test
-        @DisplayName("should throw RuntimeException when key file not found for derivation")
-        void getClinicPublicKey_Failure_NotFound() {
-            ReflectionTestUtils.setField(signingService, "clinicPrivateKeyPath", "non/existent/path.pem");
-            ReflectionTestUtils.setField(signingService, "simulatedClinicPrivateKey", null); // Reset cache
+        @DisplayName("getClinicPublicKey should throw RuntimeException when KeyStorageService fails to resolve or read public key path")
+        void getClinicPublicKey_Failure_KeyStorageError() {
+            when(keyStorageService.getAbsolutePathForPublicKey(TEST_CLINIC_RELATIVE_PUBLIC_KEY_PATH))
+                    .thenThrow(new RuntimeException("Simulated KeyStorageService error"));
 
             assertThatThrownBy(() -> signingService.getClinicPublicKey(testClinic))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Could not load/derive Clinic public key");
+                    .hasMessageContaining("Unexpected error loading Clinic public key: " + TEST_CLINIC_RELATIVE_PUBLIC_KEY_PATH);
         }
     }
 
@@ -385,12 +355,12 @@ class SigningServiceImplTest {
      * --- Helper Methods for Assumptions ---
      */
     private void assumeVetKeysAvailable() {
-        Assumptions.assumeTrue(testVetPublicKeyPemB64 != null,
-                "Skipping test because VET test public key could not be loaded.");
+        assumeTrue(Files.exists(vetTestPrivateKeyFile), "Vet private test key file missing: " + vetTestPrivateKeyFile.toString());
+        assumeTrue(testVetPublicKeyPemB64 != null, "VET test public key could not be loaded for verification tests.");
     }
 
     private void assumeClinicKeysAvailable() {
-        Assumptions.assumeTrue(testClinicPublicKeyPemB64 != null,
-                "Skipping test because CLINIC test public key could not be loaded.");
+        assumeTrue(Files.exists(clinicTestPrivateKeyFile), "Clinic private test key file missing: " + clinicTestPrivateKeyFile.toString());
+        assumeTrue(testClinicPublicKeyPemB64 != null, "CLINIC test public key could not be loaded for verification tests.");
     }
 }

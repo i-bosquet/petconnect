@@ -31,7 +31,7 @@ import static org.mockito.Mockito.mock;
  * @author ibosquet
  */
 @ExtendWith(MockitoExtension.class)
-public class KafkaCertificateEventPublisherAdapterTest {
+class KafkaCertificateEventPublisherAdapterTest {
     @Mock
     private KafkaTemplate<String, Object> kafkaTemplate;
 

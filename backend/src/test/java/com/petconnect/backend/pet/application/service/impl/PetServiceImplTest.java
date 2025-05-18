@@ -10,7 +10,9 @@ import com.petconnect.backend.pet.application.mapper.PetMapper;
 import com.petconnect.backend.pet.domain.model.*;
 import com.petconnect.backend.pet.domain.repository.BreedRepository;
 import com.petconnect.backend.pet.domain.repository.PetRepository;
+import com.petconnect.backend.user.application.dto.OwnerSummaryDto;
 import com.petconnect.backend.user.application.dto.VetSummaryDto;
+import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.common.helper.EntityFinderHelper;
 
@@ -37,7 +39,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,6 +63,7 @@ class PetServiceImplTest {
     @Mock private BreedRepository breedRepository;
     @Mock private PetMapper petMapper;
     @Mock private BreedMapper breedMapper;
+    @Mock private UserMapper userMapper;
     @Mock private EntityFinderHelper entityFinderHelper;
     @Mock private AuthorizationHelper authorizationHelper;
     @Mock private ImageService imageService;
@@ -74,352 +76,385 @@ class PetServiceImplTest {
 
     // --- Test Data ---
     private Owner owner;
+    private OwnerSummaryDto ownerSummaryDto;
     private Breed dogBreedSpecific;
     private Breed mixedDogBreed;
     private PetRegistrationDto registrationDtoSpecificBreed;
-    private PetRegistrationDto registrationDtoNoBreed;
     private Pet savedPet;
-    private PetProfileDto expectedPetProfileDto;
     private final Long ownerId = 1L;
     private final Long specificBreedId = 10L;
-    private final Long mixedBreedId = 99L;
     private final Long savedPetId = 101L;
     private final String defaultDogImagePath = "images/avatars/pets/dog.png";
-    private final String specificDogImagePath = "images/avatars/pets/labrador.png";
 
 
     /**
      * Sets up common test data before each test method execution.
      */
-//    @BeforeEach
-//    void setUp() {
-//        ReflectionTestUtils.setField(petService, "defaultPetImagePathBase", "images/avatars/pets/");
-//        owner = new Owner();
-//        owner.setId(ownerId);
-//        owner.setUsername("testowner");
-//
-//        dogBreedSpecific = Breed.builder().id(specificBreedId).name("Labrador").specie(Specie.DOG).imageUrl(specificDogImagePath).build();
-//        mixedDogBreed = Breed.builder().id(mixedBreedId).name("Mixed/Other").specie(Specie.DOG).imageUrl(defaultDogImagePath).build();
-//
-//        registrationDtoSpecificBreed = new PetRegistrationDto(
-//                "Buddy", Specie.DOG, LocalDate.of(2023, 1, 15),
-//                specificBreedId,
-//                null,
-//                "Brown", Gender.MALE, "12345"
-//        );
-//        String providedImagePath = "user/provided/dog.jpg";
-//        registrationDtoNoBreed = new PetRegistrationDto(
-//                "Mixy", Specie.DOG, LocalDate.of(2022, 3, 10),
-//                null,
-//                providedImagePath,
-//                "Black", Gender.FEMALE, null
-//        );
-//
-//        savedPet = new Pet();
-//        savedPet.setId(savedPetId);
-//        savedPet.setOwner(owner);
-//        savedPet.setStatus(PetStatus.PENDING);
-//
-//        expectedPetProfileDto = new PetProfileDto(
-//                savedPetId, "Buddy", Specie.DOG, "Brown", Gender.MALE,
-//                LocalDate.of(2023, 1, 15), "12345", specificDogImagePath,
-//                PetStatus.PENDING, ownerId, "testowner", specificBreedId, "Labrador",
-//                null, Set.of()
-//        );
-//    }
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(petService, "defaultPetImagePathBase", "images/avatars/pets/");
+        owner = new Owner();
+        owner.setId(ownerId);
+        owner.setUsername("testowner");
+        owner.setEmail("owner@test.com");
+        owner.setPhone("123456789");
+
+        String specificDogImagePath = "images/avatars/pets/labrador.png";
+        dogBreedSpecific = Breed.builder().id(specificBreedId).name("Labrador").specie(Specie.DOG).imageUrl(specificDogImagePath).build();
+        Long mixedBreedId = 99L;
+        mixedDogBreed = Breed.builder().id(mixedBreedId).name("Mixed/Other").specie(Specie.DOG).imageUrl(defaultDogImagePath).build();
+
+        registrationDtoSpecificBreed = new PetRegistrationDto(
+                "Buddy", Specie.DOG, LocalDate.of(2023, 1, 15),
+                specificBreedId,
+                null,
+                "Brown", Gender.MALE, "12345"
+        );
+
+        savedPet = new Pet();
+        savedPet.setId(savedPetId);
+        savedPet.setOwner(owner);
+        savedPet.setStatus(PetStatus.PENDING);
+        savedPet.setLastEuEntryDate(null);
+        savedPet.setLastEuExitDate(null);
+
+        ownerSummaryDto = new OwnerSummaryDto(owner.getId(), owner.getUsername(), owner.getEmail(), owner.getPhone());
+    }
 
     /**
      * --- Tests for registerPet ---
      */
-//    @Nested
-//    @DisplayName("registerPet Tests")
-//    class RegisterPetTests {
-//
-//        /**
-//         * Test case for successful pet registration with a specific breed ID and no image provided.
-//         * Expects the image path from the specific breed to be used.
-//         */
-//        @Test
-//        @DisplayName("should register pet successfully with specific breed and default image derived from breed")
-//        void registerPet_Success_SpecificBreed_DefaultImage() {
-//            // Arrange
-//            savedPet.setName(registrationDtoSpecificBreed.name());
-//            savedPet.setBreed(dogBreedSpecific);
-//            savedPet.setImage(dogBreedSpecific.getImageUrl());
-//            savedPet.setBirthDate(registrationDtoSpecificBreed.birthDate());
-//            savedPet.setColor(registrationDtoSpecificBreed.color());
-//            savedPet.setGender(registrationDtoSpecificBreed.gender());
-//            savedPet.setMicrochip(registrationDtoSpecificBreed.microchip());
-//
-//            expectedPetProfileDto = new PetProfileDto(
-//                    savedPetId, savedPet.getName(), savedPet.getBreed().getSpecie(), savedPet.getColor(),
-//                    savedPet.getGender(), savedPet.getBirthDate(), savedPet.getMicrochip(),
-//                    savedPet.getImage(),
-//                    savedPet.getStatus(), ownerId, owner.getUsername(), specificBreedId, dogBreedSpecific.getName(),
-//                    null, Set.of()
-//            );
-//
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
-//
-//            given(petRepository.save(any(Pet.class))).willReturn(savedPet);
-//            given(petMapper.toProfileDto(savedPet)).willReturn(expectedPetProfileDto);
-//
-//            // Act
-//            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId, null);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedPetProfileDto);
-//            assertThat(result.image()).isEqualTo(specificDogImagePath);
-//
-//            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
-//            then(entityFinderHelper).should().findBreedOrFail(specificBreedId);
-//
-//            then(breedRepository).should(never()).findByNameAndSpecie(anyString(), any(Specie.class));
-//            then(petRepository).should().save(petCaptor.capture());
-//            then(petMapper).should().toProfileDto(savedPet);
-//
-//            Pet capturedPet = petCaptor.getValue();
-//            assertThat(capturedPet.getBreed()).isEqualTo(dogBreedSpecific);
-//            assertThat(capturedPet.getImage()).isEqualTo(specificDogImagePath);
-//        }
-//
-//        /**
-//         * Test case for successful pet registration with no breed ID (uses Mixed/Other fallback) and a provided image.
-//         * Expects the provided image path to be used.
-//         */
-//        @Test
-//        @DisplayName("should register pet successfully with fallback breed and provided image")
-//        void registerPet_Success_FallbackBreed_ProvidedImage() throws IOException {
-//            // Arrange
-//            savedPet.setName(registrationDtoNoBreed.name());
-//            savedPet.setBreed(mixedDogBreed);
-//            savedPet.setImage(defaultDogImagePath);
-//            savedPet.setBirthDate(registrationDtoNoBreed.birthDate());
-//            savedPet.setColor(registrationDtoNoBreed.color());
-//            savedPet.setGender(registrationDtoNoBreed.gender());
-//            savedPet.setMicrochip(registrationDtoNoBreed.microchip());
-//            savedPet.setCreatedAt(LocalDateTime.now());
-//            savedPet.setUpdatedAt(LocalDateTime.now());
-//
-//            expectedPetProfileDto = new PetProfileDto(
-//                    savedPetId, savedPet.getName(), Specie.DOG, savedPet.getColor(), savedPet.getGender(),
-//                    savedPet.getBirthDate(), savedPet.getMicrochip(), defaultDogImagePath,
-//                    PetStatus.PENDING, ownerId, owner.getUsername(), mixedBreedId, mixedDogBreed.getName(),
-//                    null, Set.of()
-//            );
-//
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.DOG)).willReturn(Optional.of(mixedDogBreed));
-//            given(petRepository.save(any(Pet.class))).willReturn(savedPet);
-//            given(petMapper.toProfileDto(savedPet)).willReturn(expectedPetProfileDto);
-//
-//            // Act
-//            PetProfileDto result = petService.registerPet(registrationDtoNoBreed, ownerId, null);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedPetProfileDto);
-//            assertThat(result.image()).isEqualTo(defaultDogImagePath);
-//
-//            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
-//            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
-//            then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.DOG);
-//            then(imageService).should(never()).storeImage(any(), anyString());
-//
-//            then(petRepository).should().save(petCaptor.capture());
-//            then(petMapper).should().toProfileDto(savedPet);
-//
-//            Pet capturedPet = petCaptor.getValue();
-//            assertThat(capturedPet.getBreed()).isEqualTo(mixedDogBreed);
-//            assertThat(capturedPet.getImage()).isEqualTo(defaultDogImagePath);
-//        }
-//
-//        /**
-//         * Test case for successful pet registration with no breed ID and no image provided.
-//         * Expects the default species image path to be used.
-//         */
-//        @Test
-//        @DisplayName("should register pet successfully with fallback breed and default species image")
-//        void registerPet_Success_FallbackBreed_DefaultSpeciesImage() {
-//            // Arrange
-//            PetRegistrationDto dtoNoBreedNoImage = new PetRegistrationDto(
-//                    "Def", Specie.DOG, LocalDate.now(), null, null, null, null, null
-//            );
-//
-//            savedPet.setName(dtoNoBreedNoImage.name());
-//            savedPet.setBreed(mixedDogBreed);
-//            savedPet.setImage(defaultDogImagePath);
-//            savedPet.setBirthDate(dtoNoBreedNoImage.birthDate());
-//            savedPet.setColor(null);
-//            savedPet.setGender(null);
-//            savedPet.setMicrochip(null);
-//
-//            expectedPetProfileDto = new PetProfileDto(
-//                    savedPetId, savedPet.getName(), Specie.DOG, null, null,
-//                    savedPet.getBirthDate(), null, defaultDogImagePath,
-//                    PetStatus.PENDING, ownerId, owner.getUsername(), mixedBreedId, mixedDogBreed.getName(),
-//                    null, Set.of()
-//            );
-//
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.DOG)).willReturn(Optional.of(mixedDogBreed));
-//
-//            given(petRepository.save(any(Pet.class))).willReturn(savedPet);
-//            given(petMapper.toProfileDto(savedPet)).willReturn(expectedPetProfileDto);
-//
-//            // Act
-//            PetProfileDto result = petService.registerPet(dtoNoBreedNoImage, ownerId, null);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedPetProfileDto);
-//            assertThat(result.image()).isEqualTo(defaultDogImagePath);
-//
-//            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
-//            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
-//            then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.DOG);
-//
-//            then(petRepository).should().save(petCaptor.capture());
-//            then(petMapper).should().toProfileDto(savedPet);
-//
-//            assertThat(petCaptor.getValue().getImage()).isEqualTo(defaultDogImagePath);
-//        }
-//
-//        /**
-//         * Test case verifying that an EntityNotFoundException is thrown if the owner ID does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if owner not found")
-//        void registerPet_Failure_OwnerNotFound() {
-//            // Arrange
-//            Long nonExistentOwnerId = 999L;
-//            given(entityFinderHelper.findOwnerOrFail(nonExistentOwnerId))
-//                    .willThrow(new EntityNotFoundException(Owner.class.getSimpleName(), nonExistentOwnerId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, 999L, null))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Owner not found with id: 999");
-//
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test case verifying that an EntityNotFoundException is thrown if a specific breed ID is provided but the breed does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if specific breedId not found")
-//        void registerPet_Failure_BreedNotFound() {
-//            // Arrange
-//            Long nonExistentBreedId = 500L;
-//            PetRegistrationDto dtoWithBadBreed = new PetRegistrationDto(
-//                    "Buddy", Specie.DOG, LocalDate.now(),
-//                    nonExistentBreedId, null, null, null, null
-//            );
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
-//                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.registerPet(dtoWithBadBreed, ownerId, null))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
-//
-//            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
-//            then(entityFinderHelper).should().findBreedOrFail(nonExistentBreedId);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test case verifying that an IllegalStateException is thrown if the fallback 'Mixed/Other' breed is not configured for the species.
-//         */
-//        @Test
-//        @DisplayName("should throw IllegalStateException if fallback breed not found")
-//        void registerPet_Failure_FallbackBreedNotFound() {
-//            // Arrange
-//            PetRegistrationDto dtoWithoutBreedId = new PetRegistrationDto(
-//                    "Buddy", Specie.CAT, LocalDate.now(), null, null, null, null, null
-//            );
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.CAT)).willReturn(Optional.empty());
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.registerPet(dtoWithoutBreedId, ownerId, null))
-//                    .isInstanceOf(IllegalStateException.class)
-//                    .hasMessageContaining("Default breed configuration error for species CAT");
-//
-//            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
-//            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
-//            then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.CAT);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should register pet successfully using stored image when file is provided")
-//        void registerPet_Success_WithImageFile() throws IOException {
-//            // Arrange
-//            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "test.jpg", MediaType.IMAGE_JPEG_VALUE, "test image content".getBytes());
-//            String storedImagePath = "pets/avatars/some-uuid.jpg";
-//
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
-//            given(imageService.storeImage(imageFile, "pets/avatars")).willReturn(storedImagePath);
-//
-//            Pet savedPetWithImage = new Pet();
-//            savedPetWithImage.setId(savedPetId);
-//            savedPetWithImage.setName(registrationDtoSpecificBreed.name());
-//            savedPetWithImage.setOwner(owner);
-//            savedPetWithImage.setBreed(dogBreedSpecific);
-//            savedPetWithImage.setImage(storedImagePath);
-//            savedPetWithImage.setStatus(PetStatus.PENDING);
-//            savedPetWithImage.setBirthDate(registrationDtoSpecificBreed.birthDate());
-//            savedPetWithImage.setColor(registrationDtoSpecificBreed.color());
-//            savedPetWithImage.setGender(registrationDtoSpecificBreed.gender());
-//            savedPetWithImage.setMicrochip(registrationDtoSpecificBreed.microchip());
-//            savedPetWithImage.setCreatedAt(LocalDateTime.now());
-//            savedPetWithImage.setUpdatedAt(LocalDateTime.now());
-//
-//            given(petRepository.save(any(Pet.class))).willReturn(savedPetWithImage);
-//
-//            expectedPetProfileDto = new PetProfileDto(
-//                    savedPetWithImage.getId(), savedPetWithImage.getName(), savedPetWithImage.getBreed().getSpecie(),
-//                    savedPetWithImage.getColor(), savedPetWithImage.getGender(), savedPetWithImage.getBirthDate(),
-//                    savedPetWithImage.getMicrochip(), savedPetWithImage.getImage(),
-//                    savedPetWithImage.getStatus(), ownerId, owner.getUsername(),
-//                    specificBreedId, dogBreedSpecific.getName(), null, Set.of()
-//            );
-//            given(petMapper.toProfileDto(any(Pet.class))).willReturn(expectedPetProfileDto);
-//
-//            // Act
-//            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId, imageFile);
-//
-//            // Assert
-//            assertThat(result).isNotNull();
-//            assertThat(result.image()).isEqualTo(storedImagePath);
-//            then(imageService).should().storeImage(imageFile, "pets/avatars");
-//            then(petRepository).should().save(petCaptor.capture());
-//            assertThat(petCaptor.getValue().getImage()).isEqualTo(storedImagePath);
-//            then(petMapper).should().toProfileDto(savedPetWithImage);
-//        }
-//
-//        @Test
-//        @DisplayName("should throw RuntimeException if image storage fails")
-//        void registerPet_Failure_ImageStorageError() throws IOException {
-//            // Arrange
-//            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "bad.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
-//            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
-//            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
-//            given(imageService.storeImage(imageFile, "pets/avatars")).willThrow(new IOException("Disk full"));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, ownerId, imageFile))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Failed to process uploaded image")
-//                    .hasCauseInstanceOf(IOException.class);
-//
-//            then(imageService).should().storeImage(imageFile, "pets/avatars");
-//            then(petRepository).should(never()).save(any());
-//        }
-//    }
+    @Nested
+    @DisplayName("registerPet Tests")
+    class RegisterPetTests {
+
+        /**
+         * Test case for successful pet registration with a specific breed ID and no image provided.
+         * Expects the image path from the specific breed to be used.
+         */
+        @Test
+        @DisplayName("should register pet successfully with specific breed and default image derived from breed")
+        void registerPet_Success_SpecificBreed_DefaultImage() {
+            // Arrange
+            savedPet.setName(registrationDtoSpecificBreed.name());
+            savedPet.setBreed(dogBreedSpecific);
+            savedPet.setImage(dogBreedSpecific.getImageUrl());
+            savedPet.setBirthDate(registrationDtoSpecificBreed.birthDate());
+            savedPet.setColor(registrationDtoSpecificBreed.color());
+            savedPet.setGender(registrationDtoSpecificBreed.gender());
+            savedPet.setMicrochip(registrationDtoSpecificBreed.microchip());
+
+            PetProfileDto localExpectedPetProfileDto = new PetProfileDto(
+                    savedPetId, registrationDtoSpecificBreed.name(), Specie.DOG, registrationDtoSpecificBreed.color(),
+                    registrationDtoSpecificBreed.gender(), registrationDtoSpecificBreed.birthDate(), registrationDtoSpecificBreed.microchip(),
+                    dogBreedSpecific.getImageUrl(), //
+                    PetStatus.PENDING, ownerId, owner.getUsername(), specificBreedId, dogBreedSpecific.getName(),
+                    null, null,
+                    Set.of(),
+                    ownerSummaryDto,
+                    false,
+                    null,
+                    null
+            );
+
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
+            given(petRepository.existsByMicrochip(registrationDtoSpecificBreed.microchip())).willReturn(false);
+
+            given(petRepository.save(any(Pet.class))).willReturn(savedPet);
+            given(petMapper.toProfileDto(savedPet)).willReturn(localExpectedPetProfileDto);
+
+            // Act
+            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId, null);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(localExpectedPetProfileDto);
+            assertThat(result.image()).isEqualTo(dogBreedSpecific.getImageUrl());
+
+            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
+            then(entityFinderHelper).should().findBreedOrFail(specificBreedId);
+
+            then(breedRepository).should(never()).findByNameAndSpecie(anyString(), any(Specie.class));
+            then(petRepository).should().save(petCaptor.capture());
+            then(petMapper).should().toProfileDto(savedPet);
+
+            then(petRepository).should().save(petCaptor.capture());
+            Pet capturedPet = petCaptor.getValue();
+            assertThat(capturedPet.getImage()).isEqualTo(dogBreedSpecific.getImageUrl());
+        }
+
+        /**
+         * Test case for successful pet registration with no breed ID (uses Mixed/Other fallback) and a provided image.
+         * Expects the provided image path to be used.
+         */
+        @Test
+        @DisplayName("should register pet successfully with fallback breed and provided image")
+        void registerPet_Success_FallbackBreed_ProvidedImage() throws IOException {
+            // Arrange
+            PetRegistrationDto dtoForMixedBreedNoFile = new PetRegistrationDto(
+                    "Mixy", Specie.DOG, LocalDate.of(2022, 3, 10),
+                    null,
+                    null,
+                    "Black", Gender.FEMALE, null
+            );
+
+            Pet petToBeSaved = Pet.builder()
+                    .name(dtoForMixedBreedNoFile.name())
+                    .owner(owner)
+                    .breed(mixedDogBreed)
+                    .image(mixedDogBreed.getImageUrl())
+                    .status(PetStatus.PENDING)
+                    .birthDate(dtoForMixedBreedNoFile.birthDate())
+                    .color(dtoForMixedBreedNoFile.color())
+                    .gender(dtoForMixedBreedNoFile.gender())
+                    .microchip(null)
+                    .build();
+
+            Pet petAfterSave = getPet(petToBeSaved);
+
+            PetProfileDto localExpectedPetProfileDto = new PetProfileDto(
+                    savedPetId, dtoForMixedBreedNoFile.name(), Specie.DOG, dtoForMixedBreedNoFile.color(),
+                    dtoForMixedBreedNoFile.gender(), dtoForMixedBreedNoFile.birthDate(), null,
+                    mixedDogBreed.getImageUrl(), // Imagen del mixedDogBreed (el mapper la construye completa)
+                    PetStatus.PENDING, ownerId, owner.getUsername(), mixedDogBreed.getId(), mixedDogBreed.getName(),
+                    null, null, Set.of(), ownerSummaryDto, false, null, null
+            );
+
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.DOG)).willReturn(Optional.of(mixedDogBreed));
+            given(petRepository.save(any(Pet.class))).willReturn(petAfterSave);
+            given(petMapper.toProfileDto(petAfterSave)).willReturn(localExpectedPetProfileDto);
+
+
+            // Act
+            PetProfileDto result = petService.registerPet(dtoForMixedBreedNoFile, ownerId, null);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(localExpectedPetProfileDto);
+            assertThat(result.image()).isEqualTo(petMapper.toProfileDto(petAfterSave).image());
+
+            then(imageService).should(never()).storeImage(any(), anyString());
+            then(petRepository).should().save(petCaptor.capture());
+            Pet captured = petCaptor.getValue();
+            assertThat(captured.getImage()).isEqualTo(mixedDogBreed.getImageUrl());
+            assertThat(captured.getBreed()).isEqualTo(mixedDogBreed);
+        }
+
+        private Pet getPet(Pet petToBeSaved) {
+            return getAfterSave(petToBeSaved);
+        }
+
+        /**
+         * Test case for successful pet registration with no breed ID and no image provided.
+         * Expects the default species image path to be used.
+         */
+        @Test
+        @DisplayName("should register pet successfully with fallback breed and default species image")
+        void registerPet_Success_FallbackBreed_DefaultSpeciesImage() {
+            // Arrange
+            PetRegistrationDto dtoNoBreedNoImage = new PetRegistrationDto(
+                    "Def", Specie.DOG, LocalDate.now(), null, null, null, null, null
+            );
+
+            PetProfileDto localExpectedPetProfileDto = new PetProfileDto(
+                    savedPetId, dtoNoBreedNoImage.name(), Specie.DOG, null, null,
+                    dtoNoBreedNoImage.birthDate(), null,
+                    defaultDogImagePath, // El servicio determinará esto
+                    PetStatus.PENDING, ownerId, owner.getUsername(),
+                    mixedDogBreed.getId(), mixedDogBreed.getName(),
+                    null, null, Set.of(), ownerSummaryDto, false, null, null
+            );
+
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.DOG)).willReturn(Optional.of(mixedDogBreed));
+
+            given(petRepository.save(any(Pet.class))).willAnswer(invocation -> {
+                Pet petPassedToSave = invocation.getArgument(0);
+                petPassedToSave.setId(savedPetId);
+                return petPassedToSave;
+            });
+
+            given(petMapper.toProfileDto(any(Pet.class))).willReturn(localExpectedPetProfileDto);
+
+            // Act
+            PetProfileDto result = petService.registerPet(dtoNoBreedNoImage, ownerId, null);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(localExpectedPetProfileDto);
+            assertThat(result.image()).isEqualTo(localExpectedPetProfileDto.image());
+
+            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
+            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
+            then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.DOG);
+
+            then(petRepository).should().save(petCaptor.capture());
+            Pet petSentToSave = petCaptor.getValue();
+            then(petMapper).should().toProfileDto(eq(petSentToSave));
+
+            assertThat(petSentToSave.getBreed()).isEqualTo(mixedDogBreed);
+            assertThat(petSentToSave.getImage()).isEqualTo(defaultDogImagePath);
+            assertThat(petSentToSave.getName()).isEqualTo(dtoNoBreedNoImage.name());
+            assertThat(petSentToSave.getId()).isEqualTo(savedPetId);
+        }
+
+        /**
+         * Test case verifying that an EntityNotFoundException is thrown if the owner ID does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if owner not found")
+        void registerPet_Failure_OwnerNotFound() {
+            // Arrange
+            Long nonExistentOwnerId = 999L;
+            given(entityFinderHelper.findOwnerOrFail(nonExistentOwnerId))
+                    .willThrow(new EntityNotFoundException(Owner.class.getSimpleName(), nonExistentOwnerId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, 999L, null))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Owner not found with id: 999");
+
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test case verifying that an EntityNotFoundException is thrown if a specific breed ID is provided but the breed does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if specific breedId not found")
+        void registerPet_Failure_BreedNotFound() {
+            // Arrange
+            Long nonExistentBreedId = 500L;
+            PetRegistrationDto dtoWithBadBreed = new PetRegistrationDto(
+                    "Buddy", Specie.DOG, LocalDate.now(),
+                    nonExistentBreedId, null, null, null, null
+            );
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
+                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.registerPet(dtoWithBadBreed, ownerId, null))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
+
+            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
+            then(entityFinderHelper).should().findBreedOrFail(nonExistentBreedId);
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test case verifying that an IllegalStateException is thrown if the fallback 'Mixed/Other' breed is not configured for the species.
+         */
+        @Test
+        @DisplayName("should throw IllegalStateException if fallback breed not found")
+        void registerPet_Failure_FallbackBreedNotFound() {
+            // Arrange
+            PetRegistrationDto dtoWithoutBreedId = new PetRegistrationDto(
+                    "Buddy", Specie.CAT, LocalDate.now(), null, null, null, null, null
+            );
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(breedRepository.findByNameAndSpecie("Mixed/Other", Specie.CAT)).willReturn(Optional.empty());
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.registerPet(dtoWithoutBreedId, ownerId, null))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Default breed configuration error for species CAT");
+
+            then(entityFinderHelper).should().findOwnerOrFail(ownerId);
+            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
+            then(breedRepository).should().findByNameAndSpecie("Mixed/Other", Specie.CAT);
+            then(petRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should register pet successfully using stored image when file is provided")
+        void registerPet_Success_WithImageFile() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "test.jpg",
+                    MediaType.IMAGE_JPEG_VALUE, "test image content".getBytes());
+            String storedImagePathFromService = "pets/avatars/some-uuid.jpg";
+
+
+            Pet petBeforeSave = Pet.builder()
+                    .name(registrationDtoSpecificBreed.name())
+                    .owner(owner)
+                    .breed(dogBreedSpecific)
+                    .image(storedImagePathFromService)
+                    .status(PetStatus.PENDING)
+                    .birthDate(registrationDtoSpecificBreed.birthDate())
+                    .color(registrationDtoSpecificBreed.color())
+                    .gender(registrationDtoSpecificBreed.gender())
+                    .microchip(registrationDtoSpecificBreed.microchip())
+                    .build();
+
+            Pet petAfterSave = getAfterSave(petBeforeSave);
+
+            PetProfileDto localExpectedPetProfileDto = new PetProfileDto(
+                    savedPetId, registrationDtoSpecificBreed.name(), Specie.DOG, registrationDtoSpecificBreed.color(),
+                    registrationDtoSpecificBreed.gender(), registrationDtoSpecificBreed.birthDate(), registrationDtoSpecificBreed.microchip(),
+                    "http://localhost:8080/storage/" + storedImagePathFromService,
+                    PetStatus.PENDING, ownerId, owner.getUsername(), specificBreedId, dogBreedSpecific.getName(),
+                    null, null, Set.of(), ownerSummaryDto,
+                    false, null, null
+            );
+
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
+            given(imageService.storeImage(imageFile, "pets/avatars")).willReturn(storedImagePathFromService);
+            given(petRepository.existsByMicrochip(registrationDtoSpecificBreed.microchip())).willReturn(false);
+
+            given(petRepository.save(any(Pet.class))).willReturn(petAfterSave);
+            given(petMapper.toProfileDto(petAfterSave)).willReturn(localExpectedPetProfileDto);
+
+            // Act
+            PetProfileDto result = petService.registerPet(registrationDtoSpecificBreed, ownerId, imageFile);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(localExpectedPetProfileDto);
+            assertThat(result.image()).isEqualTo("http://localhost:8080/storage/" + storedImagePathFromService);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(petRepository).should().save(petCaptor.capture());
+            Pet captured = petCaptor.getValue();
+            assertThat(captured.getImage()).isEqualTo(storedImagePathFromService);
+            assertThat(captured.getName()).isEqualTo(registrationDtoSpecificBreed.name());
+            then(petMapper).should().toProfileDto(petAfterSave);
+        }
+
+        private Pet getAfterSave(Pet petBeforeSave) {
+            Pet petAfterSave = new Pet();
+            petAfterSave.setId(savedPetId);
+            petAfterSave.setName(petBeforeSave.getName());
+            petAfterSave.setOwner(petBeforeSave.getOwner());
+            petAfterSave.setBreed(petBeforeSave.getBreed());
+            petAfterSave.setImage(petBeforeSave.getImage());
+            petAfterSave.setStatus(petBeforeSave.getStatus());
+            petAfterSave.setBirthDate(petBeforeSave.getBirthDate());
+            petAfterSave.setColor(petBeforeSave.getColor());
+            petAfterSave.setGender(petBeforeSave.getGender());
+            petAfterSave.setMicrochip(petBeforeSave.getMicrochip());
+            return petAfterSave;
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException if image storage fails")
+        void registerPet_Failure_ImageStorageError() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "bad.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
+            given(entityFinderHelper.findOwnerOrFail(ownerId)).willReturn(owner);
+            given(entityFinderHelper.findBreedOrFail(specificBreedId)).willReturn(dogBreedSpecific);
+            given(imageService.storeImage(imageFile, "pets/avatars")).willThrow(new IOException("Disk full"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.registerPet(registrationDtoSpecificBreed, ownerId, imageFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to process uploaded image")
+                    .hasCauseInstanceOf(IOException.class);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(petRepository).should(never()).save(any());
+        }
+    }
 
     /**
      * --- Tests for associatePetToClinicForActivation ---
@@ -585,896 +620,1098 @@ class PetServiceImplTest {
         }
     }
 
-//    /**
-//     * --- Tests for activatePet ---
-//     */
-//    @Nested
-//    @DisplayName("activatePet Tests")
-//    class ActivatePetTests {
-//
-//        private Pet petToActivate;
-//        private Clinic pendingClinic;
-//        private Vet activatingVet;
-//        private PetProfileDto activatedPetDto;
-//        private PetActivationDto activationDto;
-//        private Breed petBreed;
-//        private final Long petToActivateId = 120L;
-//        private final Long activatingVetId = 20L;
-//
-//
-//        @BeforeEach
-//        void activateSetup() {
-//            Long clinicId = 1L;
-//            Long breedId = 30L;
-//            pendingClinic = Clinic.builder().name("Activation Clinic").build();
-//            pendingClinic.setId(clinicId);
-//
-//            activatingVet = new Vet();
-//            activatingVet.setId(activatingVetId);
-//            activatingVet.setUsername("activator_vet");
-//            activatingVet.setClinic(pendingClinic);
-//            activatingVet.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
-//
-//            petBreed = Breed.builder().id(breedId).name("Beagle").specie(Specie.DOG).build();
-//
-//            petToActivate = new Pet();
-//            petToActivate.setId(petToActivateId);
-//            petToActivate.setName("ActivoOriginal");
-//            petToActivate.setStatus(PetStatus.PENDING);
-//            petToActivate.setOwner(owner);
-//            petToActivate.setBreed(petBreed);
-//            petToActivate.setPendingActivationClinic(pendingClinic);
-//            petToActivate.setBirthDate(null);
-//            petToActivate.setGender(null);
-//            petToActivate.setMicrochip(null);
-//            petToActivate.setImage("original.jpg");
-//            petToActivate.setColor("OriginalColor");
-//
-//            activationDto = new PetActivationDto(
-//                    "ActivoFinal",
-//                    "TricolorFinal",
-//                    Gender.MALE,
-//                    LocalDate.of(2023, 6, 1),
-//                    "MICROCHIP123FINAL",
-//                    breedId,
-//                    "final_image.jpg"
-//            );
-//
-//
-//            activatedPetDto = new PetProfileDto(
-//                    petToActivateId, activationDto.name(), Specie.DOG, activationDto.color(), activationDto.gender(),
-//                    activationDto.birthDate(), activationDto.microchip(), activationDto.image(),
-//                    PetStatus.ACTIVE,
-//                    owner.getId(), owner.getUsername(), breedId, petBreed.getName(),
-//                    null,
-//                    Set.of(new VetSummaryDto(activatingVet.getId(), activatingVet.getName(), activatingVet.getSurname()))
-//            );
-//        }
-//
-//        /**
-//         * Test successful activation by an authorized Vet when DTO is valid.
-//         */
-//        @Test
-//        @DisplayName("should activate pet successfully when called by authorized Vet with valid DTO")
-//        void activate_Success() {
-//            // Arrange
-//            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
-//
-//            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
-//            given(entityFinderHelper.findBreedOrFail(activationDto.breedId())).willReturn(petBreed);
-//
-//            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(false);
-//            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
-//            given(petMapper.toProfileDto(any(Pet.class))).willReturn(activatedPetDto);
-//
-//            // Act
-//            PetProfileDto result = petService.activatePet(petToActivateId, activationDto, activatingVetId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(activatedPetDto);
-//
-//            then(entityFinderHelper).should().findClinicStaffOrFail(activatingVetId, "activate pet");
-//            then(entityFinderHelper).should().findPetByIdOrFail(petToActivateId);
-//            then(entityFinderHelper).should().findBreedOrFail(activationDto.breedId());
-//            then(petRepository).should().existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId);
-//            then(petRepository).should().save(petCaptor.capture());
-//            then(petMapper).should().toProfileDto(any(Pet.class));
-//
-//            Pet saved = petCaptor.getValue();
-//            assertThat(saved.getStatus()).isEqualTo(PetStatus.ACTIVE);
-//            assertThat(saved.getPendingActivationClinic()).isNull();
-//            assertThat(saved.getAssociatedVets()).contains(activatingVet);
-//            assertThat(saved.getName()).isEqualTo(activationDto.name());
-//            assertThat(saved.getColor()).isEqualTo(activationDto.color());
-//            assertThat(saved.getGender()).isEqualTo(activationDto.gender());
-//            assertThat(saved.getBirthDate()).isEqualTo(activationDto.birthDate());
-//            assertThat(saved.getMicrochip()).isEqualTo(activationDto.microchip());
-//            assertThat(saved.getBreed().getId()).isEqualTo(activationDto.breedId());
-//            assertThat(saved.getImage()).isEqualTo(activationDto.image());
-//        }
-//
-//        /**
-//         * Test failure when the pet is not in PENDING status.
-//         * (Este test no necesita el DTO en el arrange, pero la llamada sí lo requiere)
-//         */
-//        @Test
-//        @DisplayName("should throw IllegalStateException if pet is not PENDING")
-//        void activate_Failure_NotPending() {
-//            // Arrange
-//            petToActivate.setStatus(PetStatus.ACTIVE);
-//
-//            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
-//            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
-//                    .isInstanceOf(IllegalStateException.class)
-//                    .hasMessageContaining("must be in PENDING status to activate");
-//
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the staff member is not authorized (not from the pending clinic).
-//         */
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if staff not from pending clinic")
-//        void activate_Failure_StaffWrongClinic() {
-//            // Arrange
-//            Clinic differentClinic = Clinic.builder().build(); differentClinic.setId(99L);
-//            activatingVet.setClinic(differentClinic);
-//
-//            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
-//            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not authorized to activate pet");
-//
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the provided microchip in DTO conflicts.
-//         */
-//        @Test
-//        @DisplayName("should throw MicrochipAlreadyExistsException if microchip in DTO conflicts")
-//        void activate_Failure_MicrochipConflict() {
-//            // Arrange
-//            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
-//            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
-//            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(true);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
-//                    .isInstanceOf(MicrochipAlreadyExistsException.class)
-//                    .hasMessageContaining(activationDto.microchip());
-//
-//            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the breedId provided in DTO is invalid.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if breedId in DTO not found")
-//        void activate_Failure_BreedNotFoundInDto() {
-//            // Arrange
-//            Long nonExistentBreedId = 999L;
-//            PetActivationDto dtoWithBadBreed = new PetActivationDto(
-//                    "Name", "Color", Gender.FEMALE, LocalDate.now(), "MicrochipOK",
-//                    nonExistentBreedId, "image.jpg"
-//            );
-//            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
-//            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
-//            given(petRepository.existsByMicrochipAndIdNot(dtoWithBadBreed.microchip(), petToActivateId)).willReturn(false);
-//            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
-//                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.activatePet(petToActivateId, dtoWithBadBreed, activatingVetId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
-//
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if activating staff not found")
-//        void activate_Failure_StaffNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findClinicStaffOrFail(999L, "activate pet"))
-//                    .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, 999L))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("UserEntity not found with id: 999");
-//
-//            then(entityFinderHelper).should(never()).findPetByIdOrFail(anyLong());
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if activator is Admin (defensive check)")
-//        void activate_Failure_ActivatorIsAdmin() {
-//            // Arrange
-//            ClinicStaff activatingAdmin = new ClinicStaff();
-//            activatingAdmin.setId(activatingVetId);
-//            activatingAdmin.setClinic(pendingClinic);
-//            activatingAdmin.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
-//            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingAdmin);
-//            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
-//            given(entityFinderHelper.findBreedOrFail(activationDto.breedId())).willReturn(petBreed);
-//            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(false);
-//
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("user performing the activation is not a veterinarian");
-//
-//            then(entityFinderHelper).should().findClinicStaffOrFail(activatingVetId, "activate pet");
-//            then(entityFinderHelper).should().findPetByIdOrFail(petToActivateId);
-//            then(entityFinderHelper).should().findBreedOrFail(activationDto.breedId());
-//            then(petRepository).should().existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//    }
-//
-//    /**
-//     * --- Tests for deactivatePet ---
-//     */
-//    @Nested
-//    @DisplayName("deactivatePet Tests")
-//    class DeactivatePetTests {
-//
-//        private Pet petToDeactivate;
-//        private Pet alreadyInactivePet;
-//        private final Long petToDeactivateId = 400L;
-//        private final Long inactivePetId = 401L;
-//        private final Long ownerId = 1L;
-//
-//        @BeforeEach
-//        void deactivateSetup() {
-//            petToDeactivate = new Pet();
-//            petToDeactivate.setId(petToDeactivateId);
-//            petToDeactivate.setOwner(owner);
-//            petToDeactivate.setStatus(PetStatus.ACTIVE);
-//            petToDeactivate.setBreed(dogBreedSpecific);
-//
-//            alreadyInactivePet = new Pet();
-//            alreadyInactivePet.setId(inactivePetId);
-//            alreadyInactivePet.setOwner(owner);
-//            alreadyInactivePet.setStatus(PetStatus.INACTIVE);
-//            alreadyInactivePet.setBreed(dogBreedSpecific);
-//        }
-//
-//        /**
-//         * Test successful deactivation when called by the owner on an active pet.
-//         */
-//        @Test
-//        @DisplayName("should deactivate pet successfully when called by owner")
-//        void deactivate_Success() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petToDeactivateId)).willReturn(petToDeactivate);
-//            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
-//            PetProfileDto inactiveDto = new PetProfileDto(petToDeactivateId, petToDeactivate.getName(), petToDeactivate.getBreed().getSpecie(), null,null,null,null,null, PetStatus.INACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), null, Set.of());
-//            given(petMapper.toProfileDto(any(Pet.class))).willReturn(inactiveDto);
-//
-//            // Act
-//            PetProfileDto result = petService.deactivatePet(petToDeactivateId, ownerId);
-//
-//            // Assert
-//            assertThat(result).isNotNull();
-//            assertThat(result.status()).isEqualTo(PetStatus.INACTIVE);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petToDeactivateId);
-//            then(petRepository).should().save(petCaptor.capture());
-//            then(petMapper).should().toProfileDto(any(Pet.class));
-//
-//            Pet saved = petCaptor.getValue();
-//            assertThat(saved.getStatus()).isEqualTo(PetStatus.INACTIVE);
-//        }
-//
-//        /**
-//         * Test failure when attempting to deactivate a pet that is already inactive.
-//         */
-//        @Test
-//        @DisplayName("should throw IllegalStateException if pet already inactive")
-//        void deactivate_Failure_AlreadyInactive() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(inactivePetId)).willReturn(alreadyInactivePet);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.deactivatePet(inactivePetId, ownerId))
-//                    .isInstanceOf(IllegalStateException.class)
-//                    .hasMessageContaining("Cannot deactivate pet " + inactivePetId + " because it is already in INACTIVE status.");
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(inactivePetId);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the pet ID does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if pet not found")
-//        void deactivate_Failure_PetNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(999L))
-//                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.deactivatePet(999L, ownerId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Pet not found with id: 999");
-//
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the user attempting deactivation is not the owner.
-//         */
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if user is not owner")
-//        void deactivate_Failure_NotOwner() {
-//            // Arrange
-//            Long otherOwnerId = 888L;
-//            given(entityFinderHelper.findPetByIdOrFail(petToDeactivateId)).willReturn(petToDeactivate);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.deactivatePet(petToDeactivateId, otherOwnerId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("User " + otherOwnerId + " is not the owner of pet " + petToDeactivateId);
-//
-//            then(petRepository).should(never()).save(any());
-//        }
-//    }
-//
-//    /**
-//     * --- Tests for updatePetByOwner ---
-//     */
-//    @Nested
-//    @DisplayName("updatePetByOwner Tests")
-//    class UpdatePetByOwnerTests {
-//
-//        private Pet existingPet;
-//        private PetOwnerUpdateDto updateDto;
-//        private Breed newBreed;
-//        private PetProfileDto expectedUpdatedDto;
-//        private final Long petId = 130L;
-//        private final Long newBreedId = 40L;
-//
-//        /**
-//         * Setup data: An existing pet owned by the test owner.
-//         */
-//        @BeforeEach
-//        void updateOwnerSetup() {
-//            newBreed = Breed.builder().id(newBreedId).name("Poodle").specie(Specie.DOG).build();
-//
-//            existingPet = new Pet();
-//            existingPet.setId(petId);
-//            existingPet.setOwner(owner);
-//            existingPet.setName("BuddyOriginal");
-//            existingPet.setColor("Brown");
-//            existingPet.setBreed(dogBreedSpecific);
-//            existingPet.setMicrochip("11111");
-//            existingPet.setImage("original.jpg");
-//            existingPet.setStatus(PetStatus.ACTIVE);
-//
-//            // DTO with some changes
-//            updateDto = new PetOwnerUpdateDto(
-//                    "BuddyUpdated",
-//                    "new_image.png",
-//                    "Black and White",
-//                    Gender.MALE,
-//                    null,
-//                    "22222",
-//                    newBreedId
-//            );
-//
-//            expectedUpdatedDto = new PetProfileDto(
-//                    petId, updateDto.name(), Specie.DOG, updateDto.color(), updateDto.gender(),
-//                    existingPet.getBirthDate(),
-//                    updateDto.microchip(), updateDto.image(), existingPet.getStatus(), owner.getId(),
-//                    owner.getUsername(), newBreedId, newBreed.getName(),
-//                    null, Set.of()
-//            );
-//        }
-//
-//        /**
-//         * Test a successful update when called by the correct owner.
-//         * Verifies pet lookup, breed resolution (if changed), microchip validation,
-//         * mapper application, saving, and DTO mapping.
-//         */
-//        @Test
-//        @DisplayName("should update pet successfully when called by owner")
-//        void updateByOwner_Success() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
-//            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(false);
-//            given(petMapper.updateFromOwnerDto(updateDto, existingPet, newBreed)).willReturn(true);
-//            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
-//            given(petMapper.toProfileDto(any(Pet.class))).willReturn(expectedUpdatedDto);
-//
-//
-//            // Act
-//            PetProfileDto result = petService.updatePetByOwner(petId, updateDto, ownerId, null);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedUpdatedDto);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
-//            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
-//            then(petMapper).should().updateFromOwnerDto(updateDto, existingPet, newBreed);
-//            then(petRepository).should().save(petCaptor.capture());
-//            then(petMapper).should().toProfileDto(any(Pet.class));
-//
-//            Pet captured = petCaptor.getValue();
-//            assertThat(captured.getId()).isEqualTo(petId);
-//        }
-//
-//        /**
-//         * Test successful update where no actual changes are made according to the mapper.
-//         * Verifies that the repository save method is NOT called.
-//         */
-//        @Test
-//        @DisplayName("should not save pet if mapper reports no changes")
-//        void updateByOwner_NoChanges_ShouldNotSave() {
-//            // Arrange
-//            PetOwnerUpdateDto noChangeDto = new PetOwnerUpdateDto(
-//                    existingPet.getName(), existingPet.getImage(), existingPet.getColor(),
-//                    existingPet.getGender(), existingPet.getBirthDate(), existingPet.getMicrochip(),
-//                    existingPet.getBreed().getId()
-//            );
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//            given(petMapper.updateFromOwnerDto(noChangeDto, existingPet, existingPet.getBreed())).willReturn(false);
-//            PetProfileDto originalDto = new PetProfileDto(
-//                    existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(), existingPet.getColor(),
-//                    existingPet.getGender(), existingPet.getBirthDate(), existingPet.getMicrochip(),
-//                    existingPet.getImage(), existingPet.getStatus(), owner.getId(), owner.getUsername(),
-//                    existingPet.getBreed().getId(), existingPet.getBreed().getName(), null, Set.of()
-//            );
-//
-//            given(petMapper.toProfileDto(existingPet)).willReturn(originalDto);
-//
-//            // Act
-//            PetProfileDto result = petService.updatePetByOwner(petId, noChangeDto, ownerId, null);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(originalDto);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
-//            then(petRepository).should(never()).existsByMicrochipAndIdNot(anyString(), anyLong());
-//            then(petMapper).should().updateFromOwnerDto(noChangeDto, existingPet, existingPet.getBreed());
-//            then(petRepository).should(never()).save(any(Pet.class));
-//            then(petMapper).should().toProfileDto(existingPet);
-//        }
-//
-//
-//        /**
-//         * Test failure when the pet ID does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if pet not found")
-//        void updateByOwner_Failure_PetNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(999L))
-//                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByOwner(999L, updateDto, ownerId, null))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Pet not found with id: 999");
-//
-//            then(petRepository).should(never()).save(any());
-//            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
-//        }
-//
-//        /**
-//         * Test failure when the user trying to update is not the owner.
-//         */
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if user is not owner")
-//        void updateByOwner_Failure_NotOwner() {
-//            // Arrange
-//            Long otherOwnerId = 55L;
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, otherOwnerId, null))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("User " + otherOwnerId + " is not the owner of pet " + petId);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(petRepository).should(never()).save(any());
-//            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
-//        }
-//
-//        /**
-//         * Test failure when a new breed ID is provided, but the breed does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if new breedId not found")
-//        void updateByOwner_Failure_NewBreedNotFound() {
-//            // Arrange
-//            Long nonExistentBreedId = 888L;
-//            PetOwnerUpdateDto dtoWithBadBreed = new PetOwnerUpdateDto(null,null,null,null,null,null, nonExistentBreedId);
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
-//                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByOwner(petId, dtoWithBadBreed, ownerId,null))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(entityFinderHelper).should().findBreedOrFail(nonExistentBreedId);
-//            then(petRepository).should(never()).save(any());
-//            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
-//        }
-//
-//        /**
-//         * Test failure when the new microchip number already exists for another pet.
-//         */
-//        @Test
-//        @DisplayName("should throw MicrochipAlreadyExistsException if new microchip conflicts")
-//        void updateByOwner_Failure_MicrochipConflict() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
-//            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(true);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId,null))
-//                    .isInstanceOf(MicrochipAlreadyExistsException.class)
-//                    .hasMessageContaining(updateDto.microchip());
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
-//            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
-//            then(petRepository).should(never()).save(any());
-//            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
-//        }
-//
-//        @Test
-//        @DisplayName("should update image and delete old one when image file is provided")
-//        void updateByOwner_Success_WithImageChange() throws IOException {
-//            // Arrange
-//            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "new.png", MediaType.IMAGE_PNG_VALUE, "new image".getBytes());
-//            String oldImagePath = existingPet.getImage();
-//            String newImagePath = "pets/avatars/new-uuid.png";
-//
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//            PetOwnerUpdateDto noOtherChangesDto = new PetOwnerUpdateDto(
-//                    existingPet.getName(), null, existingPet.getColor(), existingPet.getGender(),
-//                    existingPet.getBirthDate(), existingPet.getMicrochip(), existingPet.getBreed().getId()
-//            );
-//
-//            when(petMapper.updateFromOwnerDto(noOtherChangesDto, existingPet, existingPet.getBreed())).thenReturn(false);
-//
-//            given(imageService.storeImage(imageFile, "pets/avatars")).willReturn(newImagePath);
-//            doNothing().when(imageService).deleteImage(oldImagePath);
-//            when(petRepository.save(any(Pet.class))).thenAnswer(inv -> {
-//                Pet petToSave = inv.getArgument(0);
-//                petToSave.setImage(newImagePath);
-//                return petToSave;
-//            });
-//
-//            expectedUpdatedDto = new PetProfileDto(
-//                    existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(),
-//                    existingPet.getColor(), existingPet.getGender(), existingPet.getBirthDate(),
-//                    existingPet.getMicrochip(), newImagePath,
-//                    existingPet.getStatus(), owner.getId(), owner.getUsername(),
-//                    existingPet.getBreed().getId(), existingPet.getBreed().getName(), null,
-//                    Set.of()
-//            );
-//            when(petMapper.toProfileDto(any(Pet.class))).thenReturn(expectedUpdatedDto);
-//
-//
-//            // Act
-//            PetProfileDto result = petService.updatePetByOwner(petId, noOtherChangesDto, ownerId, imageFile);
-//
-//            // Assert
-//            assertThat(result).isNotNull();
-//            assertThat(result.image()).isEqualTo(newImagePath);
-//
-//            then(imageService).should().storeImage(imageFile, "pets/avatars");
-//            then(imageService).should().deleteImage(oldImagePath);
-//            then(petRepository).should().save(petCaptor.capture());
-//            assertThat(petCaptor.getValue().getImage()).isEqualTo(newImagePath);
-//            then(petMapper).should().toProfileDto(any(Pet.class));
-//        }
-//
-//        @Test
-//        @DisplayName("should throw RuntimeException if image update storage fails")
-//        void updateByOwner_Failure_ImageStorageError() throws IOException {
-//            // Arrange
-//            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "fail.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
-//            given(imageService.storeImage(imageFile, "pets/avatars")).willThrow(new IOException("Disk full"));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId, imageFile))
-//                    .isInstanceOf(RuntimeException.class)
-//                    .hasMessageContaining("Failed to process updated image")
-//                    .hasCauseInstanceOf(IOException.class);
-//
-//            then(imageService).should().storeImage(imageFile, "pets/avatars");
-//            then(imageService).should(never()).deleteImage(anyString());
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//    }
-//
-//    /**
-//     * --- Tests for updatePetByClinicStaff ---
-//     */
-//    @Nested
-//    @DisplayName("updatePetByClinicStaff Tests")
-//    class UpdatePetByClinicStaffTests {
-//
-//        private Pet petToUpdate;
-//        private ClinicStaff authorizedStaff;
-//        private Owner petOwner;
-//        private Breed newBreed;
-//        private PetClinicUpdateDto updateDto;
-//        private PetProfileDto expectedUpdatedDto;
-//        private final Long petId = 140L;
-//        private final Long authorizedStaffId = 30L;
-//        private final Long unauthorizedStaffId = 31L;
-//        private final Long newBreedId = 45L;
-//        private final String actionContext = "update clinical info for";
-//
-//        /**
-//         * Setup data: An existing pet, an authorized staff member, and an unauthorized one.
-//         */
-//        @BeforeEach
-//        void updateClinicStaffSetup() {
-//            Clinic petClinic = Clinic.builder().name("Pet's Clinic").build();
-//            Long clinicId = 1L;
-//            petClinic.setId(clinicId);
-//            ClinicStaff unauthorizedStaff;
-//
-//            authorizedStaff = new Vet();
-//            authorizedStaff.setId(authorizedStaffId);
-//            authorizedStaff.setUsername("auth_staff");
-//            authorizedStaff.setClinic(petClinic);
-//            authorizedStaff.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
-//
-//            Clinic otherClinic = Clinic.builder().name("Other Clinic").build();
-//            otherClinic.setId(99L);
-//            unauthorizedStaff = new ClinicStaff();
-//            unauthorizedStaff.setId(unauthorizedStaffId);
-//            unauthorizedStaff.setUsername("unauth_staff");
-//            unauthorizedStaff.setClinic(otherClinic);
-//            unauthorizedStaff.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
-//
-//            // Pet's Owner
-//            Long ownerIdForPet = 5L;
-//            petOwner = new Owner();
-//            petOwner.setId(ownerIdForPet);
-//            petOwner.setUsername("pet_owner_" + petId);
-//
-//            // Breeds
-//            Breed originalBreed = Breed.builder().id(20L).name("Dalmatian").specie(Specie.DOG).build();
-//            newBreed = Breed.builder().id(newBreedId).name("Boxer").specie(Specie.DOG).build();
-//
-//            petToUpdate = new Pet();
-//            petToUpdate.setId(petId);
-//            petToUpdate.setOwner(petOwner);
-//            petToUpdate.setName("Spot");
-//            petToUpdate.setBreed(originalBreed);
-//            petToUpdate.setStatus(PetStatus.ACTIVE);
-//            petToUpdate.setMicrochip("CHIP-ORIGINAL");
-//            petToUpdate.setColor("White/Black");
-//            petToUpdate.addVet((Vet) authorizedStaff);
-//
-//            updateDto = new PetClinicUpdateDto(
-//                    "White/Brown",
-//                    Gender.FEMALE,
-//                    LocalDate.of(2022, 10, 10),
-//                    "CHIP-UPDATED",
-//                    newBreedId
-//            );
-//
-//            expectedUpdatedDto = new PetProfileDto(
-//                    petId, petToUpdate.getName(),
-//                    Specie.DOG, updateDto.color(), updateDto.gender(), updateDto.birthDate(),
-//                    updateDto.microchip(), petToUpdate.getImage(),
-//                    petToUpdate.getStatus(), ownerIdForPet, petOwner.getUsername(),
-//                    newBreedId, newBreed.getName(), null,
-//                    Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname()))
-//            );
-//        }
-//
-//        /**
-//         * Test successful update when called by authorized clinic staff (Vet/Admin associated with the pet).
-//         */
-//        @Test
-//        @DisplayName("should update pet successfully when called by authorized staff")
-//        void updateByStaff_Success() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
-//            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(false);
-//            given(petMapper.updateFromClinicDto(updateDto, petToUpdate, newBreed)).willReturn(true);
-//            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
-//            given(petMapper.toProfileDto(any(Pet.class))).willReturn(expectedUpdatedDto);
-//
-//            // Act
-//            PetProfileDto result = petService.updatePetByClinicStaff(petId, updateDto, authorizedStaffId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedUpdatedDto);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
-//            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
-//            then(petMapper).should().updateFromClinicDto(updateDto, petToUpdate, newBreed);
-//            then(petRepository).should().save(any(Pet.class));
-//            then(petMapper).should().toProfileDto(any(Pet.class));
-//        }
-//
-//        /**
-//         * Test successful update where no actual changes are made according to the mapper.
-//         * Verifies that the repository save method is NOT called.
-//         */
-//        @Test
-//        @DisplayName("should not save pet if mapper reports no changes")
-//        void updateByStaff_NoChanges_ShouldNotSave() {
-//            // Arrange
-//            PetClinicUpdateDto noChangeDto = new PetClinicUpdateDto(
-//                    petToUpdate.getColor(), petToUpdate.getGender(), petToUpdate.getBirthDate(),
-//                    petToUpdate.getMicrochip(), petToUpdate.getBreed().getId()
-//            );
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            given(petMapper.updateFromClinicDto(noChangeDto, petToUpdate, petToUpdate.getBreed())).willReturn(false);
-//            PetProfileDto originalDto = new PetProfileDto(
-//                    petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getBreed().getSpecie(), petToUpdate.getColor(),
-//                    petToUpdate.getGender(), petToUpdate.getBirthDate(), petToUpdate.getMicrochip(),
-//                    petToUpdate.getImage(), petToUpdate.getStatus(), petOwner.getId(), petOwner.getUsername(),
-//                    petToUpdate.getBreed().getId(), petToUpdate.getBreed().getName(), null,
-//                    Set.of(new VetSummaryDto(authorizedStaffId, authorizedStaff.getName(), authorizedStaff.getSurname()))
-//            );
-//            given(petMapper.toProfileDto(petToUpdate)).willReturn(originalDto);
-//
-//            // Act
-//            PetProfileDto result = petService.updatePetByClinicStaff(petId, noChangeDto, authorizedStaffId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(originalDto);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
-//            then(petRepository).should(never()).existsByMicrochipAndIdNot(anyString(), anyLong());
-//            then(petMapper).should().updateFromClinicDto(noChangeDto, petToUpdate, petToUpdate.getBreed());
-//            then(petRepository).should(never()).save(any(Pet.class));
-//            then(petMapper).should().toProfileDto(petToUpdate);
-//        }
-//
-//        /**
-//         * Test failure when the pet ID does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if pet not found")
-//        void updateByStaff_Failure_PetNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(999L))
-//                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByClinicStaff(999L, updateDto, authorizedStaffId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Pet not found with id: 999");
-//
-//            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the staff member performing the update is not found.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if staff not found")
-//        void updateByStaff_Failure_StaffNotFound() {
-//            // Arrange
-//            Long nonExistentStaffId = 888L;
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
-//            doThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), nonExistentStaffId))
-//                    .when(authorizationHelper).verifyUserAuthorizationForPet(nonExistentStaffId, petToUpdate, actionContext);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, updateDto, nonExistentStaffId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("UserEntity not found with id: " + nonExistentStaffId);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(nonExistentStaffId, petToUpdate, actionContext);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the staff member is not authorized (e.g., from a different clinic).
-//         */
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if staff not authorized for pet")
-//        void updateByStaff_Failure_StaffNotAuthorized() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
-//            doThrow(new AccessDeniedException(String.format("User (ID: %d) is not authorized to %s pet (ID: %d).",
-//                    unauthorizedStaffId, actionContext, petId)))
-//                    .when(authorizationHelper).verifyUserAuthorizationForPet(unauthorizedStaffId, petToUpdate, actionContext);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, updateDto, unauthorizedStaffId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining(String.format("User (ID: %d) is not authorized to %s pet (ID: %d).",
-//                            unauthorizedStaffId, actionContext, petId));
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(unauthorizedStaffId, petToUpdate, actionContext);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when a new breed ID is provided, but the breed does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if new breedId not found")
-//        void updateByStaff_Failure_NewBreedNotFound() {
-//            // Arrange
-//            Long nonExistentBreedId = 777L;
-//            PetClinicUpdateDto dtoWithBadBreed = new PetClinicUpdateDto(null,null,null,null, nonExistentBreedId);
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
-//                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, dtoWithBadBreed, authorizedStaffId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            then(entityFinderHelper).should().findBreedOrFail(nonExistentBreedId);
-//            then(petRepository).should(never()).save(any());
-//        }
-//
-//        /**
-//         * Test failure when the new microchip number already exists for another pet.
-//         */
-//        @Test
-//        @DisplayName("should throw MicrochipAlreadyExistsException if new microchip conflicts")
-//        void updateByStaff_Failure_MicrochipConflict() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
-//            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(true);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, updateDto, authorizedStaffId))
-//                    .isInstanceOf(MicrochipAlreadyExistsException.class)
-//                    .hasMessageContaining(updateDto.microchip());
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
-//            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
-//            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
-//            then(petRepository).should(never()).save(any());
-//        }
-//    }
+    /**
+     * --- Tests for activatePet ---
+     */
+    @Nested
+    @DisplayName("activatePet Tests")
+    class ActivatePetTests {
+
+        private Pet petToActivate;
+        private Clinic pendingClinic;
+        private Vet activatingVet;
+        private PetProfileDto activatedPetDto;
+        private PetActivationDto activationDto;
+        private Breed petBreedFromDto;
+
+        private final Long petToActivateId = 120L;
+        private final Long activatingVetId = 20L;
+
+
+
+        @BeforeEach
+        void activateSetup() {
+            Long clinicId = 1L;
+            Long originalBreedId = 25L;
+            Long breedIdFromDto = 30L;
+
+            pendingClinic = Clinic.builder().name("Activation Clinic").build();
+            pendingClinic.setId(clinicId);
+
+            activatingVet = new Vet();
+            activatingVet.setId(activatingVetId);
+            activatingVet.setUsername("activator_vet");
+            activatingVet.setName("Activator");
+            activatingVet.setSurname("VetTest");
+            activatingVet.setClinic(pendingClinic);
+            activatingVet.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
+
+            Breed petBreedOriginal = Breed.builder().id(originalBreedId).name("Original Poodle").specie(Specie.DOG).imageUrl("path/to/poodle.png").build();
+            petBreedFromDto = Breed.builder().id(breedIdFromDto).name("Beagle").specie(Specie.DOG).imageUrl("path/to/beagle.png").build();
+
+            petToActivate = new Pet();
+            petToActivate.setId(petToActivateId);
+            petToActivate.setName("Petty");
+            petToActivate.setOwner(owner);
+            petToActivate.setStatus(PetStatus.PENDING);
+            petToActivate.setPendingActivationClinic(pendingClinic);
+            petToActivate.setBreed(petBreedOriginal);
+            petToActivate.setImage("path/to/original_image.png");
+            petToActivate.setAssociatedVets(new HashSet<>());
+            petToActivate.setLastEuEntryDate(null);
+            petToActivate.setLastEuExitDate(null);
+
+
+            // DTO para la activación
+            activationDto = new PetActivationDto(
+                    "TricolorFinalUpdated",
+                    Gender.MALE,
+                    LocalDate.of(2023, 6, 1),
+                    "MICROCHIP123UPDATED",
+                    breedIdFromDto
+            );
+
+            activatedPetDto = new PetProfileDto(
+                    petToActivateId,
+                    petToActivate.getName(),
+                    petBreedFromDto.getSpecie(),
+                    activationDto.color(),
+                    activationDto.gender(),
+                    activationDto.birthDate(),
+                    activationDto.microchip(),
+                    petToActivate.getImage(),
+                    PetStatus.ACTIVE,
+                    owner.getId(), owner.getUsername(),
+                    activationDto.breedId(),
+                    petBreedFromDto.getName(),
+                    null,
+                    null,
+                    Set.of(new VetSummaryDto(
+                            activatingVet.getId(),
+                            activatingVet.getName(),
+                            activatingVet.getSurname(),
+                            null,
+                            activatingVet.getEmail(),
+                            activatingVet.getLicenseNumber(),
+                            pendingClinic.getId(),
+                            pendingClinic.getName(),
+                            pendingClinic.getAddress(),
+                            pendingClinic.getCity(),
+                            pendingClinic.getCountry() != null ? pendingClinic.getCountry().name() : null,
+                            pendingClinic.getPhone()
+                    )),
+                    ownerSummaryDto,
+                    false,
+                    petToActivate.getLastEuEntryDate(),
+                    petToActivate.getLastEuExitDate()
+            );
+        }
+
+        /**
+         * Test successful activation by an authorized Vet when DTO is valid.
+         */
+        @Test
+        @DisplayName("should activate pet successfully when called by authorized Vet with valid DTO")
+        void activate_Success() {
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
+            given(entityFinderHelper.findBreedOrFail(activationDto.breedId())).willReturn(petBreedFromDto);
+
+            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(false);
+            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.<Pet>getArgument(0));
+            given(petMapper.toProfileDto(any(Pet.class))).willReturn(activatedPetDto);
+
+            // Act
+            PetProfileDto result = petService.activatePet(petToActivateId, activationDto, activatingVetId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(activatedPetDto);
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(activatingVetId, "activate pet");
+            then(entityFinderHelper).should().findPetByIdOrFail(petToActivateId);
+            then(entityFinderHelper).should().findBreedOrFail(activationDto.breedId());
+            then(petRepository).should().existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId);
+            then(petRepository).should().save(petCaptor.capture());
+            then(petMapper).should().toProfileDto(petCaptor.getValue());
+
+            Pet saved = petCaptor.getValue();
+            assertThat(saved.getStatus()).isEqualTo(PetStatus.ACTIVE);
+            assertThat(saved.getPendingActivationClinic()).isNull();
+            assertThat(saved.getAssociatedVets()).contains(activatingVet);
+            assertThat(saved.getColor()).isEqualTo(activationDto.color());
+            assertThat(saved.getGender()).isEqualTo(activationDto.gender());
+            assertThat(saved.getBirthDate()).isEqualTo(activationDto.birthDate());
+            assertThat(saved.getMicrochip()).isEqualTo(activationDto.microchip());
+            assertThat(saved.getBreed().getId()).isEqualTo(activationDto.breedId());
+        }
+
+        /**
+         * Test failure when the pet is not in PENDING status.
+         * (Este test no necesita el DTO en el arrange, pero la llamada sí lo requiere)
+         */
+        @Test
+        @DisplayName("should throw IllegalStateException if pet is not PENDING")
+        void activate_Failure_NotPending() {
+            // Arrange
+            petToActivate.setStatus(PetStatus.ACTIVE);
+
+            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("must be in PENDING status to activate");
+
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the staff member is not authorized (not from the pending clinic).
+         */
+        @Test
+        @DisplayName("should throw AccessDeniedException if staff not from pending clinic")
+        void activate_Failure_StaffWrongClinic() {
+            // Arrange
+            Clinic differentClinic = Clinic.builder().build(); differentClinic.setId(99L);
+            activatingVet.setClinic(differentClinic);
+
+            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to activate pet");
+
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the provided microchip in DTO conflicts.
+         */
+        @Test
+        @DisplayName("should throw MicrochipAlreadyExistsException if microchip in DTO conflicts")
+        void activate_Failure_MicrochipConflict() {
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
+            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(true);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
+                    .isInstanceOf(MicrochipAlreadyExistsException.class)
+                    .hasMessageContaining(activationDto.microchip());
+
+            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the breedId provided in DTO is invalid.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if breedId in DTO not found")
+        void activate_Failure_BreedNotFoundInDto() {
+            // Arrange
+            Long nonExistentBreedId = 999L;
+            PetActivationDto dtoWithBadBreed = new PetActivationDto(
+                    "SomeColor", Gender.FEMALE, LocalDate.now(), "MicrochipOKForThisTest",
+                    nonExistentBreedId
+            );
+            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingVet);
+            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
+            given(petRepository.existsByMicrochipAndIdNot(dtoWithBadBreed.microchip(), petToActivateId)).willReturn(false);
+            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
+                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, dtoWithBadBreed, activatingVetId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
+
+            then(petRepository).should(never()).save(any());
+        }
+
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if activating staff not found")
+        void activate_Failure_StaffNotFound() {
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(999L, "activate pet"))
+                    .willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, 999L))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("UserEntity not found with id: 999");
+
+            then(entityFinderHelper).should(never()).findPetByIdOrFail(anyLong());
+            then(petRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if activator is Admin (defensive check)")
+        void activate_Failure_ActivatorIsAdmin() {
+            // Arrange
+            ClinicStaff activatingAdmin = new ClinicStaff();
+            activatingAdmin.setId(activatingVetId);
+            activatingAdmin.setClinic(pendingClinic);
+            activatingAdmin.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
+            given(entityFinderHelper.findClinicStaffOrFail(activatingVetId, "activate pet")).willReturn(activatingAdmin);
+            given(entityFinderHelper.findPetByIdOrFail(petToActivateId)).willReturn(petToActivate);
+            given(entityFinderHelper.findBreedOrFail(activationDto.breedId())).willReturn(petBreedFromDto);
+            given(petRepository.existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId)).willReturn(false);
+
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.activatePet(petToActivateId, activationDto, activatingVetId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("user performing the activation is not a veterinarian");
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(activatingVetId, "activate pet");
+            then(entityFinderHelper).should().findPetByIdOrFail(petToActivateId);
+            then(entityFinderHelper).should().findBreedOrFail(activationDto.breedId());
+            then(petRepository).should().existsByMicrochipAndIdNot(activationDto.microchip(), petToActivateId);
+            then(petRepository).should(never()).save(any());
+        }
+
+    }
+
+    /**
+     * --- Tests for deactivatePet ---
+     */
+    @Nested
+    @DisplayName("deactivatePet Tests")
+    class DeactivatePetTests {
+
+        private Pet petToDeactivate;
+        private Pet alreadyInactivePet;
+        private final Long petToDeactivateId = 400L;
+        private final Long inactivePetId = 401L;
+        private final Long ownerId = 1L;
+
+        @BeforeEach
+        void deactivateSetup() {
+            petToDeactivate = new Pet();
+            petToDeactivate.setId(petToDeactivateId);
+            petToDeactivate.setOwner(owner);
+            petToDeactivate.setStatus(PetStatus.ACTIVE);
+            petToDeactivate.setBreed(dogBreedSpecific);
+
+            alreadyInactivePet = new Pet();
+            alreadyInactivePet.setId(inactivePetId);
+            alreadyInactivePet.setOwner(owner);
+            alreadyInactivePet.setStatus(PetStatus.INACTIVE);
+            alreadyInactivePet.setBreed(dogBreedSpecific);
+        }
+
+        /**
+         * Test successful deactivation when called by the owner on an active pet.
+         */
+        @Test
+        @DisplayName("should deactivate pet successfully when called by owner")
+        void deactivate_Success() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petToDeactivateId)).willReturn(petToDeactivate);
+            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
+            PetProfileDto inactiveDto = new PetProfileDto(petToDeactivateId,
+                    petToDeactivate.getName(), petToDeactivate.getBreed().getSpecie(),
+                    null,null,null,null,null,
+                    PetStatus.INACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(),
+                    dogBreedSpecific.getName(), null, null,
+                    null, null, false,null,null) ;
+            given(petMapper.toProfileDto(any(Pet.class))).willReturn(inactiveDto);
+
+            // Act
+            PetProfileDto result = petService.deactivatePet(petToDeactivateId, ownerId);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.status()).isEqualTo(PetStatus.INACTIVE);
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petToDeactivateId);
+            then(petRepository).should().save(petCaptor.capture());
+            then(petMapper).should().toProfileDto(any(Pet.class));
+
+            Pet saved = petCaptor.getValue();
+            assertThat(saved.getStatus()).isEqualTo(PetStatus.INACTIVE);
+        }
+
+        /**
+         * Test failure when attempting to deactivate a pet that is already inactive.
+         */
+        @Test
+        @DisplayName("should throw IllegalStateException if pet already inactive")
+        void deactivate_Failure_AlreadyInactive() {
+            // Arrange
+            PetProfileDto expectedInactiveProfileDto = new PetProfileDto(
+                    inactivePetId,
+                    alreadyInactivePet.getName(),
+                    alreadyInactivePet.getBreed().getSpecie(),
+                    alreadyInactivePet.getColor(),
+                    alreadyInactivePet.getGender(),
+                    alreadyInactivePet.getBirthDate(),
+                    alreadyInactivePet.getMicrochip(),
+                    alreadyInactivePet.getImage(),
+                    PetStatus.INACTIVE, // Estado esperado
+                    owner.getId(),
+                    owner.getUsername(),
+                    alreadyInactivePet.getBreed().getId(),
+                    alreadyInactivePet.getBreed().getName(),
+                    null, null,
+                    Collections.emptySet(),
+                    ownerSummaryDto,
+                    false,
+                    null, null
+            );
+            given(entityFinderHelper.findPetByIdOrFail(inactivePetId)).willReturn(alreadyInactivePet);
+
+            // Act & Assert
+            given(petMapper.toProfileDto(alreadyInactivePet)).willReturn(expectedInactiveProfileDto);
+
+
+            // Act
+            PetProfileDto resultDto = petService.deactivatePet(inactivePetId, ownerId);
+
+            // Assert
+            assertThat(resultDto).isNotNull();
+            assertThat(resultDto.id()).isEqualTo(inactivePetId);
+            assertThat(resultDto.status()).isEqualTo(PetStatus.INACTIVE);
+            assertThat(resultDto).isEqualTo(expectedInactiveProfileDto);
+
+            then(entityFinderHelper).should().findPetByIdOrFail(inactivePetId);
+            // Verifica que petRepository.save() NO fue llamado
+            then(petRepository).should(never()).save(any(Pet.class));
+            then(petMapper).should().toProfileDto(alreadyInactivePet);
+        }
+
+        /**
+         * Test failure when the pet ID does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if pet not found")
+        void deactivate_Failure_PetNotFound() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(999L))
+                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.deactivatePet(999L, ownerId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Pet not found with id: 999");
+
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the user attempting deactivation is not the owner.
+         */
+        @Test
+        @DisplayName("should throw AccessDeniedException if user is not owner")
+        void deactivate_Failure_NotOwner() {
+            // Arrange
+            Long otherOwnerId = 888L;
+            given(entityFinderHelper.findPetByIdOrFail(petToDeactivateId)).willReturn(petToDeactivate);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.deactivatePet(petToDeactivateId, otherOwnerId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("User " + otherOwnerId + " is not the owner of pet " + petToDeactivateId);
+
+            then(petRepository).should(never()).save(any());
+        }
+    }
+
+    /**
+     * --- Tests for updatePetByOwner ---
+     */
+    @Nested
+    @DisplayName("updatePetByOwner Tests")
+    class UpdatePetByOwnerTests {
+
+        private Pet existingPet;
+        private PetOwnerUpdateDto updateDto;
+        private Breed newBreed;
+        private PetProfileDto expectedUpdatedDto;
+        private final Long petId = 130L;
+        private final Long newBreedId = 40L;
+
+        /**
+         * Setup data: An existing pet owned by the test owner.
+         */
+        @BeforeEach
+        void updateOwnerSetup() {
+            newBreed = Breed.builder().id(newBreedId).name("Poodle").specie(Specie.DOG).build();
+
+            existingPet = new Pet();
+            existingPet.setId(petId);
+            existingPet.setOwner(owner);
+            existingPet.setName("BuddyOriginal");
+            existingPet.setColor("Brown");
+            existingPet.setBreed(dogBreedSpecific);
+            existingPet.setMicrochip("11111");
+            existingPet.setImage("original.jpg");
+            existingPet.setStatus(PetStatus.ACTIVE);
+
+            // DTO with some changes
+            updateDto = new PetOwnerUpdateDto(
+                    "BuddyUpdated",
+                    null,
+                    "Black and White",
+                    Gender.MALE,
+                    existingPet.getBirthDate(),
+                    "22222",
+                    newBreedId,
+                    null,
+                    null
+            );
+
+            expectedUpdatedDto = new PetProfileDto(
+                    petId,
+                    updateDto.name(),
+                    newBreed.getSpecie(),
+                    updateDto.color(),
+                    updateDto.gender(),
+                    updateDto.birthDate() !=null ? updateDto.birthDate() : existingPet.getBirthDate(),
+                    updateDto.microchip(),
+                    existingPet.getImage(),
+                    existingPet.getStatus(),
+                    owner.getId(),
+                    owner.getUsername(),
+                    newBreedId,
+                    newBreed.getName(),
+                    existingPet.getPendingActivationClinic() != null ? existingPet.getPendingActivationClinic().getId() : null,
+                    existingPet.getPendingActivationClinic() != null ? existingPet.getPendingActivationClinic().getName() : null,
+                    existingPet.getAssociatedVets() != null ? userMapper.toVetSummaryDtoSet(existingPet.getAssociatedVets()) : Set.of(),
+                    ownerSummaryDto,
+                    false,
+                    updateDto.newEuEntryDate() != null ? updateDto.newEuEntryDate() : existingPet.getLastEuEntryDate(),
+                    updateDto.newEuExitDate() != null ? updateDto.newEuExitDate() : existingPet.getLastEuExitDate());
+        }
+
+        /**
+         * Test a successful update when called by the correct owner.
+         * Verifies pet lookup, breed resolution (if changed), microchip validation,
+         * mapper application, saving, and DTO mapping.
+         */
+        @Test
+        @DisplayName("should update pet successfully when called by owner")
+        void updateByOwner_Success() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
+            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(false);
+            given(petMapper.updateFromOwnerDto(updateDto, existingPet, newBreed)).willReturn(true);
+            given(petRepository.save(any(Pet.class))).willAnswer(inv -> inv.getArgument(0));
+            given(petMapper.toProfileDto(any(Pet.class))).willReturn(expectedUpdatedDto);
+
+            // Act
+            PetProfileDto result = petService.updatePetByOwner(petId, updateDto, ownerId, null);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(expectedUpdatedDto);
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
+            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
+            then(petMapper).should().updateFromOwnerDto(updateDto, existingPet, newBreed);
+            then(petRepository).should().save(petCaptor.capture());
+            then(petMapper).should().toProfileDto(any(Pet.class));
+
+            Pet captured = petCaptor.getValue();
+            assertThat(captured.getId()).isEqualTo(petId);
+        }
+
+        /**
+         * Test successful update where no actual changes are made according to the mapper.
+         * Verifies that the repository save method is NOT called.
+         */
+        @Test
+        @DisplayName("should not save pet if mapper reports no changes")
+        void updateByOwner_NoChanges_ShouldNotSave() {
+            // Arrange
+            PetOwnerUpdateDto noChangeDto = new PetOwnerUpdateDto(
+                    existingPet.getName(),
+                    null,
+                    existingPet.getColor(),
+                    existingPet.getGender(),
+                    existingPet.getBirthDate(),
+                    existingPet.getMicrochip(),
+                    existingPet.getBreed().getId(),
+                    existingPet.getLastEuEntryDate(),
+                    existingPet.getLastEuExitDate()
+            );
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            given(petMapper.updateFromOwnerDto(noChangeDto, existingPet, existingPet.getBreed())).willReturn(false);
+            PetProfileDto originalDto = new PetProfileDto(
+                    existingPet.getId(),
+                    existingPet.getName(),
+                    existingPet.getBreed().getSpecie(),
+                    existingPet.getColor(),
+                    existingPet.getGender(),
+                    existingPet.getBirthDate(),
+                    existingPet.getMicrochip(),
+                    existingPet.getImage(),
+                    existingPet.getStatus(),
+                    owner.getId(),
+                    owner.getUsername(),
+                    existingPet.getBreed().getId(),
+                    existingPet.getBreed().getName(),
+                    existingPet.getPendingActivationClinic() != null ? existingPet.getPendingActivationClinic().getId() : null,
+                    existingPet.getPendingActivationClinic() != null ? existingPet.getPendingActivationClinic().getName() : null,
+                    existingPet.getAssociatedVets() != null ? userMapper.toVetSummaryDtoSet(existingPet.getAssociatedVets()) : Set.of(),
+                    ownerSummaryDto,
+                    false,
+                    existingPet.getLastEuEntryDate(),
+                    existingPet.getLastEuExitDate()
+            );
+
+            given(petMapper.toProfileDto(existingPet)).willReturn(originalDto);
+
+            // Act
+            PetProfileDto result = petService.updatePetByOwner(petId, noChangeDto, ownerId, null);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(originalDto);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(entityFinderHelper).should(never()).findBreedOrFail(anyLong());
+            then(petRepository).should(never()).existsByMicrochipAndIdNot(anyString(), anyLong());
+            then(petMapper).should().updateFromOwnerDto(noChangeDto, existingPet, existingPet.getBreed());
+            then(petRepository).should(never()).save(any(Pet.class));
+            then(petMapper).should().toProfileDto(existingPet);
+        }
+
+        /**
+         * Test failure when the pet ID does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if pet not found")
+        void updateByOwner_Failure_PetNotFound() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(999L))
+                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByOwner(999L, updateDto, ownerId, null))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Pet not found with id: 999");
+
+            then(petRepository).should(never()).save(any());
+            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
+        }
+
+        /**
+         * Test failure when the user trying to update is not the owner.
+         */
+        @Test
+        @DisplayName("should throw AccessDeniedException if user is not owner")
+        void updateByOwner_Failure_NotOwner() {
+            // Arrange
+            Long otherOwnerId = 55L;
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, otherOwnerId, null))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("User " + otherOwnerId + " is not the owner of pet " + petId);
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(petRepository).should(never()).save(any());
+            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
+        }
+
+        /**
+         * Test failure when a new breed ID is provided, but the breed does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if new breedId not found")
+        void updateByOwner_Failure_NewBreedNotFound() {
+            // Arrange
+            Long nonExistentBreedId = 888L;
+            PetOwnerUpdateDto dtoWithBadBreed = new PetOwnerUpdateDto(
+                    existingPet.getName(),
+                    null,
+                    existingPet.getColor(),
+                    existingPet.getGender(),
+                    existingPet.getBirthDate(),
+                    existingPet.getMicrochip(),
+                    nonExistentBreedId,
+                    null,
+                    null
+            );
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
+                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, dtoWithBadBreed, ownerId,null))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(entityFinderHelper).should().findBreedOrFail(nonExistentBreedId);
+            then(petRepository).should(never()).save(any());
+            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
+        }
+
+        /**
+         * Test failure when the new microchip number already exists for another pet.
+         */
+        @Test
+        @DisplayName("should throw MicrochipAlreadyExistsException if new microchip conflicts")
+        void updateByOwner_Failure_MicrochipConflict() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
+            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(true);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId,null))
+                    .isInstanceOf(MicrochipAlreadyExistsException.class)
+                    .hasMessageContaining(updateDto.microchip());
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
+            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
+            then(petRepository).should(never()).save(any());
+            then(petMapper).should(never()).updateFromOwnerDto(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("should update image and delete old one when image file is provided")
+        void updateByOwner_Success_WithImageChange() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "new.png", MediaType.IMAGE_PNG_VALUE, "new image".getBytes());
+            String oldImagePath = existingPet.getImage();
+            String newImagePath = "pets/avatars/new-uuid.png";
+
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            PetOwnerUpdateDto noOtherChangesDto = new PetOwnerUpdateDto(
+                    existingPet.getName(),
+                    null,
+                    existingPet.getColor(),
+                    existingPet.getGender(),
+                    existingPet.getBirthDate(),
+                    existingPet.getMicrochip(),
+                    existingPet.getBreed().getId(),
+                    existingPet.getLastEuEntryDate(),
+                    existingPet.getLastEuExitDate()
+            );
+
+            when(petMapper.updateFromOwnerDto(noOtherChangesDto, existingPet, existingPet.getBreed())).thenReturn(false);
+
+            given(imageService.storeImage(imageFile, "pets/avatars")).willReturn(newImagePath);
+            doNothing().when(imageService).deleteImage(oldImagePath);
+            when(petRepository.save(any(Pet.class))).thenAnswer(inv -> {
+                Pet petToSave = inv.getArgument(0);
+                petToSave.setImage(newImagePath);
+                return petToSave;
+            });
+
+            expectedUpdatedDto = new PetProfileDto(
+                    existingPet.getId(), existingPet.getName(), existingPet.getBreed().getSpecie(),
+                    existingPet.getColor(), existingPet.getGender(), existingPet.getBirthDate(),
+                    existingPet.getMicrochip(), newImagePath,
+                    existingPet.getStatus(), owner.getId(), owner.getUsername(),
+                    existingPet.getBreed().getId(), existingPet.getBreed().getName(),
+                    existingPet.getPendingActivationClinic() != null ? existingPet.getPendingActivationClinic().getId() : null,
+                    existingPet.getPendingActivationClinic() != null ? existingPet.getPendingActivationClinic().getName() : null,
+                    existingPet.getAssociatedVets() != null ? userMapper.toVetSummaryDtoSet(existingPet.getAssociatedVets()) : Set.of(),
+                    ownerSummaryDto,
+                    false,
+                    existingPet.getLastEuEntryDate(),
+                    existingPet.getLastEuExitDate()
+            );
+            when(petMapper.toProfileDto(any(Pet.class))).thenReturn(expectedUpdatedDto);
+
+
+            // Act
+            PetProfileDto result = petService.updatePetByOwner(petId, noOtherChangesDto, ownerId, imageFile);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.image()).isEqualTo(newImagePath);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(imageService).should().deleteImage(oldImagePath);
+            then(petRepository).should().save(petCaptor.capture());
+            assertThat(petCaptor.getValue().getImage()).isEqualTo(newImagePath);
+            then(petMapper).should().toProfileDto(any(Pet.class));
+        }
+
+        @Test
+        @DisplayName("should throw RuntimeException if image update storage fails")
+        void updateByOwner_Failure_ImageStorageError() throws IOException {
+            // Arrange
+            MockMultipartFile imageFile = new MockMultipartFile("imageFile", "fail.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(existingPet);
+            given(imageService.storeImage(imageFile, "pets/avatars")).willThrow(new IOException("Disk full"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByOwner(petId, updateDto, ownerId, imageFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Failed to process updated image")
+                    .hasCauseInstanceOf(IOException.class);
+
+            then(imageService).should().storeImage(imageFile, "pets/avatars");
+            then(imageService).should(never()).deleteImage(anyString());
+            then(petRepository).should(never()).save(any());
+        }
+
+    }
+
+    /**
+     * --- Tests for updatePetByClinicStaff ---
+     */
+    @Nested
+    @DisplayName("updatePetByClinicStaff Tests")
+    class UpdatePetByClinicStaffTests {
+
+        private Pet petToUpdate;
+        private ClinicStaff authorizedStaff;
+        private Owner petOwner;
+        private Breed newBreed;
+        private PetClinicUpdateDto updateDto;
+        private PetProfileDto expectedUpdatedDto;
+        private final Long petId = 140L;
+        private final Long authorizedStaffId = 30L;
+        private final Long unauthorizedStaffId = 31L;
+        private final Long newBreedId = 45L;
+        private final String actionContext = "update clinical info for";
+
+        /**
+         * Setup data: An existing pet, an authorized staff member, and an unauthorized one.
+         */
+        @BeforeEach
+        void updateClinicStaffSetup() {
+            Clinic petClinic = Clinic.builder().name("Pet's Clinic").address("123 Main St").city("Anytown").country(Country.UNITED_KINGDOM).phone("555-1234").build();
+            petClinic.setId(1L);
+            petOwner = new Owner();
+            petOwner.setId(5L);
+            petOwner.setUsername("pet_owner_for_staff_test");
+            petOwner.setEmail("owner_staff@test.com");
+            petOwner.setPhone("111222333");
+
+            // Inicializa authorizedStaff (como Vet)
+            authorizedStaff = new Vet();
+            authorizedStaff.setId(authorizedStaffId);
+            authorizedStaff.setUsername("auth_staff_vet");
+            authorizedStaff.setName("Auth");
+            authorizedStaff.setSurname("Vet");
+            authorizedStaff.setEmail("auth_vet@clinic.com");
+            authorizedStaff.setAvatar("avatars/vet_auth.png");
+            ((Vet) authorizedStaff).setLicenseNumber("VET123");
+            authorizedStaff.setClinic(petClinic);
+            authorizedStaff.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
+
+            Breed originalBreed = Breed.builder().id(20L).name("Dalmatian").specie(Specie.DOG).imageUrl("dalmatian.png").build();
+            newBreed = Breed.builder().id(newBreedId).name("Boxer").specie(Specie.DOG).imageUrl("boxer.png").build();
+
+            petToUpdate = new Pet();
+            petToUpdate.setId(petId);
+            petToUpdate.setOwner(petOwner);
+            petToUpdate.setName("Spot");
+            petToUpdate.setBreed(originalBreed);
+            petToUpdate.setStatus(PetStatus.ACTIVE);
+            petToUpdate.setMicrochip("CHIP-ORIGINAL");
+            petToUpdate.setColor("White/Black");
+            petToUpdate.setImage("spot_original.png");
+            petToUpdate.setLastEuEntryDate(null);
+            petToUpdate.setLastEuExitDate(null);
+            petToUpdate.setPendingActivationClinic(null);
+            petToUpdate.setPendingCertificateClinic(null);
+            petToUpdate.setAssociatedVets(new HashSet<>());
+            petToUpdate.addVet((Vet) authorizedStaff);
+
+            updateDto = new PetClinicUpdateDto(
+                    "White/Brown",
+                    Gender.FEMALE,
+                    LocalDate.of(2022, 10, 10),
+                    "CHIP-UPDATED",
+                    newBreedId
+            );
+
+            OwnerSummaryDto ownerSummaryForProfile = new OwnerSummaryDto(petOwner.getId(),
+                    petOwner.getUsername(), petOwner.getEmail(), petOwner.getPhone());
+
+            VetSummaryDto vetSummaryForProfile = getVetSummaryDto(petClinic);
+
+            expectedUpdatedDto = new PetProfileDto(
+                    petId,
+                    petToUpdate.getName(),
+                    newBreed.getSpecie(),
+                    updateDto.color(),
+                    updateDto.gender(),
+                    updateDto.birthDate(),
+                    updateDto.microchip(),
+                    petToUpdate.getImage(),
+                    petToUpdate.getStatus(),
+                    petOwner.getId(),
+                    petOwner.getUsername(),
+                    newBreedId,
+                    newBreed.getName(),
+                    null,
+                    null,
+                    Set.of(vetSummaryForProfile),
+                    ownerSummaryForProfile,
+                    false,
+                    petToUpdate.getLastEuEntryDate(),
+                    petToUpdate.getLastEuExitDate()
+            );
+        }
+
+        private VetSummaryDto getVetSummaryDto(Clinic petClinic) {
+            Vet castedAuthorizedStaff = (Vet) authorizedStaff;
+            return new VetSummaryDto(
+                    castedAuthorizedStaff.getId(),
+                    castedAuthorizedStaff.getName(),
+                    castedAuthorizedStaff.getSurname(),
+                    castedAuthorizedStaff.getAvatar(),
+                    castedAuthorizedStaff.getEmail(),
+                    castedAuthorizedStaff.getLicenseNumber(),
+                    petClinic.getId(),
+                    petClinic.getName(),
+                    petClinic.getAddress(),
+                    petClinic.getCity(),
+                    petClinic.getCountry() != null ? petClinic.getCountry().name() : null,
+                    petClinic.getPhone()
+            );
+        }
+
+        /**
+         * Test successful update when called by authorized clinic staff (Vet/Admin associated with the pet).
+         */
+        @Test
+        @DisplayName("should update pet successfully when called by authorized staff")
+        void updateByStaff_Success() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
+            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(false);
+
+            when(petMapper.updateFromClinicDto(eq(updateDto), any(Pet.class), eq(newBreed)))
+                    .thenAnswer(invocation -> {
+                        Pet petArg = invocation.getArgument(1);
+                        petArg.setColor(updateDto.color());
+                        petArg.setGender(updateDto.gender());
+                        petArg.setBirthDate(updateDto.birthDate());
+                        petArg.setMicrochip(updateDto.microchip());
+                        petArg.setBreed(newBreed);
+                        return true;
+                    });
+
+            when(petRepository.save(any(Pet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            given(petMapper.toProfileDto(argThat(p -> p.getId().equals(petId) && p.getColor().equals(updateDto.color()) )))
+                    .willReturn(expectedUpdatedDto);
+
+            PetProfileDto result = petService.updatePetByClinicStaff(petId, updateDto, authorizedStaffId);
+
+            assertThat(result).isNotNull().isEqualTo(expectedUpdatedDto);
+
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
+            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
+            then(petMapper).should().updateFromClinicDto(eq(updateDto), any(Pet.class), eq(newBreed));
+            then(petRepository).should().save(petCaptor.capture());
+            then(petMapper).should().toProfileDto(petCaptor.getValue());
+
+            Pet captured = petCaptor.getValue();
+            assertThat(captured.getColor()).isEqualTo(updateDto.color());
+            assertThat(captured.getGender()).isEqualTo(updateDto.gender());
+            assertThat(captured.getBirthDate()).isEqualTo(updateDto.birthDate());
+            assertThat(captured.getMicrochip()).isEqualTo(updateDto.microchip());
+            assertThat(captured.getBreed().getId()).isEqualTo(newBreedId);
+        }
+
+        /**
+         * Test successful update where no actual changes are made according to the mapper.
+         * Verifies that the repository save method is NOT called.
+         */
+        @Test
+        @DisplayName("should not save pet if mapper reports no changes")
+        void updateByStaff_NoChanges_ShouldNotSave() {
+            // Arrange
+            PetClinicUpdateDto noChangeDto = new PetClinicUpdateDto(
+                    petToUpdate.getColor(),
+                    petToUpdate.getGender(),
+                    petToUpdate.getBirthDate(),
+                    petToUpdate.getMicrochip(),
+                    petToUpdate.getBreed().getId()
+            );
+
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            given(petMapper.updateFromClinicDto(noChangeDto, petToUpdate, petToUpdate.getBreed())).willReturn(false);
+
+            Vet castedAuthorizedStaff = (Vet) authorizedStaff;
+            PetProfileDto originalDto = getPetProfileDto(castedAuthorizedStaff);
+            given(petMapper.toProfileDto(petToUpdate)).willReturn(originalDto);
+
+            // Act
+            PetProfileDto result = petService.updatePetByClinicStaff(petId, noChangeDto, authorizedStaffId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(originalDto);
+            then(petRepository).should(never()).save(any(Pet.class));
+            then(petMapper).should().toProfileDto(petToUpdate);
+        }
+
+        private PetProfileDto getPetProfileDto(Vet castedAuthorizedStaff) {
+            VetSummaryDto vetSummaryForProfile = new VetSummaryDto(
+                    castedAuthorizedStaff.getId(),
+                    castedAuthorizedStaff.getName(),
+                    castedAuthorizedStaff.getSurname(),
+                    castedAuthorizedStaff.getAvatar(),
+                    castedAuthorizedStaff.getEmail(),
+                    castedAuthorizedStaff.getLicenseNumber(),
+                    castedAuthorizedStaff.getClinic().getId(),
+                    castedAuthorizedStaff.getClinic().getName(),
+                    castedAuthorizedStaff.getClinic().getAddress(),
+                    castedAuthorizedStaff.getClinic().getCity(),
+                    castedAuthorizedStaff.getClinic().getCountry().name(),
+                    castedAuthorizedStaff.getClinic().getPhone()
+            );
+            OwnerSummaryDto ownerSummaryForProfile = new OwnerSummaryDto(petOwner.getId(),
+                    petOwner.getUsername(), petOwner.getEmail(), petOwner.getPhone());
+
+            return new PetProfileDto(
+                    petToUpdate.getId(), petToUpdate.getName(), petToUpdate.getBreed().getSpecie(),
+                    petToUpdate.getColor(), petToUpdate.getGender(), petToUpdate.getBirthDate(),
+                    petToUpdate.getMicrochip(), petToUpdate.getImage(), petToUpdate.getStatus(),
+                    petOwner.getId(), petOwner.getUsername(), petToUpdate.getBreed().getId(),
+                    petToUpdate.getBreed().getName(),
+                    null, null,
+                    Set.of(vetSummaryForProfile),
+                    ownerSummaryForProfile,
+                    false,
+                    null, null
+            );
+        }
+
+        /**
+         * Test failure when the pet ID does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if pet not found")
+        void updateByStaff_Failure_PetNotFound() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(999L))
+                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByClinicStaff(999L, updateDto, authorizedStaffId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Pet not found with id: 999");
+
+            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the staff member performing the update is not found.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if staff not found")
+        void updateByStaff_Failure_StaffNotFound() {
+            // Arrange
+            Long nonExistentStaffId = 888L;
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
+            doThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), nonExistentStaffId))
+                    .when(authorizationHelper).verifyUserAuthorizationForPet(nonExistentStaffId, petToUpdate, actionContext);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, updateDto, nonExistentStaffId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("UserEntity not found with id: " + nonExistentStaffId);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(nonExistentStaffId, petToUpdate, actionContext);
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the staff member is not authorized (e.g., from a different clinic).
+         */
+        @Test
+        @DisplayName("should throw AccessDeniedException if staff not authorized for pet")
+        void updateByStaff_Failure_StaffNotAuthorized() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
+            doThrow(new AccessDeniedException(String.format("User (ID: %d) is not authorized to %s pet (ID: %d).",
+                    unauthorizedStaffId, actionContext, petId)))
+                    .when(authorizationHelper).verifyUserAuthorizationForPet(unauthorizedStaffId, petToUpdate, actionContext);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, updateDto, unauthorizedStaffId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining(String.format("User (ID: %d) is not authorized to %s pet (ID: %d).",
+                            unauthorizedStaffId, actionContext, petId));
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(unauthorizedStaffId, petToUpdate, actionContext);
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when a new breed ID is provided, but the breed does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if new breedId not found")
+        void updateByStaff_Failure_NewBreedNotFound() {
+            // Arrange
+            Long nonExistentBreedId = 777L;
+            PetClinicUpdateDto dtoWithBadBreed = new PetClinicUpdateDto(null,null,null,null, nonExistentBreedId);
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            given(entityFinderHelper.findBreedOrFail(nonExistentBreedId))
+                    .willThrow(new EntityNotFoundException(Breed.class.getSimpleName(), nonExistentBreedId));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, dtoWithBadBreed, authorizedStaffId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Breed not found with id: " + nonExistentBreedId);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            then(entityFinderHelper).should().findBreedOrFail(nonExistentBreedId);
+            then(petRepository).should(never()).save(any());
+        }
+
+        /**
+         * Test failure when the new microchip number already exists for another pet.
+         */
+        @Test
+        @DisplayName("should throw MicrochipAlreadyExistsException if new microchip conflicts")
+        void updateByStaff_Failure_MicrochipConflict() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(petToUpdate);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            given(entityFinderHelper.findBreedOrFail(newBreedId)).willReturn(newBreed);
+            given(petRepository.existsByMicrochipAndIdNot(updateDto.microchip(), petId)).willReturn(true);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.updatePetByClinicStaff(petId, updateDto, authorizedStaffId))
+                    .isInstanceOf(MicrochipAlreadyExistsException.class)
+                    .hasMessageContaining(updateDto.microchip());
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(authorizedStaffId, petToUpdate, actionContext);
+            then(entityFinderHelper).should().findBreedOrFail(newBreedId);
+            then(petRepository).should().existsByMicrochipAndIdNot(updateDto.microchip(), petId);
+            then(petRepository).should(never()).save(any());
+        }
+    }
 
     /**
      * --- Tests for findPetsByClinic ---
@@ -1493,24 +1730,29 @@ class PetServiceImplTest {
         private final Long staffId = 30L;
         private final String actionContext = "find pets for clinic";
 
-//        @BeforeEach
-//        void findClinicSetup() {
-//            pageable = PageRequest.of(0, 5);
-//            Clinic clinic = Clinic.builder().build(); clinic.setId(clinicId);
-//            staffFromClinic = new Vet();
-//            staffFromClinic.setId(staffId);
-//            staffFromClinic.setClinic(clinic);
-//            staffFromClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
-//
-//            petPendingAtClinic = new Pet(); petPendingAtClinic.setId(200L); petPendingAtClinic.setName("Pending"); petPendingAtClinic.setStatus(PetStatus.PENDING); petPendingAtClinic.setPendingActivationClinic(clinic); petPendingAtClinic.setBreed(dogBreedSpecific); petPendingAtClinic.setOwner(owner);
-//            petActiveWithVetFromClinic = new Pet(); petActiveWithVetFromClinic.setId(201L); petActiveWithVetFromClinic.setName("Active"); petActiveWithVetFromClinic.setStatus(PetStatus.ACTIVE); petActiveWithVetFromClinic.addVet((Vet) staffFromClinic); petActiveWithVetFromClinic.setBreed(dogBreedSpecific); petActiveWithVetFromClinic.setOwner(owner);
-//
-//            Pet petActiveWithVetFromOtherClinic = new Pet(); petActiveWithVetFromOtherClinic.setId(202L); petActiveWithVetFromOtherClinic.setStatus(PetStatus.ACTIVE); /* No association */ petActiveWithVetFromOtherClinic.setBreed(dogBreedSpecific); petActiveWithVetFromOtherClinic.setOwner(owner);
-//
-//
-//            dtoPending = new PetProfileDto(200L, "Pending", Specie.DOG, null,null,null,null,null, PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), clinicId, Set.of());
-//            dtoActive = new PetProfileDto(201L, "Active", Specie.DOG, null,null,null,null,null, PetStatus.ACTIVE, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), null, Set.of(new VetSummaryDto(staffId, staffFromClinic.getName(), staffFromClinic.getSurname())));
-//        }
+        @BeforeEach
+        void findClinicSetup() {
+            pageable = PageRequest.of(0, 5);
+            Clinic clinic = Clinic.builder().build(); clinic.setId(clinicId);
+            staffFromClinic = new Vet();
+            staffFromClinic.setId(staffId);
+            staffFromClinic.setClinic(clinic);
+            staffFromClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
+
+            petPendingAtClinic = new Pet(); petPendingAtClinic.setId(200L); petPendingAtClinic.setName("Pending"); petPendingAtClinic.setStatus(PetStatus.PENDING); petPendingAtClinic.setPendingActivationClinic(clinic); petPendingAtClinic.setBreed(dogBreedSpecific); petPendingAtClinic.setOwner(owner);
+            petActiveWithVetFromClinic = new Pet(); petActiveWithVetFromClinic.setId(201L); petActiveWithVetFromClinic.setName("Active"); petActiveWithVetFromClinic.setStatus(PetStatus.ACTIVE); petActiveWithVetFromClinic.addVet((Vet) staffFromClinic); petActiveWithVetFromClinic.setBreed(dogBreedSpecific); petActiveWithVetFromClinic.setOwner(owner);
+
+            Pet petActiveWithVetFromOtherClinic = new Pet(); petActiveWithVetFromOtherClinic.setId(202L); petActiveWithVetFromOtherClinic.setStatus(PetStatus.ACTIVE); /* No association */ petActiveWithVetFromOtherClinic.setBreed(dogBreedSpecific); petActiveWithVetFromOtherClinic.setOwner(owner);
+
+
+            dtoPending = new PetProfileDto(200L, "Pending", Specie.DOG, null,null,null,
+                    null,null, PetStatus.PENDING, ownerId,
+                    owner.getUsername(), dogBreedSpecific.getId(),
+                    dogBreedSpecific.getName(), clinicId, null, null, null, false, null, null);
+            dtoActive = new PetProfileDto(201L, "Active", Specie.DOG, null,null,null,null,null, PetStatus.ACTIVE, ownerId, owner.getUsername(),
+                    dogBreedSpecific.getId(), dogBreedSpecific.getName(), null,
+                    null, null, null, false, null, null  );
+        }
 
         /**
          * Test successful retrieval of associated pets (pending and active via vet).
@@ -1582,316 +1824,320 @@ class PetServiceImplTest {
         }
     }
 
-//    /**
-//     * --- Tests for findPendingActivationPetsByClinic ---
-//     */
-//    @Nested
-//    @DisplayName("findPendingActivationPetsByClinic Tests")
-//    class FindPendingPetsByClinicTests {
-//
-//        private ClinicStaff staffFromClinic;
-//        private Pet petPendingAtClinic;
-//        private PetProfileDto dtoPending;
-//        private final Long clinicId = 1L;
-//        private final Long staffId = 30L;
-//        private final String actionContext = "find pending pets for clinic";
-//
-//        @BeforeEach
-//        void findPendingSetup() {
-//            Clinic clinic = Clinic.builder().build(); clinic.setId(clinicId);
-//            staffFromClinic = new Vet();
-//            staffFromClinic.setId(staffId);
-//            staffFromClinic.setClinic(clinic);
-//            staffFromClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
-//
-//            Pet petActiveAtClinic;
-//            petPendingAtClinic = new Pet(); petPendingAtClinic.setId(210L); petPendingAtClinic.setName("Pending"); petPendingAtClinic.setStatus(PetStatus.PENDING); petPendingAtClinic.setPendingActivationClinic(clinic); petPendingAtClinic.setBreed(dogBreedSpecific); petPendingAtClinic.setOwner(owner);
-//            petActiveAtClinic = new Pet(); petActiveAtClinic.setId(211L); petActiveAtClinic.setName("Active"); petActiveAtClinic.setStatus(PetStatus.ACTIVE); petActiveAtClinic.addVet((Vet) staffFromClinic); petActiveAtClinic.setBreed(dogBreedSpecific); petActiveAtClinic.setOwner(owner);
-//
-//            dtoPending = new PetProfileDto(210L, "Pending", Specie.DOG, null,null,null,null,null, PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(), dogBreedSpecific.getName(), clinicId, Set.of());
-//        }
-//
-//        /**
-//         * Test successful retrieval of pending pets.
-//         */
-//        @Test
-//        @DisplayName("should return list of PENDING pets for authorized staff")
-//        void findPending_Success() {
-//            // Arrange
-//            given(entityFinderHelper.findClinicStaffOrFail(staffId, actionContext)).willReturn(staffFromClinic);
-//            given(petRepository.findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING)).willReturn(List.of(petPendingAtClinic));
-//            given(petMapper.toProfileDtoList(List.of(petPendingAtClinic))).willReturn(List.of(dtoPending));
-//
-//            // Act
-//            List<PetProfileDto> result = petService.findPendingActivationPetsByClinic(staffId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().hasSize(1).containsExactly(dtoPending);
-//            then(entityFinderHelper).should().findClinicStaffOrFail(staffId, actionContext);
-//            then(petRepository).should().findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING);
-//            then(petMapper).should().toProfileDtoList(List.of(petPendingAtClinic));
-//        }
-//
-//        /**
-//         * Test retrieval when no pets are pending at the clinic.
-//         */
-//        @Test
-//        @DisplayName("should return empty list when no pets are pending")
-//        void findPending_Success_NoPets() {
-//            // Arrange
-//            given(entityFinderHelper.findClinicStaffOrFail(staffId, actionContext)).willReturn(staffFromClinic);
-//            given(petRepository.findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING)).willReturn(Collections.emptyList());
-//            given(petMapper.toProfileDtoList(Collections.emptyList())).willReturn(Collections.emptyList());
-//
-//            // Act
-//            List<PetProfileDto> result = petService.findPendingActivationPetsByClinic(staffId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEmpty();
-//            then(entityFinderHelper).should().findClinicStaffOrFail(staffId, actionContext);
-//            then(petRepository).should().findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING);
-//            then(petMapper).should().toProfileDtoList(Collections.emptyList());
-//        }
-//
-//        /**
-//         * Test failure when the requesting user is not ClinicStaff.
-//         */
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if requester is not staff")
-//        void findPending_Failure_NotStaff() {
-//            // Arrange
-//            given(entityFinderHelper.findClinicStaffOrFail(ownerId, actionContext))
-//                    .willThrow(new AccessDeniedException("User " + ownerId + " is not Clinic Staff and cannot " + actionContext));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.findPendingActivationPetsByClinic(ownerId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not Clinic Staff");
-//
-//            then(entityFinderHelper).should().findClinicStaffOrFail(ownerId, actionContext);
-//            then(petRepository).should(never()).findByPendingActivationClinicIdAndStatus(anyLong(), any());
-//        }
-//    }
-//
-//    /**
-//     * --- Tests for findPetById ---
-//     */
-//    @Nested
-//    @DisplayName("findPetById Tests")
-//    class FindPetByIdTests {
-//
-//        private Pet pet;
-//        private Clinic petClinic;
-//        private PetProfileDto petDto;
-//        private final Long petId = 250L;
-//        private final Long ownerId = 50L;
-//        private final Long staffSameClinicId = 52L;
-//        private final Long staffDifferentClinicId = 53L;
-//        private final Long differentOwnerId = 54L;
-//        private final String actionContext = "view";
-//
-//        @BeforeEach
-//        void findByIdSetup() {
-//            Owner petOwner;
-//            Long vetId = 51L;
-//
-//            petOwner = new Owner();
-//            petOwner.setId(ownerId);
-//            petOwner.setUsername("pet_owner");
-//
-//            Long clinicId = 1L;
-//            petClinic = Clinic.builder().name("Pet's Clinic").build();
-//            petClinic.setId(clinicId);
-//
-//            Vet associatedVet;
-//            associatedVet = new Vet();
-//            associatedVet.setId(vetId);
-//            associatedVet.setClinic(petClinic);
-//
-//            ClinicStaff staffFromSameClinic;
-//            staffFromSameClinic = new ClinicStaff();
-//            staffFromSameClinic.setId(staffSameClinicId);
-//            staffFromSameClinic.setClinic(petClinic);
-//            staffFromSameClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
-//
-//            Clinic otherClinic = Clinic.builder().name("Other Clinic").build();
-//            otherClinic.setId(99L);
-//
-//            ClinicStaff staffFromDifferentClinic;
-//            staffFromDifferentClinic = new ClinicStaff();
-//            staffFromDifferentClinic.setId(staffDifferentClinicId);
-//            staffFromDifferentClinic.setUsername("unauth_staff");
-//            staffFromDifferentClinic.setClinic(otherClinic);
-//            staffFromDifferentClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
-//
-//            Owner differentOwner = new Owner(); differentOwner.setId(differentOwnerId);
-//
-//            pet = new Pet();
-//            pet.setId(petId);
-//            pet.setOwner(petOwner);
-//            pet.setName("Target Pet");
-//            pet.setStatus(PetStatus.ACTIVE);
-//            pet.addVet(associatedVet);
-//            pet.setBreed(dogBreedSpecific);
-//            pet.setImage("pet_image.png");
-//
-//            associatedVet.setName("VetName");
-//            associatedVet.setSurname("VetSurname");
-//            petDto = new PetProfileDto(
-//                    petId, "Target Pet",
-//                    Specie.DOG,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    "pet_image.png",
-//                    PetStatus.ACTIVE,
-//                    ownerId,
-//                    petOwner.getUsername(),
-//                    dogBreedSpecific.getId(),
-//                    dogBreedSpecific.getName(),
-//                    null,
-//                    Set.of(new VetSummaryDto(vetId, associatedVet.getName(), associatedVet.getSurname()))
-//            );
-//        }
-//
-//        /**
-//         * Test successful retrieval when the requester is the owner.
-//         */
-//        @Test
-//        @DisplayName("should return pet profile when requester is owner")
-//        void findById_Success_RequesterIsOwner() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(ownerId, pet, actionContext);
-//            given(petMapper.toProfileDto(pet)).willReturn(petDto);
-//
-//            // Act
-//            PetProfileDto result = petService.findPetById(petId, ownerId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(petDto);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(ownerId, pet, actionContext);
-//            then(petMapper).should().toProfileDto(pet);
-//            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
-//        }
-//
-//        /**
-//         * Test successful retrieval when the requester is staff from a clinic associated with the pet.
-//         */
-//        @Test
-//        @DisplayName("should return pet profile when requester is staff from associated clinic")
-//        void findById_Success_RequesterIsAssociatedStaff() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
-//            given(petMapper.toProfileDto(pet)).willReturn(petDto);
-//
-//            // Act
-//            PetProfileDto result = petService.findPetById(petId, staffSameClinicId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(petDto);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
-//            then(petMapper).should().toProfileDto(pet);
-//            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
-//        }
-//
-//        /**
-//         * Test successful retrieval when the requester is staff from the clinic where the pet is PENDING activation.
-//         */
-//        @Test
-//        @DisplayName("should return pet profile when requester is staff from pending clinic")
-//        void findById_Success_RequesterIsPendingClinicStaff() {
-//            // Arrange
-//            pet.setStatus(PetStatus.PENDING);
-//            pet.setPendingActivationClinic(petClinic);
-//            pet.getAssociatedVets().clear();
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
-//            given(petMapper.toProfileDto(pet)).willReturn(petDto);
-//
-//            // Act
-//            PetProfileDto result = petService.findPetById(petId, staffSameClinicId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(petDto);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
-//            then(petMapper).should().toProfileDto(pet);
-//            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
-//        }
-//
-//        /**
-//         * Test failure when the Pet ID does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if pet not found")
-//        void findById_Failure_PetNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(999L))
-//                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.findPetById(999L, ownerId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("Pet not found with id: 999");
-//            then(entityFinderHelper).should().findPetByIdOrFail(999L);
-//            then(authorizationHelper).should(never()).verifyUserAuthorizationForPet(anyLong(), any(), anyString());
-//            then(petMapper).should(never()).toProfileDto(any());
-//        }
-//
-//        /**
-//         * Test failure when the requester user ID does not exist.
-//         */
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if requester user not found")
-//        void findById_Failure_RequesterNotFound() {
-//            // Arrange
-//            Long nonExistentUserId = 888L;
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            doThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), nonExistentUserId))
-//                    .when(authorizationHelper).verifyUserAuthorizationForPet(nonExistentUserId, pet, actionContext);
-//
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.findPetById(petId, nonExistentUserId))
-//                    .isInstanceOf(EntityNotFoundException.class)
-//                    .hasMessageContaining("UserEntity not found with id: " + nonExistentUserId);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(nonExistentUserId, pet, actionContext);
-//            then(petMapper).should(never()).toProfileDto(any());
-//        }
-//
-//        /**
-//         * Test failure when the requester is neither the owner nor authorized staff.
-//         */
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if requester is not owner or authorized staff")
-//        void findById_Failure_Unauthorized() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            doThrow(new AccessDeniedException("User (ID: " + staffDifferentClinicId + ")..."))
-//                    .when(authorizationHelper).verifyUserAuthorizationForPet(staffDifferentClinicId, pet, actionContext);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> petService.findPetById(petId, staffDifferentClinicId))
-//                    .isInstanceOf(AccessDeniedException.class);
-//
-//            doThrow(new AccessDeniedException("User (ID: " + differentOwnerId + ")..."))
-//                    .when(authorizationHelper).verifyUserAuthorizationForPet(differentOwnerId, pet, actionContext);
-//
-//            assertThatThrownBy(() -> petService.findPetById(petId, differentOwnerId))
-//                    .isInstanceOf(AccessDeniedException.class);
-//
-//            then(entityFinderHelper).should(times(2)).findPetByIdOrFail(petId);
-//            then(authorizationHelper).should(times(1)).verifyUserAuthorizationForPet(staffDifferentClinicId, pet, actionContext);
-//            then(authorizationHelper).should(times(1)).verifyUserAuthorizationForPet(differentOwnerId, pet, actionContext);
-//            then(petMapper).should(never()).toProfileDto(any());
-//        }
-//    }
+    /**
+     * --- Tests for findPendingActivationPetsByClinic ---
+     */
+    @Nested
+    @DisplayName("findPendingActivationPetsByClinic Tests")
+    class FindPendingPetsByClinicTests {
+
+        private ClinicStaff staffFromClinic;
+        private Pet petPendingAtClinic;
+        private PetProfileDto dtoPending;
+        private final Long clinicId = 1L;
+        private final Long staffId = 30L;
+        private final String actionContext = "find pending pets for clinic";
+
+        @BeforeEach
+        void findPendingSetup() {
+            Clinic clinic = Clinic.builder().build(); clinic.setId(clinicId);
+            staffFromClinic = new Vet();
+            staffFromClinic.setId(staffId);
+            staffFromClinic.setClinic(clinic);
+            staffFromClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.VET).build()));
+
+            Pet petActiveAtClinic;
+            petPendingAtClinic = new Pet(); petPendingAtClinic.setId(210L); petPendingAtClinic.setName("Pending"); petPendingAtClinic.setStatus(PetStatus.PENDING); petPendingAtClinic.setPendingActivationClinic(clinic); petPendingAtClinic.setBreed(dogBreedSpecific); petPendingAtClinic.setOwner(owner);
+            petActiveAtClinic = new Pet(); petActiveAtClinic.setId(211L); petActiveAtClinic.setName("Active"); petActiveAtClinic.setStatus(PetStatus.ACTIVE); petActiveAtClinic.addVet((Vet) staffFromClinic); petActiveAtClinic.setBreed(dogBreedSpecific); petActiveAtClinic.setOwner(owner);
+
+            dtoPending = new PetProfileDto(210L, "Pending", Specie.DOG,
+                    null,null,null,null,null,
+                    PetStatus.PENDING, ownerId, owner.getUsername(), dogBreedSpecific.getId(),
+                    dogBreedSpecific.getName(), clinicId, null, null,
+                    null, false, null, null);
+        }
+
+        /**
+         * Test successful retrieval of pending pets.
+         */
+        @Test
+        @DisplayName("should return list of PENDING pets for authorized staff")
+        void findPending_Success() {
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(staffId, actionContext)).willReturn(staffFromClinic);
+            given(petRepository.findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING)).willReturn(List.of(petPendingAtClinic));
+            given(petMapper.toProfileDtoList(List.of(petPendingAtClinic))).willReturn(List.of(dtoPending));
+
+            // Act
+            List<PetProfileDto> result = petService.findPendingActivationPetsByClinic(staffId);
+
+            // Assert
+            assertThat(result).isNotNull().hasSize(1).containsExactly(dtoPending);
+            then(entityFinderHelper).should().findClinicStaffOrFail(staffId, actionContext);
+            then(petRepository).should().findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING);
+            then(petMapper).should().toProfileDtoList(List.of(petPendingAtClinic));
+        }
+
+        /**
+         * Test retrieval when no pets are pending at the clinic.
+         */
+        @Test
+        @DisplayName("should return empty list when no pets are pending")
+        void findPending_Success_NoPets() {
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(staffId, actionContext)).willReturn(staffFromClinic);
+            given(petRepository.findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING)).willReturn(Collections.emptyList());
+            given(petMapper.toProfileDtoList(Collections.emptyList())).willReturn(Collections.emptyList());
+
+            // Act
+            List<PetProfileDto> result = petService.findPendingActivationPetsByClinic(staffId);
+
+            // Assert
+            assertThat(result).isNotNull().isEmpty();
+            then(entityFinderHelper).should().findClinicStaffOrFail(staffId, actionContext);
+            then(petRepository).should().findByPendingActivationClinicIdAndStatus(clinicId, PetStatus.PENDING);
+            then(petMapper).should().toProfileDtoList(Collections.emptyList());
+        }
+
+        /**
+         * Test failure when the requesting user is not ClinicStaff.
+         */
+        @Test
+        @DisplayName("should throw AccessDeniedException if requester is not staff")
+        void findPending_Failure_NotStaff() {
+            // Arrange
+            given(entityFinderHelper.findClinicStaffOrFail(ownerId, actionContext))
+                    .willThrow(new AccessDeniedException("User " + ownerId + " is not Clinic Staff and cannot " + actionContext));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.findPendingActivationPetsByClinic(ownerId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not Clinic Staff");
+
+            then(entityFinderHelper).should().findClinicStaffOrFail(ownerId, actionContext);
+            then(petRepository).should(never()).findByPendingActivationClinicIdAndStatus(anyLong(), any());
+        }
+    }
+
+    /**
+     * --- Tests for findPetById ---
+     */
+    @Nested
+    @DisplayName("findPetById Tests")
+    class FindPetByIdTests {
+
+        private Pet pet;
+        private Clinic petClinic;
+        private PetProfileDto petDto;
+        private final Long petId = 250L;
+        private final Long ownerId = 50L;
+        private final Long staffSameClinicId = 52L;
+        private final Long staffDifferentClinicId = 53L;
+        private final Long differentOwnerId = 54L;
+        private final String actionContext = "view";
+
+        @BeforeEach
+        void findByIdSetup() {
+            Owner petOwner;
+            Long vetId = 51L;
+
+            petOwner = new Owner();
+            petOwner.setId(ownerId);
+            petOwner.setUsername("pet_owner");
+
+            Long clinicId = 1L;
+            petClinic = Clinic.builder().name("Pet's Clinic").build();
+            petClinic.setId(clinicId);
+
+            Vet associatedVet;
+            associatedVet = new Vet();
+            associatedVet.setId(vetId);
+            associatedVet.setClinic(petClinic);
+
+            ClinicStaff staffFromSameClinic;
+            staffFromSameClinic = new ClinicStaff();
+            staffFromSameClinic.setId(staffSameClinicId);
+            staffFromSameClinic.setClinic(petClinic);
+            staffFromSameClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
+
+            Clinic otherClinic = Clinic.builder().name("Other Clinic").build();
+            otherClinic.setId(99L);
+
+            ClinicStaff staffFromDifferentClinic;
+            staffFromDifferentClinic = new ClinicStaff();
+            staffFromDifferentClinic.setId(staffDifferentClinicId);
+            staffFromDifferentClinic.setUsername("unauth_staff");
+            staffFromDifferentClinic.setClinic(otherClinic);
+            staffFromDifferentClinic.setRoles(Set.of(RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build()));
+
+            Owner differentOwner = new Owner(); differentOwner.setId(differentOwnerId);
+
+            pet = new Pet();
+            pet.setId(petId);
+            pet.setOwner(petOwner);
+            pet.setName("Target Pet");
+            pet.setStatus(PetStatus.ACTIVE);
+            pet.addVet(associatedVet);
+            pet.setBreed(dogBreedSpecific);
+            pet.setImage("pet_image.png");
+
+            associatedVet.setName("VetName");
+            associatedVet.setSurname("VetSurname");
+            petDto = new PetProfileDto(
+                    petId, "Target Pet",
+                    Specie.DOG,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "pet_image.png",
+                    PetStatus.ACTIVE,
+                    ownerId,
+                    petOwner.getUsername(),
+                    dogBreedSpecific.getId(),
+                    dogBreedSpecific.getName(),
+                    null,
+                    null,null, null,
+                    false, null, null);
+        }
+
+        /**
+         * Test successful retrieval when the requester is the owner.
+         */
+        @Test
+        @DisplayName("should return pet profile when requester is owner")
+        void findById_Success_RequesterIsOwner() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(ownerId, pet, actionContext);
+            given(petMapper.toProfileDto(pet)).willReturn(petDto);
+
+            // Act
+            PetProfileDto result = petService.findPetById(petId, ownerId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(petDto);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(ownerId, pet, actionContext);
+            then(petMapper).should().toProfileDto(pet);
+            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
+        }
+
+        /**
+         * Test successful retrieval when the requester is staff from a clinic associated with the pet.
+         */
+        @Test
+        @DisplayName("should return pet profile when requester is staff from associated clinic")
+        void findById_Success_RequesterIsAssociatedStaff() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
+            given(petMapper.toProfileDto(pet)).willReturn(petDto);
+
+            // Act
+            PetProfileDto result = petService.findPetById(petId, staffSameClinicId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(petDto);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
+            then(petMapper).should().toProfileDto(pet);
+            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
+        }
+
+        /**
+         * Test successful retrieval when the requester is staff from the clinic where the pet is PENDING activation.
+         */
+        @Test
+        @DisplayName("should return pet profile when requester is staff from pending clinic")
+        void findById_Success_RequesterIsPendingClinicStaff() {
+            // Arrange
+            pet.setStatus(PetStatus.PENDING);
+            pet.setPendingActivationClinic(petClinic);
+            pet.getAssociatedVets().clear();
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
+            given(petMapper.toProfileDto(pet)).willReturn(petDto);
+
+            // Act
+            PetProfileDto result = petService.findPetById(petId, staffSameClinicId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(petDto);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(staffSameClinicId, pet, actionContext);
+            then(petMapper).should().toProfileDto(pet);
+            then(entityFinderHelper).should(never()).findUserOrFail(anyLong());
+        }
+
+        /**
+         * Test failure when the Pet ID does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if pet not found")
+        void findById_Failure_PetNotFound() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(999L))
+                    .willThrow(new EntityNotFoundException(Pet.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.findPetById(999L, ownerId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Pet not found with id: 999");
+            then(entityFinderHelper).should().findPetByIdOrFail(999L);
+            then(authorizationHelper).should(never()).verifyUserAuthorizationForPet(anyLong(), any(), anyString());
+            then(petMapper).should(never()).toProfileDto(any());
+        }
+
+        /**
+         * Test failure when the requester user ID does not exist.
+         */
+        @Test
+        @DisplayName("should throw EntityNotFoundException if requester user not found")
+        void findById_Failure_RequesterNotFound() {
+            // Arrange
+            Long nonExistentUserId = 888L;
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            doThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), nonExistentUserId))
+                    .when(authorizationHelper).verifyUserAuthorizationForPet(nonExistentUserId, pet, actionContext);
+
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.findPetById(petId, nonExistentUserId))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("UserEntity not found with id: " + nonExistentUserId);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(nonExistentUserId, pet, actionContext);
+            then(petMapper).should(never()).toProfileDto(any());
+        }
+
+        /**
+         * Test failure when the requester is neither the owner nor authorized staff.
+         */
+        @Test
+        @DisplayName("should throw AccessDeniedException if requester is not owner or authorized staff")
+        void findById_Failure_Unauthorized() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            doThrow(new AccessDeniedException("User (ID: " + staffDifferentClinicId + ")..."))
+                    .when(authorizationHelper).verifyUserAuthorizationForPet(staffDifferentClinicId, pet, actionContext);
+
+            // Act & Assert
+            assertThatThrownBy(() -> petService.findPetById(petId, staffDifferentClinicId))
+                    .isInstanceOf(AccessDeniedException.class);
+
+            doThrow(new AccessDeniedException("User (ID: " + differentOwnerId + ")..."))
+                    .when(authorizationHelper).verifyUserAuthorizationForPet(differentOwnerId, pet, actionContext);
+
+            assertThatThrownBy(() -> petService.findPetById(petId, differentOwnerId))
+                    .isInstanceOf(AccessDeniedException.class);
+
+            then(entityFinderHelper).should(times(2)).findPetByIdOrFail(petId);
+            then(authorizationHelper).should(times(1)).verifyUserAuthorizationForPet(staffDifferentClinicId, pet, actionContext);
+            then(authorizationHelper).should(times(1)).verifyUserAuthorizationForPet(differentOwnerId, pet, actionContext);
+            then(petMapper).should(never()).toProfileDto(any());
+        }
+    }
 
     /**
      * --- Tests for findBreedsBySpecie ---
@@ -2214,7 +2460,7 @@ class PetServiceImplTest {
 
             Pet saved = petCaptor.getValue();
             assertThat(saved.getAssociatedVets()).isEmpty();
-            assertThat(saved.getStatus()).isEqualTo(PetStatus.INACTIVE);
+            assertThat(saved.getStatus()).isEqualTo(PetStatus.PENDING);
         }
 
         /**

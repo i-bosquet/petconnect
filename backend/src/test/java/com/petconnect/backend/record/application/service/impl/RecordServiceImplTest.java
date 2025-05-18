@@ -17,7 +17,6 @@ import com.petconnect.backend.record.domain.model.Record;
 import com.petconnect.backend.record.domain.model.RecordType;
 import com.petconnect.backend.record.domain.model.Vaccine;
 import com.petconnect.backend.record.domain.repository.RecordRepository;
-import com.petconnect.backend.user.application.dto.UserProfileDto;
 import com.petconnect.backend.user.application.mapper.UserMapper;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.security.JwtUtils;
@@ -89,217 +88,243 @@ class RecordServiceImplTest {
     private final Long recordId1 = 101L;
     private RoleEntity adminRole;
 
-//    @BeforeEach
-//    void setUp() {
-//
-//        Clinic clinic;
-//
-//        Long recordId2 = 102L;
-//        adminRole = RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build(); adminRole.setId(3L);
-//        owner = new Owner(); owner.setId(ownerId);owner.setUsername("testowner");
-//        clinic = new Clinic(); clinic.setId(1L); clinic.setName("Clinic One");
-//        vet = new Vet(); vet.setId(vetId);vet.setUsername("testvet"); vet.setClinic(clinic);
-//
-//        Breed breed = Breed.builder().id(5L).name("Siamese").specie(Specie.CAT).build();
-//
-//        pet = new Pet();pet.setId(petId);pet.setOwner(owner);pet.setBreed(breed);
-//
-//        adminSameClinic = new ClinicStaff(); adminSameClinic.setId(adminSameClinicId); adminSameClinic.setClinic(clinic);
-//        adminSameClinic.setRoles(Set.of(adminRole));
-//
-//        record1 = new Record();
-//        record1.setId(recordId1);
-//        record1.setPet(pet);
-//        record1.setCreator(owner);
-//        record1.setType(RecordType.OTHER);
-//        record1.setDescription("Observation by owner");
-//        record1.setCreatedAt(LocalDateTime.now().minusDays(1));
-//
-//        record2 = new Record();
-//        record2.setId(recordId2);
-//        record2.setPet(pet);
-//        record2.setCreator(vet);
-//        record2.setType(RecordType.ANNUAL_CHECK);
-//        record2.setDescription("Annual checkup results");
-//        record2.setVetSignature("SIGNED_BY_VET_XYZ");
-//        record2.setCreatedAt(LocalDateTime.now());
-//
-//        UserProfileDto ownerDto = new UserProfileDto(ownerId, "testowner", null, Set.of("OWNER"), null);
-//        UserProfileDto vetDto = new UserProfileDto(vetId, "testvet", null, Set.of("VET"), null);
-//        recordDto1 = new RecordViewDto(recordId1, RecordType.OTHER, "Observation by owner", null, record1.getCreatedAt(), ownerDto, null);
-//        recordDto2 = new RecordViewDto(recordId2, RecordType.ANNUAL_CHECK, "Annual checkup results", "SIGNED_BY_VET_XYZ", record2.getCreatedAt(), vetDto, null);
-//
-//        adminSameClinic = new ClinicStaff();
-//        adminSameClinic.setId(50L);
-//        adminSameClinic.setClinic(clinic);
-//        adminSameClinic.setRoles(Set.of(adminRole));
-//    }
+    @BeforeEach
+    void setUp() {
 
-//    /**
-//     * --- Tests for createRecord ---
-//     */
-//    @Nested
-//    @DisplayName("createRecord Tests")
-//    class CreateRecordTests {
-//
-//        private RecordCreateDto ownerRecordDto;
-//        private RecordCreateDto vetVaccineDto;
-//        private VaccineCreateDto vaccineDetailsDto;
-//        private Vaccine newVaccineEntity;
-//        private RecordViewDto expectedOwnerRecordViewDto;
-//        private RecordViewDto expectedVetVaccineViewDto;
-//        private final Long petIdForCreate = petId;
-//
-//        @BeforeEach
-//        void createSetup() {
-//            ownerRecordDto = new RecordCreateDto( petIdForCreate,RecordType.OTHER, "Felt warm yesterday", null);
-//
-//            vaccineDetailsDto = new VaccineCreateDto("RabiesVac", 1, "LabX", "Batch123", true);
-//            vetVaccineDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Rabies vaccination administered", vaccineDetailsDto);
-//
-//            Record newRecordFromVet;
-//            Record.builder().pet(pet).creator(owner).type(ownerRecordDto.type())
-//                    .description(ownerRecordDto.description()).build();
-//            newRecordFromVet = Record.builder().pet(pet).creator(vet).type(vetVaccineDto.type())
-//                    .description(vetVaccineDto.description()).build();
-//            newVaccineEntity = Vaccine.builder().name(vaccineDetailsDto.name()).validity(vaccineDetailsDto.validity())
-//                    .laboratory(vaccineDetailsDto.laboratory()).batchNumber(vaccineDetailsDto.batchNumber()).build();
-//            newRecordFromVet.setVaccineDetails(newVaccineEntity);
-//
-//            expectedOwnerRecordViewDto = new RecordViewDto(200L, ownerRecordDto.type(), ownerRecordDto.description(), null, LocalDateTime.now(), userMapper.mapToBaseProfileDTO(owner), null);
-//            expectedVetVaccineViewDto = new RecordViewDto(201L, vetVaccineDto.type(), vetVaccineDto.description(), "TEMP_SIGNATURE", LocalDateTime.now(), userMapper.mapToBaseProfileDTO(vet), vaccineMapper.toViewDto(newVaccineEntity)); // Assume signed
-//        }
-//
-//        @Test
-//        @DisplayName("should create OTHER record successfully when called by Owner")
-//        void createRecord_Success_Owner_Other() {
-//            // Arrange
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            given(entityFinderHelper.findUserOrFail(ownerId)).willReturn(owner);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(ownerId, pet, "create record for");
-//            doNothing().when(validateHelper).validateRecordCreationDto(ownerRecordDto);
-//
-//            given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
-//                Record recordEntity = inv.getArgument(0);
-//                recordEntity.setId(200L);
-//                return recordEntity;
-//            });
-//            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedOwnerRecordViewDto);
-//
-//            // Act
-//            RecordViewDto result = recordService.createRecord(ownerRecordDto, ownerId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedOwnerRecordViewDto);
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(entityFinderHelper).should().findUserOrFail(ownerId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(ownerId, pet, "create record for");
-//            then(validateHelper).should().validateRecordCreationDto(ownerRecordDto);
-//            then(vaccineMapper).should(never()).fromCreateDto(any());
-//            then(recordRepository).should().save(recordCaptor.capture());
-//            then(recordMapper).should().toViewDto(any(Record.class));
-//
-//            Record saved = recordCaptor.getValue();
-//            assertThat(saved.getType()).isEqualTo(RecordType.OTHER);
-//            assertThat(saved.getCreator()).isEqualTo(owner);
-//            assertThat(saved.getPet()).isEqualTo(pet);
-//            assertThat(saved.getVaccine()).isNull();
-//            assertThat(saved.getVetSignature()).isNull();
-//        }
-//
-//        @Test
-//        @DisplayName("should create VACCINE record successfully when called by Vet and signRecord=true")
-//        void createRecord_Success_Vet_Vaccine_Signed() {
-//            // Arrange
-//            String expectedDataToSign = "petId=1|vetId=11|...";
-//            String expectedSignature = "GENERATED_SIGNATURE_BASE64";
-//
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet); // Return Vet user
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
-//            doNothing().when(validateHelper).validateRecordCreationDto(vetVaccineDto);
-//            given(vaccineMapper.fromCreateDto(vaccineDetailsDto)).willReturn(newVaccineEntity);
-//            given(recordHelper.buildSignableData(pet, vet, vetVaccineDto)).willReturn(expectedDataToSign);
-//            given(signingService.generateVetSignature(vet, expectedDataToSign)).willReturn(expectedSignature);
-//
-//            given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
-//                Record recordEntity = inv.getArgument(0);
-//                recordEntity.setId(201L);
-//                if (recordEntity.getVaccine() != null) recordEntity.getVaccine().setRecordEntity(recordEntity);
-//                return recordEntity;
-//            });
-//
-//            expectedVetVaccineViewDto = new RecordViewDto(201L, vetVaccineDto.type(), vetVaccineDto.description(),
-//                    expectedSignature,
-//                    LocalDateTime.now(), userMapper.mapToBaseProfileDTO(vet),
-//                    vaccineMapper.toViewDto(newVaccineEntity));
-//            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedVetVaccineViewDto);
-//
-//
-//            // Act
-//            RecordViewDto result;
-//            result = recordService.createRecord( vetVaccineDto, vetId);
-//
-//            // Assert
-//            assertThat(result).isNotNull().isEqualTo(expectedVetVaccineViewDto);
-//            assertThat(result.vetSignature()).isEqualTo(expectedSignature);
-//
-//            then(entityFinderHelper).should().findPetByIdOrFail(petId);
-//            then(entityFinderHelper).should().findUserOrFail(vetId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForPet(vetId, pet, "create record for");
-//            then(validateHelper).should().validateRecordCreationDto(vetVaccineDto);
-//            then(vaccineMapper).should().fromCreateDto(vaccineDetailsDto);
-//            then(recordHelper).should().buildSignableData(pet, vet, vetVaccineDto);
-//            then(signingService).should().generateVetSignature(vet, expectedDataToSign);
-//            then(recordRepository).should().save(recordCaptor.capture());
-//            then(recordMapper).should().toViewDto(any(Record.class));
-//
-//            Record saved = recordCaptor.getValue();
-//            assertThat(saved.getType()).isEqualTo(RecordType.VACCINE);
-//            assertThat(saved.getCreator()).isEqualTo(vet);
-//            assertThat(saved.getVaccine()).isNotNull();
-//            assertThat(saved.getVetSignature()).isEqualTo(expectedSignature);
-//        }
-//
-//        @Test
-//        @DisplayName("should throw IllegalArgumentException if type is VACCINE but vaccine DTO is null")
-//        void createRecord_Failure_VaccineDtoMissing() {
-//            // Arrange
-//            RecordCreateDto invalidDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Forgot details", null); // Vaccine DTO null
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
-//            doThrow(new IllegalArgumentException("Vaccine details are required"))
-//                    .when(validateHelper).validateRecordCreationDto(invalidDto);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId))
-//                    .isInstanceOf(IllegalArgumentException.class)
-//                    .hasMessageContaining("Vaccine details are required");
-//
-//            then(recordRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw IllegalArgumentException if type is not VACCINE but vaccine DTO is provided")
-//        void createRecord_Failure_VaccineDtoUnexpected() {
-//            // Arrange
-//            RecordCreateDto invalidDto = new RecordCreateDto(petIdForCreate,RecordType.ILLNESS, "Flu", vaccineDetailsDto);
-//            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
-//            given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet);
-//            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
-//            // Mock validateHelper to throw
-//            doThrow(new IllegalArgumentException("Vaccine details should only be provided"))
-//                    .when(validateHelper).validateRecordCreationDto(invalidDto);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId))
-//                    .isInstanceOf(IllegalArgumentException.class)
-//                    .hasMessageContaining("Vaccine details should only be provided");
-//
-//            then(recordRepository).should(never()).save(any());
-//        }
-//    }
+        Clinic clinic;
+
+        Long recordId2 = 102L;
+        adminRole = RoleEntity.builder().roleEnum(RoleEnum.ADMIN).build(); adminRole.setId(3L);
+        owner = new Owner(); owner.setId(ownerId);owner.setUsername("testowner");
+        clinic = new Clinic(); clinic.setId(1L); clinic.setName("Clinic One");
+        vet = new Vet(); vet.setId(vetId);vet.setUsername("testvet"); vet.setClinic(clinic);
+
+        Breed breed = Breed.builder().id(5L).name("Siamese").specie(Specie.CAT).build();
+
+        pet = new Pet();pet.setId(petId);pet.setOwner(owner);pet.setBreed(breed);
+
+        adminSameClinic = new ClinicStaff(); adminSameClinic.setId(adminSameClinicId); adminSameClinic.setClinic(clinic);
+        adminSameClinic.setRoles(Set.of(adminRole));
+
+        record1 = new Record();
+        record1.setId(recordId1);
+        record1.setPet(pet);
+        record1.setCreator(owner);
+        record1.setType(RecordType.OTHER);
+        record1.setDescription("Observation by owner");
+        record1.setCreatedAt(LocalDateTime.now().minusDays(1));
+
+        record2 = new Record();
+        record2.setId(recordId2);
+        record2.setPet(pet);
+        record2.setCreator(vet);
+        record2.setType(RecordType.ANNUAL_CHECK);
+        record2.setDescription("Annual checkup results");
+        record2.setVetSignature("SIGNED_BY_VET_XYZ");
+        record2.setCreatedAt(LocalDateTime.now());
+
+        recordDto1 = new RecordViewDto(recordId1,
+                RecordType.OTHER, "Observation by owner",
+                null, record1.getCreatedAt(),
+                null, null, null, null, null, null, null, null, null,
+                null);
+        recordDto2 = new RecordViewDto(recordId2,
+                RecordType.ANNUAL_CHECK, "Annual checkup results", "SIGNED_BY_VET_XYZ",
+                record2.getCreatedAt(),  null, null, null, null, null, null, null, null, null,
+                null);
+
+        adminSameClinic = new ClinicStaff();
+        adminSameClinic.setId(50L);
+        adminSameClinic.setClinic(clinic);
+        adminSameClinic.setRoles(Set.of(adminRole));
+    }
+
+    /**
+     * --- Tests for createRecord ---
+     */
+    @Nested
+    @DisplayName("createRecord Tests")
+    class CreateRecordTests {
+
+        private RecordCreateDto ownerRecordDto;
+        private RecordCreateDto vetVaccineDto;
+        private VaccineCreateDto vaccineDetailsDto;
+        private Vaccine newVaccineEntity;
+        private RecordViewDto expectedOwnerRecordViewDto;
+        private RecordViewDto expectedVetVaccineViewDto;
+        private final String dummyVetPassword = "vetPassword123";
+        private final Long petIdForCreate = petId;
+
+        @BeforeEach
+        void createSetup() {
+            ownerRecordDto = new RecordCreateDto( petIdForCreate,RecordType.OTHER, "Felt warm yesterday", null, null);
+
+            vaccineDetailsDto = new VaccineCreateDto("RabiesVac", 1, "LabX", "Batch123", true);
+            vetVaccineDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE,
+                    "Rabies vaccination administered", vaccineDetailsDto, dummyVetPassword);
+
+            Record newRecordFromVet;
+            Record.builder().pet(pet).creator(owner).type(ownerRecordDto.type())
+                    .description(ownerRecordDto.description()).build();
+            newRecordFromVet = Record.builder().pet(pet).creator(vet).type(vetVaccineDto.type())
+                    .description(vetVaccineDto.description()).build();
+            newVaccineEntity = Vaccine.builder().name(vaccineDetailsDto.name()).validity(vaccineDetailsDto.validity())
+                    .laboratory(vaccineDetailsDto.laboratory()).batchNumber(vaccineDetailsDto.batchNumber()).build();
+            newRecordFromVet.setVaccineDetails(newVaccineEntity);
+
+            expectedOwnerRecordViewDto = new RecordViewDto(200L, ownerRecordDto.type(),
+                    ownerRecordDto.description(), null, LocalDateTime.now(),
+                    null, null, null, null, null, null, null,
+            null, null, null);
+            expectedVetVaccineViewDto = new RecordViewDto(201L, vetVaccineDto.type(),
+                    vetVaccineDto.description(), "TEMP_SIGNATURE", LocalDateTime.now(),
+                    null, null, null, null, null, null, null,
+                    null, null, null);
+        }
+
+        @Test
+        @DisplayName("should create OTHER record successfully when called by Owner")
+        void createRecord_Success_Owner_Other() {
+            // Arrange
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(entityFinderHelper.findUserOrFail(ownerId)).willReturn(owner);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(ownerId, pet, "create record for");
+            doNothing().when(validateHelper).validateRecordCreationDto(ownerRecordDto);
+
+            given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
+                Record recordEntity = inv.getArgument(0);
+                recordEntity.setId(200L);
+                return recordEntity;
+            });
+            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedOwnerRecordViewDto);
+
+            // Act
+            RecordViewDto result = recordService.createRecord(ownerRecordDto, ownerId);
+
+            // Assert
+            assertThat(result).isNotNull().isEqualTo(expectedOwnerRecordViewDto);
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(entityFinderHelper).should().findUserOrFail(ownerId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(ownerId, pet, "create record for");
+            then(validateHelper).should().validateRecordCreationDto(ownerRecordDto);
+            then(vaccineMapper).should(never()).fromCreateDto(any());
+            then(recordRepository).should().save(recordCaptor.capture());
+            then(recordMapper).should().toViewDto(any(Record.class));
+
+            Record saved = recordCaptor.getValue();
+            assertThat(saved.getType()).isEqualTo(RecordType.OTHER);
+            assertThat(saved.getCreator()).isEqualTo(owner);
+            assertThat(saved.getPet()).isEqualTo(pet);
+            assertThat(saved.getVaccine()).isNull();
+            assertThat(saved.getVetSignature()).isNull();
+        }
+
+        @Test
+        @DisplayName("should create VACCINE record successfully when called by Vet and signRecord=true")
+        void createRecord_Success_Vet_Vaccine_Signed() {
+            // Arrange
+            String expectedDataToSign = "petId=1|vetId=11|...";
+            String expectedSignature = "GENERATED_SIGNATURE_BASE64";
+
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet); // Return Vet user
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
+            doNothing().when(validateHelper).validateRecordCreationDto(vetVaccineDto);
+            given(vaccineMapper.fromCreateDto(vaccineDetailsDto)).willReturn(newVaccineEntity);
+            given(recordHelper.buildSignableData(pet, vet, vetVaccineDto)).willReturn(expectedDataToSign);
+            given(signingService.generateVetSignature(
+                    (vet),
+                    (expectedDataToSign),
+                    (dummyVetPassword.toCharArray())
+            )).willReturn(expectedSignature);
+
+            given(recordRepository.save(any(Record.class))).willAnswer(inv -> {
+                Record recordEntity = inv.getArgument(0);
+                recordEntity.setId(201L);
+                return recordEntity;
+            });
+
+            expectedVetVaccineViewDto = new RecordViewDto(
+                    201L,
+                    vetVaccineDto.type(),
+                    vetVaccineDto.description(),
+                    expectedSignature,
+                    any(LocalDateTime.class),
+                    vet.getCreatedBy(), vet.getUpdatedAt(), vet.getUpdatedBy(),
+                    userMapper.mapToBaseProfileDTO(vet),
+                    vaccineMapper.toViewDto(newVaccineEntity),
+                    vet.getClinic() != null ? vet.getClinic().getId() : null,
+                    vet.getClinic() != null ? vet.getClinic().getName() : null,
+                    pet.getId(),
+                    pet.getName(),
+                    pet.getBreed() != null ? pet.getBreed().getSpecie() : null
+            );
+            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedVetVaccineViewDto);
+
+            // Act
+            RecordViewDto result = recordService.createRecord(vetVaccineDto, vetId);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.vetSignature()).isEqualTo(expectedSignature);
+
+            // Assert
+            then(entityFinderHelper).should().findPetByIdOrFail(petId);
+            then(entityFinderHelper).should().findUserOrFail(vetId);
+            then(authorizationHelper).should().verifyUserAuthorizationForPet(vetId, pet, "create record for");
+            then(validateHelper).should().validateRecordCreationDto(vetVaccineDto);
+            then(vaccineMapper).should().fromCreateDto(vaccineDetailsDto);
+            then(recordHelper).should().buildSignableData(pet, vet, vetVaccineDto);
+            then(signingService).should().generateVetSignature(eq(vet), eq(expectedDataToSign), eq(dummyVetPassword.toCharArray()));
+            then(recordRepository).should().save(recordCaptor.capture());
+            then(recordMapper).should().toViewDto(any(Record.class));
+
+            Record saved = recordCaptor.getValue();
+            assertThat(saved.getType()).isEqualTo(RecordType.VACCINE);
+            assertThat(saved.getCreator()).isEqualTo(vet);
+            assertThat(saved.getVaccine()).isNotNull();
+            assertThat(saved.getVetSignature()).isEqualTo(expectedSignature);
+        }
+
+        @Test
+        @DisplayName("should throw IllegalArgumentException if type is VACCINE but vaccine DTO is null")
+        void createRecord_Failure_VaccineDtoMissing() {
+            // Arrange
+            RecordCreateDto invalidDto = new RecordCreateDto(petIdForCreate,RecordType.VACCINE, "Forgot details", null, null); // Vaccine DTO null
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
+            doThrow(new IllegalArgumentException("Vaccine details are required"))
+                    .when(validateHelper).validateRecordCreationDto(invalidDto);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Vaccine details are required");
+
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw IllegalArgumentException if type is not VACCINE but vaccine DTO is provided")
+        void createRecord_Failure_VaccineDtoUnexpected() {
+            // Arrange
+            RecordCreateDto invalidDto = new RecordCreateDto(petIdForCreate,RecordType.ILLNESS, "Flu", vaccineDetailsDto, null);
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
+            given(entityFinderHelper.findUserOrFail(vetId)).willReturn(vet);
+            doNothing().when(authorizationHelper).verifyUserAuthorizationForPet(vetId, pet, "create record for");
+            // Mock validateHelper to throw
+            doThrow(new IllegalArgumentException("Vaccine details should only be provided"))
+                    .when(validateHelper).validateRecordCreationDto(invalidDto);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.createRecord(invalidDto, vetId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Vaccine details should only be provided");
+
+            then(recordRepository).should(never()).save(any());
+        }
+    }
 
     /**
      * --- Tests for findRecordsByPetId ---
@@ -552,218 +577,223 @@ class RecordServiceImplTest {
         }
     }
 
-//    /**
-//     * --- Tests for updateUnsignedRecord ---
-//     */
-//    @Nested
-//    @DisplayName("updateUnsignedRecord Tests")
-//    class UpdateUnsignedRecordTests {
-//
-//        private Record recordToUpdateOwner;
-//        private Record recordToUpdateStaff;
-//        private ClinicStaff requesterStaffOtherClinic;
-//        private RecordUpdateDto updateDtoDesc;
-//        private RecordUpdateDto updateDtoBoth;
-//
-//        private final Long recordOwnerRecId = 301L;
-//        private final Long recordStaffRecId = 302L;
-//        private final Long ownerUserId = ownerId;
-//        private final Long requesterAdminSameClinicId = adminSameClinicId;
-//        private final Long requesterStaffOtherClinicId = 13L;
-//
-//        @BeforeEach
-//        void updateSetup() {
-//            ClinicStaff recordCreatorStaff = vet;
-//            Record recordSigned;
-//
-//            requesterStaffOtherClinic = new ClinicStaff();
-//            requesterStaffOtherClinic.setId(requesterStaffOtherClinicId);
-//            Clinic clinic2 = new Clinic(); clinic2.setId(2L); clinic2.setName("Clinic Two");
-//            requesterStaffOtherClinic.setClinic(clinic2);
-//            requesterStaffOtherClinic.setRoles(Set.of(adminRole));
-//
-//            recordToUpdateOwner = new Record();
-//            recordToUpdateOwner.setId(recordOwnerRecId);
-//            recordToUpdateOwner.setPet(pet);
-//            recordToUpdateOwner.setCreator(owner);
-//            recordToUpdateOwner.setType(RecordType.OTHER);
-//            recordToUpdateOwner.setDescription("Original Owner Desc");
-//            recordToUpdateOwner.setVetSignature(null);
-//
-//            recordToUpdateStaff = new Record();
-//            recordToUpdateStaff.setId(recordStaffRecId);
-//            recordToUpdateStaff.setPet(pet);
-//            recordToUpdateStaff.setCreator(recordCreatorStaff);
-//            recordToUpdateStaff.setType(RecordType.ILLNESS);
-//            recordToUpdateStaff.setDescription("Original Staff Desc");
-//            recordToUpdateStaff.setVetSignature(null);
-//
-//            Long recordSignedRecId = 303L;
-//            recordSigned = new Record();
-//            recordSigned.setId(recordSignedRecId);
-//            recordSigned.setPet(pet);
-//            recordSigned.setCreator(recordCreatorStaff);
-//            recordSigned.setType(RecordType.ANNUAL_CHECK);
-//            recordSigned.setDescription("Signed record");
-//            recordSigned.setVetSignature("SIGNATURE_PRESENT");
-//
-//            Long recordVaccineRecId = 304L;
-//            Record recordVaccine = new Record();
-//            recordVaccine.setId(recordVaccineRecId);
-//            recordVaccine.setPet(pet);
-//            recordVaccine.setCreator(recordCreatorStaff);
-//            recordVaccine.setType(RecordType.VACCINE);
-//            recordVaccine.setDescription("Vaccine Record");
-//            recordVaccine.setVetSignature(null);
-//            recordVaccine.setVaccine(new Vaccine());
-//
-//            new RecordUpdateDto(RecordType.ILLNESS, null);
-//            updateDtoDesc = new RecordUpdateDto(null, "Updated Description");
-//            updateDtoBoth = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Updated Description Both");
-//            new RecordUpdateDto(recordToUpdateOwner.getType(), recordToUpdateOwner.getDescription());
-//            new RecordUpdateDto(RecordType.VACCINE, "Trying to change to vaccine");
-//        }
-//
-//        @Test
-//        @DisplayName("should update record successfully when Owner updates own record")
-//        void update_Success_OwnerUpdatesOwn() {
-//            // Arrange
-//            given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
-//            given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
-//            given(recordRepository.save(any(Record.class))).willAnswer(inv -> inv.getArgument(0));
-//            RecordViewDto expectedDto = new RecordViewDto(recordOwnerRecId, updateDtoBoth.type(), updateDtoBoth.description(), null, recordToUpdateOwner.getCreatedAt(),  null, null);
-//            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
-//
-//            // Act
-//            RecordViewDto result = recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoBoth, ownerUserId);
-//
-//            // Assert
-//            assertThat(result).isEqualTo(expectedDto);
-//            then(recordRepository).should().save(recordCaptor.capture());
-//            Record saved = recordCaptor.getValue();
-//            assertThat(saved.getType()).isEqualTo(updateDtoBoth.type());
-//            assertThat(saved.getDescription()).isEqualTo(updateDtoBoth.description());
-//            then(recordMapper).should().toViewDto(saved);
-//            assertThat(saved.getCreator()).isEqualTo(owner);
-//        }
-//
-//        @Test
-//        @DisplayName("should update record successfully when Staff updates record from same clinic staff")
-//        void update_Success_StaffUpdatesSameClinicStaff() {
-//            // Arrange
-//            RecordUpdateDto updateDtoWithChanges = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Updated Staff Description");
-//            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
-//            given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
-//            given(recordRepository.save(any(Record.class))).willAnswer(inv -> inv.getArgument(0));
-//
-//            RecordViewDto expectedDto = new RecordViewDto(
-//                    recordStaffRecId,
-//                    updateDtoWithChanges.type(),
-//                    updateDtoWithChanges.description(),
-//                    null, recordToUpdateStaff.getCreatedAt(), null, null
-//            );
-//            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
-//
-//            // Act
-//            RecordViewDto result = recordService.updateUnsignedRecord(recordStaffRecId, updateDtoWithChanges, requesterAdminSameClinicId);
-//
-//            // Assert
-//            assertThat(result).isEqualTo(expectedDto);
-//            then(recordRepository).should().save(recordCaptor.capture());
-//            Record saved = recordCaptor.getValue();
-//            assertThat(saved.getType()).isEqualTo(updateDtoWithChanges.type());
-//            assertThat(saved.getDescription()).isEqualTo(updateDtoWithChanges.description());
-//            then(recordMapper).should().toViewDto(saved);
-//            assertThat(saved.getCreator()).isEqualTo(vet);
-//        }
-//
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if Owner tries to update Staff record")
-//        void update_Failure_OwnerUpdatesStaffRecord() {
-//            // Arrange
-//            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
-//            given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
-//            doThrow(new AccessDeniedException("User " + ownerUserId + " is not authorized to update record " + recordStaffRecId + "."))
-//                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(owner, recordToUpdateStaff);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, ownerUserId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
-//
-//            then(entityFinderHelper).should().findRecordByIdOrFail(recordStaffRecId);
-//            then(entityFinderHelper).should().findUserOrFail(ownerUserId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(owner, recordToUpdateStaff);
-//            then(recordRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if Staff tries to update Owner record")
-//        void update_Failure_StaffUpdatesOwnerRecord() {
-//            // Arrange
-//            given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
-//            given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
-//            doThrow(new AccessDeniedException("User " + requesterAdminSameClinicId + " is not authorized to update record " + recordOwnerRecId + "."))
-//                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(adminSameClinic, recordToUpdateOwner);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoDesc, requesterAdminSameClinicId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not authorized to update record " + recordOwnerRecId);
-//
-//            then(entityFinderHelper).should().findRecordByIdOrFail(recordOwnerRecId);
-//            then(entityFinderHelper).should().findUserOrFail(requesterAdminSameClinicId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(adminSameClinic, recordToUpdateOwner);
-//            then(recordRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw AccessDeniedException if Staff tries to update record from DIFFERENT clinic staff")
-//        void update_Failure_StaffUpdatesDifferentClinicStaff() {
-//            // Arrange
-//            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
-//            given(entityFinderHelper.findUserOrFail(requesterStaffOtherClinicId)).willReturn(requesterStaffOtherClinic);
-//            doThrow(new AccessDeniedException("User " + requesterStaffOtherClinicId + " is not authorized to update record " + recordStaffRecId + "."))
-//                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(requesterStaffOtherClinic, recordToUpdateStaff);
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, requesterStaffOtherClinicId))
-//                    .isInstanceOf(AccessDeniedException.class)
-//                    .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
-//
-//            then(entityFinderHelper).should().findRecordByIdOrFail(recordStaffRecId);
-//            then(entityFinderHelper).should().findUserOrFail(requesterStaffOtherClinicId);
-//            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(requesterStaffOtherClinic, recordToUpdateStaff); // Verificar llamada al helper
-//            then(recordRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if record not found")
-//        void update_Failure_RecordNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findRecordByIdOrFail(999L)).willThrow(new EntityNotFoundException(Record.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.updateUnsignedRecord(999L, updateDtoDesc, recordStaffRecId))
-//                    .isInstanceOf(EntityNotFoundException.class);
-//
-//            then(recordRepository).should(never()).save(any());
-//        }
-//
-//        @Test
-//        @DisplayName("should throw EntityNotFoundException if requester not found")
-//        void update_Failure_RequesterNotFound() {
-//            // Arrange
-//            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateOwner);
-//            given(entityFinderHelper.findUserOrFail(999L)).willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
-//
-//            // Act & Assert
-//            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, 999L))
-//                    .isInstanceOf(EntityNotFoundException.class);
-//
-//            then(recordRepository).should(never()).save(any());
-//        }
-//    }
+    /**
+     * --- Tests for updateUnsignedRecord ---
+     */
+    @Nested
+    @DisplayName("updateUnsignedRecord Tests")
+    class UpdateUnsignedRecordTests {
+
+        private Record recordToUpdateOwner;
+        private Record recordToUpdateStaff;
+        private ClinicStaff requesterStaffOtherClinic;
+        private RecordUpdateDto updateDtoDesc;
+        private RecordUpdateDto updateDtoBoth;
+
+        private final Long recordOwnerRecId = 301L;
+        private final Long recordStaffRecId = 302L;
+        private final Long ownerUserId = ownerId;
+        private final Long requesterAdminSameClinicId = adminSameClinicId;
+        private final Long requesterStaffOtherClinicId = 13L;
+
+        @BeforeEach
+        void updateSetup() {
+            ClinicStaff recordCreatorStaff = vet;
+            Record recordSigned;
+
+            requesterStaffOtherClinic = new ClinicStaff();
+            requesterStaffOtherClinic.setId(requesterStaffOtherClinicId);
+            Clinic clinic2 = new Clinic(); clinic2.setId(2L); clinic2.setName("Clinic Two");
+            requesterStaffOtherClinic.setClinic(clinic2);
+            requesterStaffOtherClinic.setRoles(Set.of(adminRole));
+
+            recordToUpdateOwner = new Record();
+            recordToUpdateOwner.setId(recordOwnerRecId);
+            recordToUpdateOwner.setPet(pet);
+            recordToUpdateOwner.setCreator(owner);
+            recordToUpdateOwner.setType(RecordType.OTHER);
+            recordToUpdateOwner.setDescription("Original Owner Desc");
+            recordToUpdateOwner.setVetSignature(null);
+
+            recordToUpdateStaff = new Record();
+            recordToUpdateStaff.setId(recordStaffRecId);
+            recordToUpdateStaff.setPet(pet);
+            recordToUpdateStaff.setCreator(recordCreatorStaff);
+            recordToUpdateStaff.setType(RecordType.ILLNESS);
+            recordToUpdateStaff.setDescription("Original Staff Desc");
+            recordToUpdateStaff.setVetSignature(null);
+
+            Long recordSignedRecId = 303L;
+            recordSigned = new Record();
+            recordSigned.setId(recordSignedRecId);
+            recordSigned.setPet(pet);
+            recordSigned.setCreator(recordCreatorStaff);
+            recordSigned.setType(RecordType.ANNUAL_CHECK);
+            recordSigned.setDescription("Signed record");
+            recordSigned.setVetSignature("SIGNATURE_PRESENT");
+
+            Long recordVaccineRecId = 304L;
+            Record recordVaccine = new Record();
+            recordVaccine.setId(recordVaccineRecId);
+            recordVaccine.setPet(pet);
+            recordVaccine.setCreator(recordCreatorStaff);
+            recordVaccine.setType(RecordType.VACCINE);
+            recordVaccine.setDescription("Vaccine Record");
+            recordVaccine.setVetSignature(null);
+            recordVaccine.setVaccine(new Vaccine());
+
+            new RecordUpdateDto(RecordType.ILLNESS, null);
+            updateDtoDesc = new RecordUpdateDto(null, "Updated Description");
+            updateDtoBoth = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Updated Description Both");
+            new RecordUpdateDto(recordToUpdateOwner.getType(), recordToUpdateOwner.getDescription());
+            new RecordUpdateDto(RecordType.VACCINE, "Trying to change to vaccine");
+        }
+
+        @Test
+        @DisplayName("should update record successfully when Owner updates own record")
+        void update_Success_OwnerUpdatesOwn() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
+            given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
+            given(recordRepository.save(any(Record.class))).willAnswer(inv -> inv.getArgument(0));
+            RecordViewDto expectedDto = new RecordViewDto(recordOwnerRecId, updateDtoBoth.type(),
+                    updateDtoBoth.description(), null, recordToUpdateOwner.getCreatedAt(),
+                    null, null, null, null, null, null, null,
+                    null, null,null);
+            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
+
+            // Act
+            RecordViewDto result = recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoBoth, ownerUserId);
+
+            // Assert
+            assertThat(result).isEqualTo(expectedDto);
+            then(recordRepository).should().save(recordCaptor.capture());
+            Record saved = recordCaptor.getValue();
+            assertThat(saved.getType()).isEqualTo(updateDtoBoth.type());
+            assertThat(saved.getDescription()).isEqualTo(updateDtoBoth.description());
+            then(recordMapper).should().toViewDto(saved);
+            assertThat(saved.getCreator()).isEqualTo(owner);
+        }
+
+        @Test
+        @DisplayName("should update record successfully when Staff updates record from same clinic staff")
+        void update_Success_StaffUpdatesSameClinicStaff() {
+            // Arrange
+            RecordUpdateDto updateDtoWithChanges = new RecordUpdateDto(RecordType.ANNUAL_CHECK, "Updated Staff Description");
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
+            given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
+            given(recordRepository.save(any(Record.class))).willAnswer(inv -> inv.getArgument(0));
+
+            RecordViewDto expectedDto = new RecordViewDto(
+                    recordStaffRecId,
+                    updateDtoWithChanges.type(),
+                    updateDtoWithChanges.description(),
+                    null, recordToUpdateStaff.getCreatedAt(), null, null,
+                    null, null, null, null, null, null, null,
+                    null);
+
+            given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
+
+            // Act
+            RecordViewDto result = recordService.updateUnsignedRecord(recordStaffRecId, updateDtoWithChanges, requesterAdminSameClinicId);
+
+            // Assert
+            assertThat(result).isEqualTo(expectedDto);
+            then(recordRepository).should().save(recordCaptor.capture());
+            Record saved = recordCaptor.getValue();
+            assertThat(saved.getType()).isEqualTo(updateDtoWithChanges.type());
+            assertThat(saved.getDescription()).isEqualTo(updateDtoWithChanges.description());
+            then(recordMapper).should().toViewDto(saved);
+            assertThat(saved.getCreator()).isEqualTo(vet);
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if Owner tries to update Staff record")
+        void update_Failure_OwnerUpdatesStaffRecord() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
+            given(entityFinderHelper.findUserOrFail(ownerUserId)).willReturn(owner);
+            doThrow(new AccessDeniedException("User " + ownerUserId + " is not authorized to update record " + recordStaffRecId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(owner, recordToUpdateStaff);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, ownerUserId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
+
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordStaffRecId);
+            then(entityFinderHelper).should().findUserOrFail(ownerUserId);
+            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(owner, recordToUpdateStaff);
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if Staff tries to update Owner record")
+        void update_Failure_StaffUpdatesOwnerRecord() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordOwnerRecId)).willReturn(recordToUpdateOwner);
+            given(entityFinderHelper.findUserOrFail(requesterAdminSameClinicId)).willReturn(adminSameClinic);
+            doThrow(new AccessDeniedException("User " + requesterAdminSameClinicId + " is not authorized to update record " + recordOwnerRecId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(adminSameClinic, recordToUpdateOwner);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordOwnerRecId, updateDtoDesc, requesterAdminSameClinicId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to update record " + recordOwnerRecId);
+
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordOwnerRecId);
+            then(entityFinderHelper).should().findUserOrFail(requesterAdminSameClinicId);
+            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(adminSameClinic, recordToUpdateOwner);
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw AccessDeniedException if Staff tries to update record from DIFFERENT clinic staff")
+        void update_Failure_StaffUpdatesDifferentClinicStaff() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateStaff);
+            given(entityFinderHelper.findUserOrFail(requesterStaffOtherClinicId)).willReturn(requesterStaffOtherClinic);
+            doThrow(new AccessDeniedException("User " + requesterStaffOtherClinicId + " is not authorized to update record " + recordStaffRecId + "."))
+                    .when(authorizationHelper).verifyUserAuthorizationForUnsignedRecordUpdate(requesterStaffOtherClinic, recordToUpdateStaff);
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, requesterStaffOtherClinicId))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("is not authorized to update record " + recordStaffRecId);
+
+            then(entityFinderHelper).should().findRecordByIdOrFail(recordStaffRecId);
+            then(entityFinderHelper).should().findUserOrFail(requesterStaffOtherClinicId);
+            then(authorizationHelper).should().verifyUserAuthorizationForUnsignedRecordUpdate(requesterStaffOtherClinic, recordToUpdateStaff); // Verificar llamada al helper
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if record not found")
+        void update_Failure_RecordNotFound() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(999L)).willThrow(new EntityNotFoundException(Record.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(999L, updateDtoDesc, recordStaffRecId))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            then(recordRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("should throw EntityNotFoundException if requester not found")
+        void update_Failure_RequesterNotFound() {
+            // Arrange
+            given(entityFinderHelper.findRecordByIdOrFail(recordStaffRecId)).willReturn(recordToUpdateOwner);
+            given(entityFinderHelper.findUserOrFail(999L)).willThrow(new EntityNotFoundException(UserEntity.class.getSimpleName(), 999L));
+
+            // Act & Assert
+            assertThatThrownBy(() -> recordService.updateUnsignedRecord(recordStaffRecId, updateDtoDesc, 999L))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            then(recordRepository).should(never()).save(any());
+        }
+    }
 
     /**
      * --- Tests for deleteRecord ---

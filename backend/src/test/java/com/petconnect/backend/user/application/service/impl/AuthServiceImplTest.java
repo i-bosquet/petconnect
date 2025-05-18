@@ -12,6 +12,7 @@ import com.petconnect.backend.user.application.service.UserService;
 import com.petconnect.backend.user.domain.model.Owner;
 import com.petconnect.backend.user.domain.model.RoleEntity;
 import com.petconnect.backend.user.domain.model.RoleEnum;
+import com.petconnect.backend.user.domain.model.UserEntity;
 import com.petconnect.backend.user.domain.repository.OwnerRepository;
 import com.petconnect.backend.user.domain.repository.RoleRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
@@ -76,10 +77,10 @@ class AuthServiceImplTest {
     private OwnerRegistrationDto registrationDto;
     private RoleEntity ownerRole;
     private Owner savedOwner;
+    private UserEntity savedUserEntity;
     private OwnerProfileDto expectedOwnerDto;
     private AuthLoginRequestDto loginRequestDto;
     private UserDetails userDetails;
-
     private String expectedOwnerAvatarPath;
 
     @BeforeEach
@@ -88,7 +89,7 @@ class AuthServiceImplTest {
         ReflectionTestUtils.setField(authService, "defaultUserImagePathBase", defaultUserImagePathBase);
         expectedOwnerAvatarPath = defaultUserImagePathBase + "owner.png";
 
-        registrationDto = new OwnerRegistrationDto("testuser", "test@example.com", "password123", "123456789");
+        registrationDto = new OwnerRegistrationDto("tester", "test@example.com", "password123", "123456789");
         ownerRole = RoleEntity.builder().roleEnum(RoleEnum.OWNER).id(1L).build();
 
 
@@ -105,13 +106,30 @@ class AuthServiceImplTest {
         savedOwner.setAccountNonLocked(true);
         savedOwner.setCredentialsNonExpired(true);
 
-        expectedOwnerDto = new OwnerProfileDto(savedOwner.getId(), savedOwner.getUsername(), savedOwner.getEmail(), Set.of("OWNER"), savedOwner.getAvatar(), savedOwner.getPhone());
+        savedUserEntity = new UserEntity();
+        savedUserEntity.setId(1L);
+        savedUserEntity.setUsername(registrationDto.username());
+        savedUserEntity.setEmail(registrationDto.email());
+        savedUserEntity.setPassword("hashedPassword");
+        savedUserEntity.setRoles(Set.of(ownerRole));
 
-        loginRequestDto = new AuthLoginRequestDto("testuser", "password123");
+        expectedOwnerDto = new OwnerProfileDto(
+                savedOwner.getId(),
+                savedOwner.getUsername(),
+                savedOwner.getEmail(),
+                Set.of("OWNER"),
+                savedOwner.getAvatar(),
+                savedOwner.getPhone()
+        );
 
-        userDetails = new User(savedOwner.getUsername(), savedOwner.getPassword(), true, true, true, true,
-                List.of(new SimpleGrantedAuthority("ROLE_OWNER")));
+        loginRequestDto = new AuthLoginRequestDto("tester", "password123");
 
+        userDetails = new User(
+                savedOwner.getUsername(),
+                savedOwner.getPassword(),
+                true, true,true,true,
+                List.of(new SimpleGrantedAuthority("ROLE_OWNER"))
+        );
     }
 
     /**
@@ -228,6 +246,7 @@ class AuthServiceImplTest {
             // Arrange
             given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(userDetails);
             given(passwordEncoder.matches(loginRequestDto.password(), userDetails.getPassword())).willReturn(true);
+            given(userRepository.findByUsername(loginRequestDto.username())).willReturn(Optional.of(savedUserEntity));
             given(jwtUtils.createToken(any(Authentication.class))).willReturn(jwtToken);
 
             // Act
@@ -242,11 +261,12 @@ class AuthServiceImplTest {
 
             then(userService).should().loadUserByUsername(loginRequestDto.username());
             then(passwordEncoder).should().matches(loginRequestDto.password(), userDetails.getPassword());
+            then(userRepository).should().findByUsername(loginRequestDto.username());
             then(jwtUtils).should().createToken(authenticationCaptor.capture());
 
             Authentication authPassedToJwt = authenticationCaptor.getValue();
             assertThat(authPassedToJwt).isNotNull();
-            assertThat(authPassedToJwt.getName()).isEqualTo(loginRequestDto.username());
+            assertThat(authPassedToJwt.getName()).isEqualTo(String.valueOf(savedUserEntity.getId()));
 
             List<String> expectedAuthorityNames = userDetails.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
@@ -254,7 +274,6 @@ class AuthServiceImplTest {
             List<String> actualAuthorityNames = authPassedToJwt.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .toList();
-
             assertThat(actualAuthorityNames).containsExactlyInAnyOrderElementsOf(expectedAuthorityNames);
         }
 
@@ -306,39 +325,39 @@ class AuthServiceImplTest {
             // Arrange
             given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(userDetails);
             given(passwordEncoder.matches(loginRequestDto.password(), userDetails.getPassword())).willReturn(true);
+            given(userRepository.findByUsername(loginRequestDto.username())).willReturn(Optional.of(savedUserEntity));
 
             // Act
             Authentication result = authService.authenticate(loginRequestDto.username(), loginRequestDto.password());
 
             // Assert
             assertThat(result).isNotNull();
-            assertThat(result.getName()).isEqualTo(loginRequestDto.username());
+            assertThat(result.getName()).isEqualTo(String.valueOf(savedUserEntity.getId()));
             assertThat(result).isInstanceOf(UsernamePasswordAuthenticationToken.class);
             assertThat(result.isAuthenticated()).isTrue();
 
-            List<String> expectedAuthorityNames = userDetails.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .toList();
-            List<String> actualAuthorityNames = result.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .toList();
+            List<String> expectedAuthorityNames = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+            List<String> actualAuthorityNames = result.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
             assertThat(actualAuthorityNames).containsExactlyInAnyOrderElementsOf(expectedAuthorityNames);
+            then(userRepository).should().findByUsername(loginRequestDto.username());
         }
 
         @Test
         @DisplayName("authenticate should throw BadCredentialsException for null UserDetails")
         void authenticateThrowsForNullUserDetails() {
             // Arrange
-            given(userService.loadUserByUsername(loginRequestDto.username())).willReturn(null);
+            String nonExistentUsername = "nonExistentUser";
+            given(userService.loadUserByUsername(nonExistentUsername))
+                    .willThrow(new UsernameNotFoundException("User '" + nonExistentUsername + "' not found."));
 
-            // Act
-            Throwable thrown = Assertions.catchThrowable(() ->authService.authenticate(loginRequestDto.username(), loginRequestDto.password()));
-            // Assert
-            assertThat(thrown)
-                    .isInstanceOf(BadCredentialsException.class)
-                    .hasMessageContaining("Invalid username or password");
+            // Act & Assert
+            assertThatThrownBy(() -> authService.authenticate(nonExistentUsername, "anyPassword"))
+                    .isInstanceOf(UsernameNotFoundException.class)
+                    .hasMessageContaining("User '" + nonExistentUsername + "' not found.");
 
+            then(userService).should().loadUserByUsername(nonExistentUsername);
             then(passwordEncoder).should(never()).matches(any(), any());
+            then(userRepository).should(never()).findByUsername(anyString());
         }
 
         @Test
