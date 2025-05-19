@@ -13,17 +13,16 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Integration tests for {@link UserController}.
@@ -59,6 +58,7 @@ class UserControllerIntegrationTest {
                 ownerRegisteredUsername, ownerRegisteredEmail, "password123", "555-000-111");
 
         userRepository.findByUsername(ownerRegisteredUsername).ifPresent(userRepository::delete);
+        userRepository.findByEmail(ownerRegisteredEmail).ifPresent(userRepository::delete);
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -66,7 +66,6 @@ class UserControllerIntegrationTest {
                 .andExpect(status().isCreated());
 
         ownerToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto(ownerReg.username(), ownerReg.password()));
-
         vetToken = obtainJwtToken(mockMvc, objectMapper, new AuthLoginRequestDto("admin_barcelona", "password123"));
 
         assertThat(adminToken).isNotNull();
@@ -237,63 +236,92 @@ class UserControllerIntegrationTest {
     @DisplayName("PUT /api/users/me (Update Owner Profile Tests)")
     class UpdateOwnerProfileTests {
         private OwnerProfileUpdateDto ownerUpdateDto;
+        private MockMultipartFile ownerUpdateDtoPart;
 
         @BeforeEach
-        void updateOwnerSetup() {
-            ownerUpdateDto = new OwnerProfileUpdateDto("owner_updated_username", "avatar_new.png", "555-UPD-ATED");
+        void updateOwnerSetup() throws Exception {
+            ownerUpdateDto = new OwnerProfileUpdateDto("owner_updated_username", null,"555-555-5555");
+            String dtoJson = objectMapper.writeValueAsString(ownerUpdateDto);
+            ownerUpdateDtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
         }
 
         @Test
-        @DisplayName("should return 200 OK and updated OwnerProfileDto when Owner updates own profile")
-        void updateOwnProfile_whenOwner_shouldSucceed() throws Exception {
-            mockMvc.perform(put("/api/users/me")
+        @DisplayName("should return 200 OK and updated profile when Owner updates own profile (no image)")
+        void updateOwnProfile_whenOwnerNoImage_shouldSucceed() throws Exception {
+            mockMvc.perform(multipart("/api/users/me")
+                            .file(ownerUpdateDtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(ownerUpdateDto)))
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.username", is(ownerUpdateDto.username())))
-                    .andExpect(jsonPath("$.avatar", is(ownerUpdateDto.avatar())))
-                    .andExpect(jsonPath("$.phone", is(ownerUpdateDto.phone())));
-            // Optional: Verify DB change before rollback
+                    .andExpect(jsonPath("$.profile.username", is(ownerUpdateDto.username())))
+                    .andExpect(jsonPath("$.profile.phone", is(ownerUpdateDto.phone())));
         }
+
+        @Test
+        @DisplayName("should return 200 OK and updated profile when Owner updates own profile with image")
+        void updateOwnProfile_whenOwnerWithImage_shouldSucceed() throws Exception {
+            MockMultipartFile imageFile = new MockMultipartFile(
+                    "imageFile",
+                    "avatar.png",
+                    MediaType.IMAGE_PNG_VALUE,
+                    "fakeImageData".getBytes()
+            );
+
+            mockMvc.perform(multipart("/api/users/me")
+                            .file(ownerUpdateDtoPart)
+                            .file(imageFile)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.profile.username", is(ownerUpdateDto.username())));
+        }
+
 
         @Test
         @DisplayName("should return 403 Forbidden when non-Owner attempts to update owner profile")
         void updateOwnProfile_whenNotOwner_shouldReturnForbidden() throws Exception {
-            mockMvc.perform(put("/api/users/me")
+            mockMvc.perform(multipart("/api/users/me")
+                            .file(ownerUpdateDtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(ownerUpdateDto)))
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isForbidden());
         }
 
         @Test
         @DisplayName("should return 409 Conflict when updated username already exists")
         void updateOwnProfile_whenUsernameExists_shouldReturnConflict() throws Exception {
-            // Arrange
-            OwnerProfileUpdateDto duplicateUsernameDto = new OwnerProfileUpdateDto("admin_london", null, null);
+            OwnerProfileUpdateDto duplicateUsernameDto = new OwnerProfileUpdateDto("admin_london",null, null);
+            String dtoJson = objectMapper.writeValueAsString(duplicateUsernameDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
 
-            mockMvc.perform(put("/api/users/me")
+            mockMvc.perform(multipart("/api/users/me")
+                            .file(dtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(duplicateUsernameDto)))
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("Username already taken")));
+                    .andExpect(jsonPath("$.message", containsString("Username already taken: admin_london")));
         }
 
         @Test
-        @DisplayName("should return 400 Bad Request when update DTO data is invalid")
+        @DisplayName("should return 400 Bad Request when update DTO data is invalid (username too short)")
         void updateOwnProfile_whenInvalidData_shouldReturnBadRequest() throws Exception {
-            // Arrange
-            OwnerProfileUpdateDto invalidDto = new OwnerProfileUpdateDto("u", null, null);
+            UserProfileUpdateDto invalidDto = new UserProfileUpdateDto("u", null);
+            String dtoJson = objectMapper.writeValueAsString(invalidDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
 
-            mockMvc.perform(put("/api/users/me")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(invalidDto)))
+            mockMvc.perform(multipart("/api/users/me/staff")
+                            .file(dtoPart)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error", is("Validation Failed")))
-                    .andExpect(jsonPath("$.message.username", containsString("must be between 3 and 50")));
+                    .andExpect(jsonPath("$.message.username", containsString("size must be between 3 and 50")));
         }
     }
 
@@ -304,76 +332,95 @@ class UserControllerIntegrationTest {
     @DisplayName("PUT /api/users/me/staff (Update Staff Profile Tests)")
     class UpdateStaffProfileTests {
         private UserProfileUpdateDto staffUpdateDto;
+        private MockMultipartFile staffUpdateDtoPart;
 
         @BeforeEach
-        void updateStaffSetup() {
-            staffUpdateDto = new UserProfileUpdateDto("admin_london_updated", "new_admin_avatar.png");
+        void updateStaffSetup() throws Exception  {
+            staffUpdateDto = new UserProfileUpdateDto("admin_london_updated", null);
+            String dtoJson = objectMapper.writeValueAsString(staffUpdateDto);
+            staffUpdateDtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
         }
 
         @Test
-        @DisplayName("should return 200 OK and updated StaffProfileDto when Admin updates own profile")
-        void updateOwnProfile_whenAdmin_shouldSucceed() throws Exception {
-            mockMvc.perform(put("/api/users/me/staff")
+        @DisplayName("should return 200 OK and updated profile when Admin updates own profile (no image)")
+        void updateOwnProfile_whenAdminNoImage_shouldSucceed() throws Exception {
+            mockMvc.perform(multipart("/api/users/me/staff")
+                            .file(staffUpdateDtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(staffUpdateDto)))
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.username", is(staffUpdateDto.username())))
-                    .andExpect(jsonPath("$.avatar", is(staffUpdateDto.avatar())));
-            // Optional: Verify DB change
+                    .andExpect(jsonPath("$.profile.username", is(staffUpdateDto.username())));
+        }
+
+        @Test
+        @DisplayName("should return 200 OK and updated profile when Admin updates own profile with image")
+        void updateOwnProfile_whenAdminWithImage_shouldSucceed() throws Exception {
+            MockMultipartFile imageFile = new MockMultipartFile(
+                    "imageFile", "avatar.png", MediaType.IMAGE_PNG_VALUE, "fakeImageData".getBytes());
+
+            mockMvc.perform(multipart("/api/users/me/staff")
+                            .file(staffUpdateDtoPart)
+                            .file(imageFile)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                            .with(request -> { request.setMethod("PUT"); return request; }))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.profile.username", is(staffUpdateDto.username())));
         }
 
         @Test
         @DisplayName("should return 200 OK and updated StaffProfileDto when Vet updates own profile")
         void updateOwnProfile_whenVet_shouldSucceed() throws Exception {
-            // Arrange
-            UserProfileUpdateDto vetUpdateDto = new UserProfileUpdateDto("admin_barcelona_upd", "vet_avatar.png");
-            mockMvc.perform(put("/api/users/me/staff")
+            UserProfileUpdateDto vetUpdateDto = new UserProfileUpdateDto("admin_barcelona_upd", null);
+            String dtoJson = objectMapper.writeValueAsString(vetUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
+
+            mockMvc.perform(multipart("/api/users/me/staff")
+                            .file(dtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(vetUpdateDto)))
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.username", is(vetUpdateDto.username())))
-                    .andExpect(jsonPath("$.avatar", is(vetUpdateDto.avatar())));
+                    .andExpect(jsonPath("$.profile.username", is(vetUpdateDto.username())));
         }
 
         @Test
         @DisplayName("should return 403 Forbidden when Owner attempts to update staff profile")
         void updateOwnProfile_whenNotStaff_shouldReturnForbidden() throws Exception {
-            mockMvc.perform(put("/api/users/me/staff")
+            mockMvc.perform(multipart("/api/users/me/staff")
+                            .file(staffUpdateDtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(staffUpdateDto)))
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isForbidden());
         }
 
         @Test
         @DisplayName("should return 409 Conflict when updated username already exists")
         void updateOwnProfile_whenUsernameExists_shouldReturnConflict() throws Exception {
-            // Arrange
-            UserProfileUpdateDto duplicateUsernameDto = new UserProfileUpdateDto("admin_barcelona", null);
+            OwnerProfileUpdateDto duplicateUsernameDto = new OwnerProfileUpdateDto("admin_london", null, null);
+            String dtoJson = objectMapper.writeValueAsString(duplicateUsernameDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
 
-            mockMvc.perform(put("/api/users/me/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(duplicateUsernameDto)))
+            mockMvc.perform(multipart("/api/users/me")
+                            .file(dtoPart)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message", containsString("Username already taken")));
+                    .andExpect(jsonPath("$.message", is("Username already taken: admin_london")));
         }
 
         @Test
         @DisplayName("should return 400 Bad Request when update DTO data is invalid")
         void updateOwnProfile_whenInvalidData_shouldReturnBadRequest() throws Exception {
-            // Arrange
-            UserProfileUpdateDto invalidDto = new UserProfileUpdateDto("u", null);
+            OwnerProfileUpdateDto invalidDto = new OwnerProfileUpdateDto("u", null,null);
+            String dtoJson = objectMapper.writeValueAsString(invalidDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, dtoJson.getBytes());
 
-            mockMvc.perform(put("/api/users/me/staff")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(invalidDto)))
+            mockMvc.perform(multipart("/api/users/me")
+                            .file(dtoPart)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                            .with(request -> { request.setMethod("PUT"); return request; }))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error", is("Validation Failed")))
-                    .andExpect(jsonPath("$.message.username", containsString("must be between 3 and 50")));
+                    .andExpect(jsonPath("$.message.username", containsString("size must be between 3 and 50")));
         }
     }
 }

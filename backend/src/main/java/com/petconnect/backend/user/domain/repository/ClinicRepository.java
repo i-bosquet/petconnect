@@ -5,6 +5,7 @@ import com.petconnect.backend.user.domain.model.Country;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ import java.util.List;
  * @see org.springframework.data.jpa.domain.Specification
  * @author ibosquet
  */
+@Repository
 public interface ClinicRepository extends JpaRepository<Clinic, Long>, JpaSpecificationExecutor<Clinic> {
     /**
      * Finds all distinct countries where clinics are registered, ordered alphabetically.

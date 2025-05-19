@@ -371,7 +371,7 @@ public class PetServiceImpl implements PetService {
     @Transactional(readOnly = true)
     public PetProfileDto findPetById(Long petId, Long requesterUserId) {
         Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
-        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "view"); // Verify owner or associated staff
+        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "view"); // Verify an owner or associated staff
         return petMapper.toProfileDto(pet);
     }
 

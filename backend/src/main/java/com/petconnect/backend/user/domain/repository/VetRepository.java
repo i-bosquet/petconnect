@@ -2,6 +2,7 @@ package com.petconnect.backend.user.domain.repository;
 
 import com.petconnect.backend.user.domain.model.Vet;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 
 /**
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
  *
  * @author ibosquet
  */
+@Repository
 public interface VetRepository extends JpaRepository<Vet, Long> {
 
     /**

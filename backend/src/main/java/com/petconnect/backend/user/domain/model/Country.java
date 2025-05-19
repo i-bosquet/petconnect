@@ -5,7 +5,7 @@ package com.petconnect.backend.user.domain.model;
  * initially focusing on the UK and EU member states.
  * Provides type safety and prevents invalid country entries.
  *
- * @author ibosquet (Inspired by your request)
+ * @author ibosquet
  */
 public enum Country {
     // UK

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * Abstract base class for entities requiring auditing information.
  * Includes common fields like id, created/updated timestamps, and created/updated user identifiers.
- * Uses Spring Data JPA Auditing for automatic population of audit fields.
+ * Use Spring Data JPA Auditing for automatic population of audit fields.
  *
  * @author ibosquet
  */

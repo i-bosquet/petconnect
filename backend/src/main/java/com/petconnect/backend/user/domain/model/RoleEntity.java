@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * Represents a role entity used for managing user roles.
  * Each role is associated with a set of permissions.
- * Uses JPA annotations for ORM mapping.
+ * Use JPA annotations for ORM mapping.
  * Note: RoleEnum defines the possible roles.
  *
  * @author ibosquet

@@ -32,14 +32,13 @@ public interface ClinicStaffControllerApi {
 
     /**
      * Creates a new clinic staff member (Vet or Admin) within the admin's clinic.
-     *
      * This method allows an admin to onboard new staff member details and upload optional public/private key files
      * for users with the Vet role. The creation process validates the provided data and responds with the created
      * staff member's profile or an appropriate error message in case of failure.
      *
      * @param creationDTO The data transfer object containing the clinic staff member's details.
      * @param publicKeyFile The public key file (e.g., .pem or .crt) for the Vet. Required if the role is VET.
-     * @param privateKeyFile The private key file corresponding to the Vet's public key. Optional for VET role.
+     * @param privateKeyFile The private key file corresponding to the Vet's public key. Optional for a VET role.
      * @return A ResponseEntity containing the profile of the newly created clinic staff member or an appropriate
      * error response in case of a failure during processing.
      */

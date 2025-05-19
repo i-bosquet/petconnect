@@ -3,6 +3,7 @@ package com.petconnect.backend.user.domain.repository;
 import com.petconnect.backend.user.domain.model.RoleEntity;
 import com.petconnect.backend.user.domain.model.RoleEnum;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
@@ -12,6 +13,7 @@ import java.util.Optional;
  *
  * @author ibosquet
  */
+@Repository
 public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
 
     /**

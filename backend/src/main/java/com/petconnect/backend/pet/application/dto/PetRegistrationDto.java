@@ -12,7 +12,7 @@ import java.time.LocalDate;
 /**
  * Data Transfer Object for registering a new Pet by an Owner.
  * Contains the initial basic information provided by the owner.
- * Clinic staff typically adds other details (microchip, birthdate, etc.) later.
+ * Clinic staff typically add other details (microchip, birthdate, etc.) later.
  *
  * @param name The chosen name for the pet. Cannot be blank.
  * @param specie The species of the pet. Cannot be null.

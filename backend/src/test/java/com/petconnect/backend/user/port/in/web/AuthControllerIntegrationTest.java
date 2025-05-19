@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -62,6 +63,9 @@ class AuthControllerIntegrationTest {
     private AuthLoginRequestDto invalidLoginDto;
     private AuthLoginRequestDto nonExistentUserLoginDto;
 
+    @Value("${app.backend.base-url}")
+    private String backendBaseUrl;
+
     @BeforeEach
     void setUp() {
         // Prepare DTOs used across multiple tests
@@ -101,7 +105,7 @@ class AuthControllerIntegrationTest {
                     .andExpect(jsonPath("$.email", is(validRegistrationDto.email())))
                     .andExpect(jsonPath("$.phone", is(validRegistrationDto.phone())))
                     .andExpect(jsonPath("$.roles", containsInAnyOrder("OWNER")))
-                    .andExpect(jsonPath("$.avatar", is("images/avatars/users/owner.png")))
+                    .andExpect(jsonPath("$.avatar", is(backendBaseUrl+"/images/avatars/users/owner.png")))
                     .andReturn();
 
             String responseBody = result.getResponse().getContentAsString();

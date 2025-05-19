@@ -46,7 +46,7 @@ import java.util.Objects;
 /**
  * Implementation of the {@link ClinicService}  interface.
  * Handles the business logic for retrieving and updating Clinic entities.
- * Uses ClinicRepository for data access and ClinicMapper for DTO conversion.
+ * Use ClinicRepository for data access and ClinicMapper for DTO conversion.
  * Operations are transactional.
  *
  * @author ibosquet

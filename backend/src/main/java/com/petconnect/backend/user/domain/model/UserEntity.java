@@ -116,7 +116,7 @@ public class UserEntity extends BaseEntity{
     /**
      * Generates a hash code based on the entity's ID.
      * Consistent with the equals() implementation.
-     * Uses a fixed value for transient entities (before ID is assigned).
+     * Use a fixed value for transient entities (before ID is assigned).
      *
      * @return The hash code.
      */

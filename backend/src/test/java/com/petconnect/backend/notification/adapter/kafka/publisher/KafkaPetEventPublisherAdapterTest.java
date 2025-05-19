@@ -106,26 +106,26 @@ class KafkaPetEventPublisherAdapterTest {
         }
     }
 
-//    @Nested
-//    @DisplayName("publishCertificateRequested Tests")
-//    class PublishCertificateRequestedTests {
-//
-//        @Test
-//        @DisplayName("should send CertificateRequestedEvent to correct topic with correct key and event")
-//        void shouldSendCertificateRequestedEvent() {
-//            // Arrange
-//            CertificateRequestedEvent event = new CertificateRequestedEvent(3L, 12L, 22L, LocalDateTime.now());
-//
-//            // Act
-//            kafkaPetEventPublisherAdapter.publishCertificateRequested(event);
-//
-//            // Assert
-//            then(kafkaTemplate).should().send(topicCaptor.capture(), keyCaptor.capture(), eventCaptor.capture());
-//
-//            assertThat(topicCaptor.getValue()).isEqualTo(certificateRequestTopic);
-//            assertThat(keyCaptor.getValue()).isEqualTo(event.petId().toString());
-//            assertThat(eventCaptor.getValue()).isInstanceOf(CertificateRequestedEvent.class);
-//            assertThat(eventCaptor.getValue()).isEqualTo(event);
-//        }
-//    }
+    @Nested
+    @DisplayName("publishCertificateRequested Tests")
+    class PublishCertificateRequestedTests {
+
+        @Test
+        @DisplayName("should send CertificateRequestedEvent to correct topic with correct key and event")
+        void shouldSendCertificateRequestedEvent() {
+            // Arrange
+            CertificateRequestedEvent event = new CertificateRequestedEvent(3L, 12L, 22L, 1L,LocalDateTime.now());
+
+            // Act
+            kafkaPetEventPublisherAdapter.publishCertificateRequested(event);
+
+            // Assert
+            then(kafkaTemplate).should().send(topicCaptor.capture(), keyCaptor.capture(), eventCaptor.capture());
+
+            assertThat(topicCaptor.getValue()).isEqualTo(certificateRequestTopic);
+            assertThat(keyCaptor.getValue()).isEqualTo(event.petId().toString());
+            assertThat(eventCaptor.getValue()).isInstanceOf(CertificateRequestedEvent.class);
+            assertThat(eventCaptor.getValue()).isEqualTo(event);
+        }
+    }
 }

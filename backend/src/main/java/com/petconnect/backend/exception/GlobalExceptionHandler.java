@@ -224,7 +224,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles exceptions occurring when the request body is missing or cannot be parsed
-     * (e.g., invalid JSON format) before validation occurs.
+     * (e.g., an invalid JSON format) before validation occurs.
      * Returns HTTP 400 (Bad Request).
      *
      * @param ex The HttpMessageNotReadableException caught.

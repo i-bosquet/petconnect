@@ -44,7 +44,7 @@ public interface PetService {
      * @param vetId The ID of the Vet performing the activation.
      * @param activationDto DTO containing required/verified clinical details. Validation rules are applied.
      * @return The profile DTO of the activated pet.
-     * @throws IllegalStateException if required fields (name, birthDate, gender, microchip, breed, image) are missing on the Pet entity, or if status is not PENDING.
+     * @throws IllegalStateException if required, fields (name, birthDate, gender, microchip, breed, image) are missing on the Pet entity, or if status is not PENDING.
      * @throws com.petconnect.backend.exception.MicrochipAlreadyExistsException if the pet's existing microchip conflicts with another pet.
      */
     PetProfileDto activatePet(Long petId, PetActivationDto activationDto, Long vetId);
@@ -134,7 +134,7 @@ public interface PetService {
      * @param petId The ID of the Pet.
      * @param vetId The ID of the Vet to associate.
      * @param ownerId The ID of the authenticated Owner performing the action.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if pet or vet not found.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if a pet or vet isn't found.
      * @throws org.springframework.security.access.AccessDeniedException if the user is not the owner.
      * @throws IllegalStateException if the association already exists.
      */
@@ -146,14 +146,14 @@ public interface PetService {
      * @param petId The ID of the Pet.
      * @param vetId The ID of the Vet to disassociate.
      * @param ownerId The ID of the authenticated Owner performing the action.
-     * @throws com.petconnect.backend.exception.EntityNotFoundException if pet or vet not found.
+     * @throws com.petconnect.backend.exception.EntityNotFoundException if a pet or vet isn't found.
      * @throws org.springframework.security.access.AccessDeniedException if the user is not the owner.
      */
     void disassociateVetFromPet(Long petId, Long vetId, Long ownerId);
 
     /**
      * Retrieves a paginated list of pets associated with a specific clinic.
-     * Association is determined if the pet is pending activation at the clinic
+     * The Association is determined if the pet is pending activation at the clinic
      * or if it's associated with any Vet working at that clinic.
      * Requires authorization (requester must be staff of that clinic).
      *
@@ -161,7 +161,7 @@ public interface PetService {
      * @param pageable Pagination information.
      * @return A Page of PetProfileDto objects associated with the clinic.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if a clinic not found.
-     * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
+     * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized, staff of the clinic.
      */
     Page<PetProfileDto> findPetsByClinic(Long requesterUserId, Pageable pageable);
 
@@ -172,7 +172,7 @@ public interface PetService {
      * @param requesterUserId The ID of the staff member making the request.
      * @return A List of PetProfileDto for pets pending activation.
      * @throws com.petconnect.backend.exception.EntityNotFoundException if a clinic not found.
-     * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized staff of the clinic.
+     * @throws org.springframework.security.access.AccessDeniedException if requester is not authorized, staff of the clinic.
      */
     List<PetProfileDto> findPendingActivationPetsByClinic(Long requesterUserId);
 
@@ -184,7 +184,7 @@ public interface PetService {
      * @param petId The ID of the Pet.
      * @param clinicId The ID of the Clinic with vets associated with the pet.
      * @param ownerId The ID of the authenticated Owner making the request.
-     * @throws EntityNotFoundException if pet or vet not found.
+     * @throws EntityNotFoundException if a pet or vet isn't found.
      * @throws AccessDeniedException if the user is not the owner, or the vet is not associated with the pet.
      */
     void requestCertificateGeneration(Long petId, Long clinicId, Long ownerId);
@@ -197,7 +197,7 @@ public interface PetService {
      * @param requesterStaffId The ID of the clinic staff member making the request.
      * @return A list of PetProfileDto objects representing pets with pending certificate requests for the requested clinic.
      * @throws EntityNotFoundException if the clinic is not found.
-     * @throws AccessDeniedException if the requester is not authorized staff of the clinic.
+     * @throws AccessDeniedException if the requester is not authorized, staff of the clinic.
      */
     List<PetProfileDto> findPetsWithPendingCertRequestsForClinic(Long clinicId, Long requesterStaffId);
 }

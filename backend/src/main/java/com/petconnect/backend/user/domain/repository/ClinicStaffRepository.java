@@ -2,6 +2,7 @@ package com.petconnect.backend.user.domain.repository;
 
 import com.petconnect.backend.user.domain.model.ClinicStaff;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
  *
  * @author ibosquet
  */
+@Repository
 public interface ClinicStaffRepository extends JpaRepository<ClinicStaff, Long> {
 
     /**

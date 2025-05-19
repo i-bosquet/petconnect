@@ -9,7 +9,7 @@ import org.springframework.util.StringUtils;
 import java.util.Objects;
 
 /**
- * Utility class for manually mapping between a Clinic entity and its DTOs.
+ * Utility class for manual mapping between a Clinic entity and its DTOs.
  * Registered as a Spring component to be injectable in services.
  *
  * @author ibosquet

@@ -16,16 +16,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.mock.web.MockMultipartFile;
 
 import static com.petconnect.backend.util.IntegrationTestUtils.obtainJwtToken;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 
 /**
  * Integration tests for {@link ClinicController}.
@@ -150,12 +151,23 @@ class ClinicControllerIntegrationTest {
     class UpdateClinicTests {
 
         @Test
-        @DisplayName("should return 200 OK and updated ClinicDto when called by authorized Admin of the clinic")
-        void updateClinic_whenAuthorizedAdmin_shouldSucceed() throws Exception {
-            mockMvc.perform(put("/api/clinics/{id}", 1L)
+        @DisplayName("should return 200 OK and updated ClinicDto when called by authorized Admin of the clinic without files")
+        void updateClinic_whenAuthorizedAdminNoFiles_shouldSucceed() throws Exception {
+            String clinicUpdateDtoJson = objectMapper.writeValueAsString(clinicUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile(
+                    "dto",
+                    "",
+                    MediaType.APPLICATION_JSON_VALUE,
+                    clinicUpdateDtoJson.getBytes()
+            );
+
+            mockMvc.perform(multipart("/api/clinics/{id}", 1L)
+                            .file(dtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(clinicUpdateDto)))
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id", is(1)))
                     .andExpect(jsonPath("$.name", is(clinicUpdateDto.name())))
@@ -163,12 +175,51 @@ class ClinicControllerIntegrationTest {
         }
 
         @Test
+        @DisplayName("should return 200 OK and updated ClinicDto when called by authorized Admin with new key files")
+        void updateClinic_whenAuthorizedAdminWithFiles_shouldSucceed() throws Exception {
+            String clinicUpdateDtoJson = objectMapper.writeValueAsString(clinicUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "", MediaType.APPLICATION_JSON_VALUE, clinicUpdateDtoJson.getBytes());
+
+            MockMultipartFile publicKeyFile = new MockMultipartFile(
+                    "publicKeyFile",
+                    "test_pub.pem",
+                    MediaType.TEXT_PLAIN_VALUE,
+                    "fake public key content".getBytes()
+            );
+            MockMultipartFile privateKeyFile = new MockMultipartFile(
+                    "privateKeyFile",
+                    "test_pri.pem",
+                    MediaType.TEXT_PLAIN_VALUE,
+                    "fake encrypted private key content".getBytes()
+            );
+
+            mockMvc.perform(multipart("/api/clinics/{id}", 1L)
+                            .file(dtoPart)
+                            .file(publicKeyFile)
+                            .file(privateKeyFile)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name", is(clinicUpdateDto.name())));
+        }
+
+        @Test
         @DisplayName("should return 403 Forbidden when called by Admin of a different clinic")
         void updateClinic_whenAdminFromDifferentClinic_shouldReturnForbidden() throws Exception {
-            mockMvc.perform(put("/api/clinics/{id}", 1L)
+            String clinicUpdateDtoJson = objectMapper.writeValueAsString(clinicUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "",
+                    MediaType.APPLICATION_JSON_VALUE, clinicUpdateDtoJson.getBytes());
+
+            mockMvc.perform(multipart("/api/clinics/{id}", 1L)
+                            .file(dtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + vetToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(clinicUpdateDto)))
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.status", is(403)))
                     .andExpect(jsonPath("$.error", is("Forbidden")));
@@ -177,19 +228,33 @@ class ClinicControllerIntegrationTest {
         @Test
         @DisplayName("should return 401 Unauthorized when no authentication token is provided")
         void updateClinic_whenUnauthenticated_shouldReturnUnauthorized() throws Exception {
-            mockMvc.perform(put("/api/clinics/{id}", 1L)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(clinicUpdateDto)))
+            String clinicUpdateDtoJson = objectMapper.writeValueAsString(clinicUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "",
+                    MediaType.APPLICATION_JSON_VALUE, clinicUpdateDtoJson.getBytes());
+
+            mockMvc.perform(multipart("/api/clinics/{id}", 1L)
+                            .file(dtoPart)
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
                     .andExpect(status().isUnauthorized());
         }
 
         @Test
         @DisplayName("should return 404 Not Found when clinic ID does not exist")
         void updateClinic_whenClinicNotFound_shouldReturnNotFound() throws Exception {
-            mockMvc.perform(put("/api/clinics/{id}", 999L)
+            String clinicUpdateDtoJson = objectMapper.writeValueAsString(clinicUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "",
+                    MediaType.APPLICATION_JSON_VALUE, clinicUpdateDtoJson.getBytes());
+
+            mockMvc.perform(multipart("/api/clinics/{id}", 999L)
+                            .file(dtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(clinicUpdateDto)))
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.status", is(404)))
                     .andExpect(jsonPath("$.error", is("Resource Not Found")));
@@ -198,10 +263,17 @@ class ClinicControllerIntegrationTest {
         @Test
         @DisplayName("should return 403 Forbidden when called by Owner")
         void updateClinic_whenOwner_shouldReturnForbidden() throws Exception {
-            mockMvc.perform(put("/api/clinics/{id}", 1L)
+            String clinicUpdateDtoJson = objectMapper.writeValueAsString(clinicUpdateDto);
+            MockMultipartFile dtoPart = new MockMultipartFile("dto", "",
+                    MediaType.APPLICATION_JSON_VALUE, clinicUpdateDtoJson.getBytes());
+
+            mockMvc.perform(multipart("/api/clinics/{id}", 1L)
+                            .file(dtoPart)
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(clinicUpdateDto)))
+                            .with(request -> {
+                                request.setMethod("PUT");
+                                return request;
+                            }))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.status", is(403)))
                     .andExpect(jsonPath("$.error", is("Forbidden")));

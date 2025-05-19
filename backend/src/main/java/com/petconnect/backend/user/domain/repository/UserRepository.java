@@ -4,6 +4,7 @@ import com.petconnect.backend.user.domain.model.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
@@ -14,6 +15,7 @@ import java.util.Optional;
  *
  * @author ibosquet
  */
+@Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     /**
      * Finds a UserEntity entity by its unique email address.

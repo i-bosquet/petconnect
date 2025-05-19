@@ -1,9 +1,11 @@
 package com.petconnect.backend.notification.application.service.impl;
 
 import com.petconnect.backend.certificate.application.event.CertificateGeneratedEvent;
+import com.petconnect.backend.common.helper.EntityFinderHelper;
 import com.petconnect.backend.pet.application.event.CertificateRequestedEvent;
 import com.petconnect.backend.pet.application.event.PetActivatedEvent;
 import com.petconnect.backend.pet.application.event.PetActivationRequestedEvent;
+import com.petconnect.backend.pet.domain.model.Pet;
 import com.petconnect.backend.user.domain.model.*;
 import com.petconnect.backend.user.domain.repository.ClinicStaffRepository;
 import com.petconnect.backend.user.domain.repository.UserRepository;
@@ -42,6 +44,7 @@ import static org.mockito.Mockito.verify;
 class NotificationServiceImplTest {
     @Mock private UserRepository userRepository;
     @Mock private ClinicStaffRepository clinicStaffRepository;
+    @Mock private EntityFinderHelper entityFinderHelper;
 
     @InjectMocks
     private NotificationServiceImpl notificationService;
@@ -49,6 +52,7 @@ class NotificationServiceImplTest {
     private Owner testOwner;
     private Vet testVet;
     private ClinicStaff testStaff1, testStaff2;
+    private Pet testPet;
     private final Long ownerId = 1L;
     private final Long vetId = 2L;
     private final Long staff1Id = 3L;
@@ -74,6 +78,10 @@ class NotificationServiceImplTest {
         testVet.setSurname("Vet");
         testVet.setEmail("notify@vet.com");
         testVet.setClinic(testClinic);
+
+        testPet = new Pet();
+        testPet.setId(petId);
+        testPet.setName("PetForCertReq");
 
         testStaff1 = new Vet();
         testStaff1.setId(staff1Id);
@@ -179,45 +187,77 @@ class NotificationServiceImplTest {
         }
     }
 
-//    @Nested
-//    @DisplayName("processCertificateRequest Tests")
-//    class ProcessCertificateRequestTests {
-//
-//        @Test
-//        @DisplayName("should log notification for the target vet")
-//        void shouldLogNotificationForVet() {
-//            // Arrange
-//            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, vetId, LocalDateTime.now());
-//            given(userRepository.findById(vetId)).willReturn(Optional.of(testVet));
-//
-//            // Act
-//            notificationService.processCertificateRequest(event);
-//
-//            // Assert
-//            List<ILoggingEvent> logsList = listAppender.list;
-//            assertThat(logsList).anyMatch(log -> log.getFormattedMessage().contains("Processing CertificateRequestedEvent"))
-//                    .anyMatch(log -> log.getFormattedMessage().contains("--> NOTIFICATION SIMULATION (to Vet: Notify Vet): Owner ID " + ownerId + " requested a certificate generation"));
-//            verify(userRepository).findById(vetId);
-//        }
-//
-//        @Test
-//        @DisplayName("should log error if target vet not found")
-//        void shouldLogErrorIfVetNotFound() {
-//            // Arrange
-//            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, 998L, LocalDateTime.now());
-//            given(userRepository.findById(998L)).willReturn(Optional.empty());
-//
-//            // Act
-//            notificationService.processCertificateRequest(event);
-//
-//            // Assert
-//            List<ILoggingEvent> logsList = listAppender.list;
-//            assertThat(logsList).anyMatch(log -> log.getFormattedMessage().contains("Processing CertificateRequestedEvent"))
-//                    .anyMatch(log -> log.getLevel() == Level.ERROR && log.getFormattedMessage().contains("Could not find vet for notification"))
-//                    .noneMatch(log -> log.getFormattedMessage().contains("--> NOTIFICATION SIMULATION"));
-//            verify(userRepository).findById(998L);
-//        }
-//    }
+    @Nested
+    @DisplayName("processCertificateRequest Tests")
+    class ProcessCertificateRequestTests {
+
+        @Test
+        @DisplayName("should log notification for the target vet")
+        void shouldLogNotificationForVet() {
+            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, vetId, clinicId, LocalDateTime.now());
+
+            given(clinicStaffRepository.findByClinicIdAndIsActive(clinicId, true))
+                    .willReturn(List.of(testStaff1));
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(testPet);
+            given(userRepository.findById(ownerId)).willReturn(Optional.of(testOwner));
+            given(userRepository.findById(vetId)).willReturn(Optional.of(testVet));
+
+            notificationService.processCertificateRequest(event);
+
+            List<ILoggingEvent> logsList = listAppender.list;
+
+            assertThat(logsList.stream().map(ILoggingEvent::getFormattedMessage).toList())
+                    .as("Checking for processing log")
+                    .anyMatch(message -> message.contains("Processing CertificateRequestedEvent for Pet ID: " + petId + ", Target Clinic ID: " + clinicId));
+
+            assertThat(logsList.stream().map(ILoggingEvent::getFormattedMessage).toList())
+                    .as("Checking for notification simulation log")
+                    .anyMatch(message -> message.contains("--> NOTIFICATION SIMULATION (to Vet: Staff One in Clinic Notify Clinic): Owner notify_owner has requested a certificate for pet PetForCertReq. Please review in clinic dashboard."));
+
+            assertThat(logsList.stream().map(ILoggingEvent::getFormattedMessage).toList())
+                    .as("Checking for specific target vet log")
+                    .anyMatch(message -> message.contains("----> Specific request was targeted to Vet: Notify Vet"));
+
+
+            verify(clinicStaffRepository).findByClinicIdAndIsActive(clinicId, true);
+            verify(entityFinderHelper).findPetByIdOrFail(petId);
+            verify(userRepository).findById(ownerId);
+            verify(userRepository).findById(vetId);
+        }
+
+        @Test
+        @DisplayName("should log error if specific target vet in event is not found, even if clinic has other vets")
+        void shouldLogErrorIfSpecificTargetVetNotFoundButClinicHasVets() {
+            Long nonExistentVetId = 998L;
+            Long clinicIdForThisTest = 1L;
+            CertificateRequestedEvent event = new CertificateRequestedEvent(petId, ownerId, nonExistentVetId, clinicIdForThisTest, LocalDateTime.now());
+
+            given(clinicStaffRepository.findByClinicIdAndIsActive(clinicIdForThisTest, true))
+                    .willReturn(List.of(testStaff1));
+
+            given(userRepository.findById(nonExistentVetId)).willReturn(Optional.empty());
+            given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(testPet);
+            given(userRepository.findById(ownerId)).willReturn(Optional.of(testOwner));
+            notificationService.processCertificateRequest(event);
+
+            List<ILoggingEvent> logsList = listAppender.list;
+
+            assertThat(logsList.stream().map(ILoggingEvent::getFormattedMessage).toList())
+                    .as("Checking for processing log")
+                    .anyMatch(message -> message.contains("Processing CertificateRequestedEvent for Pet ID: " + petId + ", Target Clinic ID: " + clinicIdForThisTest));
+
+            assertThat(logsList.stream().map(ILoggingEvent::getFormattedMessage).toList())
+                    .as("Checking for notification to clinic vet")
+                    .anyMatch(message -> message.contains("--> NOTIFICATION SIMULATION (to Vet: " + testStaff1.getName() + " " + testStaff1.getSurname()));
+
+            assertThat(logsList.stream().filter(log -> log.getLevel() == Level.ERROR).map(ILoggingEvent::getFormattedMessage).toList())
+                    .as("Checking for ERROR: Could not find specific target vet for notification")
+                    .anyMatch(message -> message.contains("Could not find vet for notification: Veterinarian not found with ID: " + nonExistentVetId));
+
+            verify(clinicStaffRepository).findByClinicIdAndIsActive(clinicIdForThisTest, true);
+            verify(userRepository).findById(nonExistentVetId);
+        }
+    }
 
     @Nested
     @DisplayName("processCertificateGenerationConfirmation Tests")
