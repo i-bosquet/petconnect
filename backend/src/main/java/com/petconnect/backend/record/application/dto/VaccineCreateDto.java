@@ -34,6 +34,5 @@ public record VaccineCreateDto(
 
         @NotNull(message = "Must specify if it is a rabies vaccine")
         Boolean isRabiesVaccine
-
 ) {
 }

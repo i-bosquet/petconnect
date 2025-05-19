@@ -174,6 +174,7 @@ const PetHomeTab = ({ pet, onPetAssociationChange }: PetHomeTabProps): JSX.Eleme
           </button>
         </div>
       </div>
+
       {/* Modals */}
       {showConfirmDisassociateModal && vetToDisassociate && (
                 <ConfirmationModal

@@ -1,12 +1,12 @@
 import React, { useState, JSX, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, User, Lock, LogIn } from "lucide-react";
-import { loginUser, getCurrentUserProfile } from "../../services/authService";
+import { loginUser, getCurrentUserProfile } from "@/services/authService";
 import {
   UserProfile,
   ClinicStaffProfile
 } from "@/types/apiTypes";
-import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal";
+import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 
 /**
  * Represents the user data stored in session/local storage after successful login.

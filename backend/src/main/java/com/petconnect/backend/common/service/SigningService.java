@@ -3,7 +3,6 @@ package com.petconnect.backend.common.service;
 import com.petconnect.backend.user.domain.model.Clinic;
 import com.petconnect.backend.user.domain.model.Vet;
 
-import java.security.PrivateKey;
 import java.security.PublicKey;
 
 /**

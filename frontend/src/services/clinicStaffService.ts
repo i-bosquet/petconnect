@@ -111,7 +111,7 @@ export const getAllStaffForClinic = async (
 
 /**
  * Activates a clinic staff member's account.
- * Requires ADMIN role of that clinic.
+ * Requires an ADMIN role of that clinic.
  *
  * @param {string} token - The JWT token of the authenticated Admin.
  * @param {number | string} staffId - The ID of the staff member to activate.
@@ -155,7 +155,7 @@ export const activateStaffMember = async (
 
 /**
  * Deactivates a clinic staff member's account.
- * Requires ADMIN role of that clinic. Admin cannot deactivate themselves.
+ * Requires an ADMIN role of that clinic. Admins cannot deactivate themselves.
  *
  * @param {string} token - The JWT token of the authenticated Admin.
  * @param {number | string} staffId - The ID of the staff member to deactivate.
@@ -206,6 +206,7 @@ export const deactivateStaffMember = async (
  * @param {number | string} staffId - The ID of the staff member to update.
  * @param {ClinicStaffUpdatePayload} updateData - The data to update (JSON part).
  * @param {File | null} publicKeyFile - The optional new public key file.
+ * @param {File | null} privateKeyFile - The optional new private key file.
  * @returns {Promise<ClinicStaffProfile>} A promise resolving to the updated staff profile.
  * @throws {Error} Throws an error if update fails.
  */

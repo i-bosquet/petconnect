@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, JSX } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { PetProfileDto } from '@/types/apiTypes';
 import { findMyClinicPendingPets, findPetsWithPendingCertRequestsForClinic} from '@/services/petService';
-//import { generateCertificate } from '@/services/certificateService';
 import { Loader2, AlertCircle, BellDot, FileSignature } from 'lucide-react';
 import PendingActivationCard from '@/components/clinic/PendingActivationCard'; 
 import PetActivationModal from '@/components/clinic/modals/PetActivationModal';

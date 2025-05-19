@@ -25,7 +25,6 @@ const PetCard = ({ pet, onSelect }: PetCardProps): JSX.Element => {
             className={`flex flex-col items-center p-3 rounded-xl transition-all border border-[#FFECAB] hover:opacity-80 min-w-28 cursor-pointer ${
                 isInactive ? 'opacity-50 filter grayscale' : '' 
             }`}
-            //disabled={isInactive} 
         >
             {/* Pet avatar image*/}
             <div className="relative mb-2">

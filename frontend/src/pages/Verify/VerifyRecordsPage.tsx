@@ -7,12 +7,10 @@ import { Loader2, AlertCircle, ShieldCheck, Syringe, BookOpenCheck, FileText, Th
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Footer from '@/components/layout/Footer';
 
-
 /**
  * VerifyRecordsPage - Displays signed medical records for a pet, accessed via a temporary token.
  * This page is intended to be publicly accessible via a shared link.
  * @returns {JSX.Element} The verification page.
- * @author ibosquet
  */
 const VerifyRecordsPage = (): JSX.Element => {
     const [searchParams] = useSearchParams();
@@ -30,14 +28,14 @@ const VerifyRecordsPage = (): JSX.Element => {
                 .then(data => {
                     setRecords(data);
                     if (data.length > 0) {
-                        setPetName(data[0].petName || 'this pet'); // Asume que todos los records son del mismo pet
+                        setPetName(data[0].petName || 'this pet');
                     } else {
                         setPetName('this pet');
                     }
                 })
                 .catch(err => {
                     setError(err instanceof Error ? err.message : "An unknown error occurred.");
-                    setRecords([]); // Limpia records en caso de error para no mostrar datos viejos
+                    setRecords([]);
                 })
                 .finally(() => setIsLoading(false));
         } else {

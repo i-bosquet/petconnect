@@ -41,7 +41,7 @@ public class RecordHelper {
 
     /**
      * Creates a consistent string representation of the record data for signing.
-     * The order and inclusion of fields MUST be consistent for verification to work.
+     * The order and inclusion of fields MUST be consistent with verification to work.
      * Uses data from the Pet, the creating Vet, and the creation DTO.
      *
      * @param pet        The pet associated with the record. Must not be null.

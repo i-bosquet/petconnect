@@ -51,7 +51,7 @@ public class ClinicStaffHelper {
      *                     This parameter cannot be null.
      * @return A new {@link ClinicStaff} instance representing the created staff member.
      *         The instance is either of type {@link Vet} or general {@link ClinicStaff}, depending on the role specified.
-     * @throws IllegalArgumentException If required fields specific to the VET role are missing or invalid.
+     * @throws IllegalArgumentException If required, fields specific to the VET role are missing or invalid.
      */
     public ClinicStaff buildNewStaffEntity(ClinicStaffCreationDto dto,
                                            @Nullable String publicKeyPath,
@@ -198,7 +198,7 @@ public class ClinicStaffHelper {
      * @param newPrivateKeyPath An optional new path for the vet's private key file (can be null if not provided).
      * @return true if one or more vet-specific fields were successfully updated, false otherwise.
      * @throws IllegalStateException if the entity does not match the expected type for a veterinarian
-     *                               while the role indicates it should.
+     *                               while the role indicates, it should.
      */
     private boolean updateVetSpecificFields(ClinicStaff staffToUpdate,
                                             ClinicStaffUpdateDto updateDTO,

@@ -1,7 +1,7 @@
 import { useState, JSX, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react'; 
-import { registerOwner } from '../../services/authService'; 
+import { registerOwner } from '@/services/authService';
 
 /**
  * SignupPage Component - Handles new Owner user registration.

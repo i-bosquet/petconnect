@@ -2,7 +2,7 @@ import { RecordType, Specie } from './enumTypes';
 import { ClinicStaffProfile } from './authTypes'; 
 
 /**
- * Detailed view of Vaccine information within a Record.
+ * Detailed view of Vaccine information within the Record.
  */
 export interface VaccineViewDto {
     name: string;
@@ -31,17 +31,6 @@ export interface RecordViewDto {
     petId: number | string;
     petName: string | null; 
     petSpecie: Specie | null; 
-}
-
-/**
- * Summary information for a medical Record, typically used within certificate details.
- */
-export interface RecordSummaryDto {
-    id: number | string;
-    type: RecordType;
-    description?: string | null;
-    createdAt?: string | null; 
-    vacine?: VaccineViewDto | null;
 }
 
 // --- DTOs mirroring backend API Payloads ---

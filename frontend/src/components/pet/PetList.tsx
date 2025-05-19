@@ -1,5 +1,5 @@
 import { JSX } from 'react';
-import { PetProfileDto } from '../../types/apiTypes';
+import { PetProfileDto } from '@/types/apiTypes';
 import PetCard from './PetCard'; 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; 
 import { Checkbox } from "@/components/ui/checkbox";

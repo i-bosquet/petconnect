@@ -40,5 +40,5 @@ public interface ImageService {
      * @param relativePath The relative path
      * @return The absolute Path object.
      */
-    Path getAbsolutePath(String relativePath); // Helper may be useful
+    Path getAbsolutePath(String relativePath);
 }

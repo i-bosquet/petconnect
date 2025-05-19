@@ -1,6 +1,6 @@
 import { useOutletContext } from 'react-router-dom';
 import { PetProfileDto } from '@/types/apiTypes';
-import React from 'react'; // Necesario para React.Dispatch
+import React from 'react';
 
 /**
  * Context type for OwnerLayout.
@@ -14,7 +14,7 @@ interface OwnerLayoutContextType {
  * Specifically, it provides a function to set the selected pet for the TopBar's chat icon.
  *
  * @returns {OwnerLayoutContextType} An object containing the setter function.
- * @throws Error if used outside of a component rendered by OwnerLayout's Outlet.
+ * @throws Error if used outside a component rendered by OwnerLayout's Outlet.
  */
 export function useOwnerLayoutContext(): OwnerLayoutContextType {
     const context = useOutletContext<OwnerLayoutContextType>();

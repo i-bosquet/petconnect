@@ -129,7 +129,7 @@ public interface RecordControllerApi {
 
     /**
      * Deletes an unsigned medical record.
-     * Accessible only by the original creator or an Admin of the creator's clinic (if creator was staff).
+     * Accessible only by the original creator or an Admin of the creator's clinic (if the creator was staff).
      *
      * @param recordId The ID of the unsigned record to delete.
      * @return ResponseEntity with status 204 (No Content) on successful deletion.

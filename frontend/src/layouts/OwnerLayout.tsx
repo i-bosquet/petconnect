@@ -6,7 +6,7 @@ import { PetProfileDto } from '@/types/apiTypes';
 /**
  * OwnerLayout - Provides the layout structure specifically for the Pet Owner dashboard sections.
  * Includes the common TopBar and the main content area for owner-specific pages.
- * Manages the selected pet state to inform TopBar about chat availability.
+ * Manage the selected pet state to inform TopBar about chat availability.
  *
  * @returns {JSX.Element} The layout structure for owner sections.
  */

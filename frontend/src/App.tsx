@@ -3,8 +3,6 @@ import AppRouter from './routes/AppRouter';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
-
-
 /**
  * App - The root component of the application.
  * Sets up global providers and renders the main router.

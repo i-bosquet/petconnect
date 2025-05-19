@@ -7,13 +7,12 @@ import Pagination from '@/components/common/Pagination';
 import { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 
-// --- Component Props ---
 interface ClinicSearchModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-const PAGE_SIZE = 5; // Number of clinics per page
+const PAGE_SIZE = 5;
 
 /**
  * ClinicSearchModal - Encapsulates the UI and logic for searching veterinary clinics.

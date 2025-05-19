@@ -97,7 +97,7 @@ public interface RecordService {
      * to a specific pet's signed medical records for a limited duration.
      * Requires the requester to be the owner of the pet.
      *
-     * @param petId           The ID of the pet whose records access is requested.
+     * @param petId           The ID of the pet whose record access is requested.
      * @param requestDto      DTO containing the requested duration.
      * @param requesterUserId The ID of the user making the request (must be the owner).
      * @return A DTO containing the generated temporary access token.

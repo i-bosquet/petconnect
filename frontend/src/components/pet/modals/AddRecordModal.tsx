@@ -26,7 +26,7 @@ import { toast } from "sonner";
 interface AddRecordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRecordAdded: () => void; // Callback para refrescar la lista
+  onRecordAdded: () => void;
   petId: number | string;
 }
 

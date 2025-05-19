@@ -1,10 +1,9 @@
 import { JSX } from 'react';
 import { ClinicStaffProfile } from '@/types/apiTypes';
 import { formatDateTime } from '@/utils/formatters';
-import {  Mail, Building, UserCheck, KeySquare, Hash, Calendar, Clock, UserCog } from 'lucide-react'; 
+import {  Mail, Building, UserCheck, KeySquare, Hash, Calendar, Clock, UserCog, Edit } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit } from 'lucide-react'; 
 
 interface StaffDetailViewProps {
     staffProfile: ClinicStaffProfile;
