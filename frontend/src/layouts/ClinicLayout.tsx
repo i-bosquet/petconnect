@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, JSX } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import ClinicSidebar from '../components/layout/ClinicSidebar';
-import ProfileModal from '../components/profile/ProfileModal'; 
+import ClinicSidebar from '@/components/layout/ClinicSidebar';
+import ProfileModal from '@/components/profile/ProfileModal'; 
 import { ClinicStaffProfile, UserProfile } from '@/types/apiTypes';
 import { getCurrentUserProfile } from '@/services/authService';
+import { Menu }from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface UserDisplayData {
     username?: string;
@@ -21,6 +23,7 @@ const ClinicLayout = (): JSX.Element => {
     const [currentStaff, setCurrentStaff] = useState<ClinicStaffProfile | null>(null);
     const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
     const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+    const [isSidebarOpenOnSmallScreens, setIsSidebarOpenOnSmallScreens] = useState(false);
     const navigate = useNavigate();
 
     const fetchStaffProfile = useCallback(async (forceRefresh = false) => {
@@ -66,16 +69,17 @@ const ClinicLayout = (): JSX.Element => {
     }, [fetchStaffProfile]);
 
     const handleLogout = useCallback(() => {
-        // ... (lógica de handleLogout sin cambios)
         sessionStorage.removeItem('user');
         localStorage.removeItem('user');
         setCurrentStaff(null);
         setShowProfileModal(false);
+        setIsSidebarOpenOnSmallScreens(false); 
         navigate('/login', { replace: true });
     }, [navigate]);
 
     const handleOpenProfileModal = useCallback(() => {
         setShowProfileModal(true);
+        setIsSidebarOpenOnSmallScreens(false);
     }, []);
 
     const handleCloseProfileModal = useCallback(() => {
@@ -91,9 +95,11 @@ const ClinicLayout = (): JSX.Element => {
                 avatar: updatedData.avatar !== undefined ? updatedData.avatar : prev.avatar,
             };
         });
-        const storage = localStorage.getItem('user') ? localStorage : sessionStorage;
-        const storedUserJson = storage.getItem('user');
-        if (storedUserJson) {
+    const storage = localStorage.getItem('user') ? localStorage : sessionStorage;
+
+    const storedUserJson = storage.getItem('user');
+
+    if (storedUserJson) {
             try {
                 const storedUser = JSON.parse(storedUserJson);
                 const updatedStoredUser = {
@@ -111,7 +117,6 @@ const ClinicLayout = (): JSX.Element => {
         }
     }, [fetchStaffProfile]);
 
-
     if (isLoadingProfile || !currentStaff) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#070913] to-[#0c1225]">
@@ -122,21 +127,48 @@ const ClinicLayout = (): JSX.Element => {
 
     return (
         <>
-            <div className="min-h-screen bg-gradient-to-br from-[#070913] to-[#0c1225] text-[#FFECAB] lg:grid lg:grid-cols-4">
-                <div className="lg:col-span-1 hidden lg:block"> 
+            <div className="min-h-screen bg-gradient-to-br from-[#070913] to-[#0c1225] text-[#FFECAB] flex relative">
+                {/* Sidebar */}
+                <div className={`
+                    fixed inset-y-0 left-0 z-40 w-72 bg-[#FFECAB] text-[#090D1A] p-4 flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+                    lg:static lg:translate-x-0 lg:shadow-none 
+                    ${isSidebarOpenOnSmallScreens ? 'translate-x-0' : '-translate-x-full'}
+                `}>
+                     {currentStaff && (
                     <ClinicSidebar
-                        closeMobileMenu={() => {  }}
+                        closeMobileMenu={() => setIsSidebarOpenOnSmallScreens(false)}
                         currentStaff={currentStaff}
                         handleLogout={handleLogout}
                         onOpenProfileModal={handleOpenProfileModal}
                     />
+                    )}
                 </div>
-                <div className="lg:col-span-3 flex flex-col overflow-hidden">
+
+                {/* Main */}
+                <div className="flex-1 flex flex-col overflow-x-hidden">
+                    <div className="lg:hidden p-3 sticky top-0 bg-[#070913]/90 backdrop-blur-sm z-20 border-b border-[#FFECAB]/10 flex items-center">
+                        <Button
+                            size="icon"
+                            onClick={() => setIsSidebarOpenOnSmallScreens(true)}
+                            className="text-[#FFECAB] bg-cyan-800 hover:bg-cyan-500  cursor-pointer"
+                            aria-label="Open navigation menu"
+                        >
+                            <Menu size={24} />
+                        </Button>
+                    </div>
                     <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
                         <Outlet />
                     </main>
                 </div>
             </div>
+
+             {isSidebarOpenOnSmallScreens && (
+                <div 
+                    className="lg:hidden fixed inset-0 bg-black/60 z-30"
+                    onClick={() => setIsSidebarOpenOnSmallScreens(false)}
+                    aria-hidden="true"
+                ></div>
+            )}
 
             {showProfileModal && currentStaff && (
                 <ProfileModal

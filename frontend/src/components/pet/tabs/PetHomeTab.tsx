@@ -142,36 +142,40 @@ const PetHomeTab = ({ pet, onPetAssociationChange }: PetHomeTabProps): JSX.Eleme
                 </CardContent>
             </Card>
       {/* Urgent Events Section - Shows upcoming appointments and vaccines */}
-      <h3 className="font-medium text-lg mt-6 mb-2 text-center">
-        Urgent Events
+      <h3 className="font-medium text-xl mt-8 mb-4 text-center text-[#FFECAB] opacity-90">
+        Upcoming Reminders
       </h3>
-      <div className="space-y-4">
-        {/* Next appointment card - Shows only if there are upcoming appointments */}
-        <div className="p-4 bg-gray-50 rounded-lg shadow-md flex flex-col sm:flex-row justify-between items-center">
-          <div className="text-center sm:text-left">
-            <h3 className="font-medium text-lg text-[#090D1A]">
-              Next Appointment
-            </h3>
-            {/* IIFE to find and display the nearest upcoming vaccine */}
-            <p className="text-sm text-gray-600">Not registered</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Next Recommended Checkup Card */}
+        <div className="p-5 bg-[#0A0F1E]/70 border border-gray-700/80 rounded-xl shadow-lg flex flex-col justify-between min-h-[120px]">
+          <div>
+            <h4 className="font-semibold text-lg text-cyan-400 mb-1.5">
+              Next Recommended Checkup
+            </h4>
+            {/* Aquí iría la lógica para mostrar la fecha del próximo chequeo */}
+            <p className="text-sm text-gray-300" id="next-checkup-info">
+              Calculating...
+            </p>
           </div>
-          <button className="mt-2 sm:mt-0 px-4 py-2 bg-cyan-800 text-[#FFECAB] rounded-2xl">
-            Edit Appointment
-          </button>
+          <Button variant="outline" size="sm" disabled className="mt-3 self-start border-cyan-600 text-cyan-400 hover:bg-cyan-700/30 hover:text-cyan-300 cursor-not-allowed">
+            Schedule Checkup
+          </Button>
         </div>
 
-        {/* Upcoming vaccine card - Shows only if there are upcoming vaccines */}
-        <div className="p-4 bg-gray-50 rounded-lg shadow-md flex flex-col sm:flex-row justify-between items-center">
-          <div className="text-center sm:text-left">
-            <h3 className="font-medium text-lg text-[#090D1A]">
-              Upcoming Vaccine
-            </h3>
-            {/* IIFE to find and display the nearest upcoming vaccine */}
-            <p className="text-sm text-gray-600">Not registered</p>
+        {/* Upcoming Vaccine(s) Card */}
+        <div className="p-5 bg-[#0A0F1E]/70 border border-gray-700/80 rounded-xl shadow-lg flex flex-col justify-between min-h-[120px]">
+          <div>
+            <h4 className="font-semibold text-lg text-purple-400 mb-1.5">
+              Next Due Vaccine(s)
+            </h4>
+            {/* Aquí iría la lógica para mostrar la próxima vacuna */}
+            <p className="text-sm text-gray-300" id="next-vaccine-info">
+              Calculating...
+            </p>
           </div>
-          <button className="mt-2 sm:mt-0 px-4 py-2 bg-red-800 text-[#FFECAB] rounded-2xl">
-            Schedule Appointment
-          </button>
+          <Button variant="outline" size="sm" disabled className="mt-3 self-start border-purple-600 text-purple-400 hover:bg-purple-700/30 hover:text-purple-300 cursor-not-allowed">
+            View Vaccine Schedule
+          </Button>
         </div>
       </div>
 

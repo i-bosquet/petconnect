@@ -1,7 +1,7 @@
 import React, { JSX } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
+ LayoutDashboard,
   User,
   Users,
   LogOut,
@@ -9,10 +9,12 @@ import {
   Building,
   PawPrint,
   ClipboardList,
-  ScrollText  
+  ScrollText,
+  X as CloseIcon 
 } from 'lucide-react';
 import { ClinicStaffProfile } from '@/types/apiTypes';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from '@/components/ui/button';
 
 interface ClinicSidebarProps {
     closeMobileMenu: () => void;
@@ -51,13 +53,13 @@ const ClinicSidebar = ({
         { id: 'record_management', label: 'Medical Records', icon: ClipboardList, path: '/clinic/records', vetOrAdmin: true },
         { id: 'certificate_management', label: 'Certificates', icon: ScrollText, path: '/clinic/certificates', vetOrAdmin: true },
         { id: 'staff_management', label: 'Staff Management', icon: Users, path: '/clinic/staff', adminOnly: true },
-        { id: 'settings', label: 'Clinic Info', icon: Building, path: '/clinic/settings' },
+        { id: 'settings', label: 'Clinic Info', icon: Building, path: '/clinic/settings',  vetOrAdmin: true },
     ];
 
     const clinicName = currentStaff.clinicName || "Clinic Portal";
 
     return (
-        <div className="h-screen w-72 bg-[#FFECAB] text-[#090D1A] p-4 flex flex-col shadow-xl">
+        <div className="h-full w-full bg-[#FFECAB] text-[#090D1A] p-4 flex flex-col shadow-xl">
             {/* Logo and close button */}
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#090D1A]/20">
                 <Link to="/clinic/dashboard" className="flex items-center gap-2" onClick={closeMobileMenu}>
@@ -73,10 +75,18 @@ const ClinicSidebar = ({
                         </h4>
                     </div>
                 </Link>
+                 <Button 
+                    size="icon"
+                    onClick={closeMobileMenu}
+                    className="lg:hidden bg-transparent font-bold text-[#090D1A] hover:text-[#FFECAB] hover:bg-[#090D1A] cursor-pointer" 
+                    aria-label="Close navigation menu"
+                >
+                    <CloseIcon  size={24} />
+                </Button>
             </div>
 
             {/* Navigation Items */}
-            <nav className="space-y-1.5 flex-grow">
+            <nav className="space-y-1.5 flex-grow custom-scrollbar">
                 {menuItems.map((item) => {
                     if (item.adminOnly && !currentStaff.roles.includes('ADMIN')) {
                         return null;
@@ -103,9 +113,9 @@ const ClinicSidebar = ({
 
             {/* User info and logout */}
             <div className="mt-auto pt-4 border-t border-[#090D1A]/20">
-                 <div className="group relative p-3 rounded-lg hover:bg-[#090D1A]/5 transition-colors cursor-pointer" onClick={onOpenProfileModal}> 
+                 <div className="group relative p-3 rounded-lg hover:bg-[#090D1A]/10 transition-colors cursor-pointer" onClick={onOpenProfileModal}> 
                      <div className="flex items-center gap-3 mb-1">
-                         <div className="w-10 h-10 rounded-full bg-gray-300/50 flex items-center justify-center overflow-hidden border-2 border-[#090D1A]/20">
+                         <div className="w-10 h-10 rounded-full bg-gray-300/70 flex items-center justify-center overflow-hidden border-2 border-[#090D1A]/50">
                              {currentStaff.avatar ? (
                                 <img src={currentStaff.avatar} alt="Staff Avatar" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}/>
                             ) : (
@@ -133,13 +143,13 @@ const ClinicSidebar = ({
                 </div>
 
                 <button
-                    onClick={handleLogout}
-                    className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 bg-red-800/20 text-[#090D1A]  font-medium rounded-lg hover:bg-red-700 hover:text-[#FFECAB] transition-colors cursor-pointer"
+                    onClick={() => { handleLogout(); closeMobileMenu(); }} 
+                    className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 bg-cyan-800 text-[#FFECAB]  font-medium rounded-lg hover:bg-red-900 hover:text-[#FFECAB] transition-colors cursor-pointer"
                 >
                     <LogOut size={16} />
                     <span>Logout</span>
                 </button>
-                 <p className="mt-3 text-center text-xs text-[#090D1A]/60">Version 1.0.0</p>
+                 <p className="mt-3 text-center text-xs text-[#090D1A]/80">Version 1.0.0</p>
             </div>
         </div>
     );
