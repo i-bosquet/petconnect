@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -96,15 +96,31 @@ public class GlobalExceptionHandler {
      * Handles Authentication exceptions (Bad Credentials, User Not Found during login).
      * Returns 401 Unauthorized with a standardized error body format.
      */
-    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class, AuthenticationException.class})
+    @ExceptionHandler({
+            BadCredentialsException.class,
+            UsernameNotFoundException.class,
+            DisabledException.class,
+            LockedException.class,
+            AccountExpiredException.class,
+            CredentialsExpiredException.class,
+            AuthenticationException.class
+    })
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
-        String message = "Invalid credentials or user could not be authenticated.";
-        if (ex instanceof BadCredentialsException) {
-            message = "Invalid username or password provided.";
-        } else if (ex instanceof UsernameNotFoundException) {
-            message = "User account not found for the provided identifier.";
+        String message;
+        switch (ex) {
+            case BadCredentialsException ignored -> message = "Invalid username or password provided.";
+            case UsernameNotFoundException ignored ->
+                    message = "User account not found for the provided identifier.";
+            case DisabledException ignored -> message = ex.getMessage();
+            case LockedException ignored -> message = ex.getMessage();
+            case AccountExpiredException ignored -> message = ex.getMessage();
+            case CredentialsExpiredException ignored -> message = ex.getMessage();
+            default -> {
+                message = "Invalid credentials or user could not be authenticated.";
+                log.warn("Unhandled AuthenticationException type: {} - Message: {}", ex.getClass().getSimpleName(), ex.getMessage());
+            }
         }
         Map<String, Object> body = createErrorBody(HttpStatus.UNAUTHORIZED, "Authentication Failed", message);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);

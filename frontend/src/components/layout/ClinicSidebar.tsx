@@ -15,6 +15,7 @@ import {
 import { ClinicStaffProfile } from '@/types/apiTypes';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from '@/components/ui/button';
+import logoImageL from '@/assets/images/SF-Logo1-L.png';
 
 interface ClinicSidebarProps {
     closeMobileMenu: () => void;
@@ -64,13 +65,13 @@ const ClinicSidebar = ({
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#090D1A]/20">
                 <Link to="/clinic/dashboard" className="flex items-center gap-2" onClick={closeMobileMenu}>
                     <img
-                        src="/src/assets/images/SF-Logo1-L.png"
+                        src={logoImageL}
                         alt="PetConnect"
                         className="w-10 h-10"
                     />
                     <div>
                         <h2 className="text-xl font-bold block text-[#090D1A]">PetConnect</h2>
-                        <h4 className="font-semibold text-sm block text-cyan-800 truncate" title={clinicName}>
+                        <h4 className="font-semibold text-sm block text-cyan-800" title={clinicName}>
                             {clinicName}
                         </h4>
                     </div>

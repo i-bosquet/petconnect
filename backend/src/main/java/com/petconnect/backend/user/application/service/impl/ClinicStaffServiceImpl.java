@@ -198,6 +198,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
             throw new IllegalStateException("Staff member with id " + staffId + " is already active.");
         }
         staffToActivate.setActive(true);
+        staffToActivate.setEnabled(true);
         ClinicStaff updatedStaff = clinicStaffRepository.save(staffToActivate);
         log.info("Admin {} activated staff member: {}", activatingAdminId, updatedStaff.getUsername());
         return userMapper.toClinicStaffProfileDto(updatedStaff);
@@ -212,7 +213,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         ClinicStaff staffToDeactivate = entityFinderHelper.findClinicStaffOrFail(staffId, "deactivate");
         authorizationHelper.verifyAdminActionOnStaff(deactivatingAdminId, staffToDeactivate, "deactivate");
 
-        if (!staffToDeactivate.isActive()) {
+        if (!staffToDeactivate.isActive() && !staffToDeactivate.isEnabled()) {
             throw new IllegalStateException("Staff member with id " + staffId + " is already inactive.");
         }
 
@@ -220,6 +221,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
             throw new IllegalArgumentException("Admin cannot deactivate their own account.");
         }
         staffToDeactivate.setActive(false);
+        staffToDeactivate.setEnabled(false);
         ClinicStaff updatedStaff = clinicStaffRepository.save(staffToDeactivate);
         log.info("Admin {} deactivated staff member: {}", deactivatingAdminId, updatedStaff.getUsername());
         return userMapper.toClinicStaffProfileDto(updatedStaff);

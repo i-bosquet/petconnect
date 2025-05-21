@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/tooltip"; 
 import ClinicSearchModal from "@/components/clinic/modals/ClinicSearchModal"; 
 import Footer from "@/components/layout/Footer";
+import logoImageD from '@/assets/images/SF-Logo1-D.png'; 
 
 /**
  * LandingPage - The main entry point and public face of the PetConnect application
@@ -52,7 +53,7 @@ const LandingPage = (): JSX.Element => {
         {/* Logo and title */}
         <div className="mb-8 flex flex-col items-center">
           <img
-            src="/src/assets/images/SF-Logo1-D.png"
+            src={logoImageD} 
             alt="PetConnect Logo"
             className="w-24 h-24 sm:w-32 sm:h-32"
           />

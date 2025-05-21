@@ -17,9 +17,7 @@ import com.petconnect.backend.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.InternalAuthenticationServiceException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -130,6 +128,23 @@ public class AuthServiceImpl implements AuthService{
         if (!passwordEncoder.matches(password, userDetails.getPassword())) {
             log.warn("Incorrect password attempt for user: {}", username);
             throw new BadCredentialsException("Incorrect Password");
+        }
+
+        if (!userDetails.isEnabled()) {
+            log.warn("User account {} is disabled.", username);
+            throw new DisabledException("User account is disabled.");
+        }
+        if (!userDetails.isAccountNonLocked()) {
+            log.warn("User account {} is locked.", username);
+            throw new LockedException("User account is locked.");
+        }
+        if (!userDetails.isAccountNonExpired()) {
+            log.warn("User account {} has expired.", username);
+            throw new AccountExpiredException("User account has expired.");
+        }
+        if (!userDetails.isCredentialsNonExpired()) {
+            log.warn("User credentials for {} have expired.", username);
+            throw new CredentialsExpiredException("User credentials have expired.");
         }
 
         UserEntity userEntity = userRepository.findByUsername(username)

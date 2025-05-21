@@ -77,6 +77,13 @@ public class UserServiceImpl implements UserService {
 
         log.debug("User found: {}. Roles loaded: {}", userEntity.getUsername(), userEntity.getRoles().size());
 
+        boolean effectivelyEnabled = userEntity.isEnabled();
+
+        if (userEntity instanceof ClinicStaff staffMember) {
+            effectivelyEnabled = staffMember.isActive();
+            log.debug("User is ClinicStaff, using isActive status: {}", effectivelyEnabled);
+        }
+
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
 
         userEntity.getRoles().forEach(role -> {
@@ -93,7 +100,7 @@ public class UserServiceImpl implements UserService {
 
         return new User(userEntity.getUsername(),
                 userEntity.getPassword(),
-                userEntity.isEnabled(),
+                effectivelyEnabled,
                 userEntity.isAccountNonExpired(),
                 userEntity.isCredentialsNonExpired(),
                 userEntity.isAccountNonLocked(),
@@ -150,7 +157,8 @@ public class UserServiceImpl implements UserService {
                 Clinic requesterClinic = requesterStaff.getClinic();
                 Clinic targetClinic = targetStaff.getClinic();
                 if (requesterClinic != null && targetClinic != null && requesterClinic.getId().equals(targetClinic.getId())) {
-                    log.debug("Admin {} accessing profile of staff {} from same clinic {}", requester.getUsername(), targetUserOpt.getUsername(), requesterClinic.getId());
+                    log.debug("Admin {} accessing profile of staff {} from same clinic {}",
+                            requester.getUsername(), targetUserOpt.getUsername(), requesterClinic.getId());
                     return Optional.of(userMapper.mapToBaseProfileDTO(targetUserOpt));
                 }
             }
@@ -185,7 +193,8 @@ public class UserServiceImpl implements UserService {
                 Clinic requesterClinic = requesterStaff.getClinic();
                 Clinic targetClinic = targetStaff.getClinic();
                 if (requesterClinic != null && targetClinic != null && requesterClinic.getId().equals(targetClinic.getId())) {
-                    log.debug("Admin {} accessing profile of staff {} (email {}) from same clinic {}", requester.getUsername(), targetUser.getUsername(), email, requesterClinic.getId());
+                    log.debug("Admin {} accessing profile of staff {} (email {}) from same clinic {}",
+                            requester.getUsername(), targetUser.getUsername(), email, requesterClinic.getId());
                     return Optional.of(userMapper.mapToBaseProfileDTO(targetUser));
                 }
             }
@@ -219,7 +228,8 @@ public class UserServiceImpl implements UserService {
                 Clinic requesterClinic = requesterStaff.getClinic();
                 Clinic targetClinic = targetStaff.getClinic();
                 if (requesterClinic != null && targetClinic != null && requesterClinic.getId().equals(targetClinic.getId())) {
-                    log.debug("Admin {} accessing profile of staff {} (username {}) from same clinic {}", requester.getUsername(), targetUser.getUsername(), username, requesterClinic.getId());
+                    log.debug("Admin {} accessing profile of staff {} (username {}) from same clinic {}",
+                            requester.getUsername(), targetUser.getUsername(), username, requesterClinic.getId());
                     return Optional.of(userMapper.mapToBaseProfileDTO(targetUser));
                 }
             }
@@ -306,7 +316,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @PreAuthorize("hasAnyRole('ADMIN', 'VET')")
     public ClinicStaffProfileUpdateResponseDto  updateCurrentClinicStaffProfile(
-            UserProfileUpdateDto updateDTO, // Este DTO solo tiene username para staff
+            UserProfileUpdateDto updateDTO,
             @Nullable MultipartFile imageFile) throws IOException {
         UserEntity currentUser = userServiceHelper.getAuthenticatedUserEntity();
         if (!(currentUser instanceof ClinicStaff staff)) {
