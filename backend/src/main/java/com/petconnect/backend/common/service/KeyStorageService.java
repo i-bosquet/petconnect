@@ -1,6 +1,7 @@
 package com.petconnect.backend.common.service;
 
 import org.springframework.web.multipart.MultipartFile;
+import java.io.InputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -26,13 +27,6 @@ public interface KeyStorageService {
     String storePublicKey(MultipartFile file, String subDirectory, String desiredFilename) throws IOException;
 
     /**
-     * Deletes a key file specified by its relative path.
-     *
-     * @param relativePath The relative path of the key file to delete, as stored in the database.
-     */
-    void deleteKey(String relativePath);
-
-    /**
      * Stores an uploaded encrypted private key file within a specified subdirectory
      * of the base key storage path. Generates a secure filename based on the desired filename base
      * and validates the file type before storage.
@@ -47,6 +41,31 @@ public interface KeyStorageService {
      * @throws IllegalArgumentException If the file is invalid (null, empty, unsupported type).
      */
     String storeEncryptedPrivateKey(MultipartFile file, String subDirectory, String desiredFilenameBase) throws IOException;
+
+    /**
+     * Deletes a key file specified by its relative path.
+     *
+     * @param relativePath The relative path of the key file to delete, as stored in the database.
+     */
+    void deleteKey(String relativePath);
+
+    /**
+     * Retrieves the content of a public key file as an InputStream.
+     *
+     * @param publicKeyS3Key The S3 key (or relative path for dev) of the public key file.
+     * @return An InputStream containing the public key content.
+     * @throws IOException If the key cannot be found or read.
+     */
+    InputStream getPublicKeyContent(String publicKeyS3Key) throws IOException;
+
+    /**
+     * Retrieves the content of an encrypted private key file as an InputStream.
+     *
+     * @param privateKeyS3Key The S3 key (or relative path for dev) of the encrypted private key file.
+     * @return An InputStream containing the encrypted private key content.
+     * @throws IOException If the key cannot be found or read.
+     */
+    InputStream getPrivateKeyContent(String privateKeyS3Key) throws IOException;
 
     /**
      * Gets the absolute path for a given relative public key path.

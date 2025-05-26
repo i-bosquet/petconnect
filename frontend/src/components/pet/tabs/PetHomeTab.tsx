@@ -11,6 +11,7 @@ import VetSelectionModal from '@/components/pet/modals/VetSelectionModal';
 import VetDetailModal from '@/components/pet/modals/VetDetailModal'; 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 
 interface PetHomeTabProps {
@@ -109,10 +110,10 @@ const PetHomeTab = ({ pet, onPetAssociationChange }: PetHomeTabProps): JSX.Eleme
                                 <li key={vet.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-800/70 rounded-lg hover:bg-gray-700/90 gap-2">
                                     <div className="flex items-center gap-3 flex-grow">
                                         <img 
-                                            src={vet.avatar || '/src/assets/images/avatars/users/default_avatar.png'} 
+                                            src={vet.avatar || defaultAvatar} 
                                             alt={`${vet.name} ${vet.surname}`} 
                                             className="w-10 h-10 rounded-full object-cover border border-cyan-700"
-                                            onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}
+                                            onError={(e) => (e.currentTarget.src = defaultAvatar)}
                                         />
                                         <div>
                                             <p className="font-semibold text-white">{vet.name} {vet.surname}</p>

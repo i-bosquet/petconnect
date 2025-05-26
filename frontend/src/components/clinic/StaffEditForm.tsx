@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface StaffEditFormProps {
     staffProfile: ClinicStaffProfile;
@@ -203,10 +204,10 @@ const StaffEditForm = ({ staffProfile, onSaveSuccess, onCancel }: StaffEditFormP
                 {/* Avatar and non-editable data section */}
                 <div className="flex items-center gap-4 mb-4 pb-4 border-b border-[#FFECAB]/20">
                     <img
-                        src={staffProfile.avatar || '/src/assets/images/avatars/users/default_avatar.png'}
+                        src={staffProfile.avatar || defaultAvatar}
                         alt={`${staffProfile.username}'s avatar`}
                         className="w-16 h-16 rounded-full object-cover border-2 border-[#FFECAB]/50 bg-gray-700"
-                        onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}
+                        onError={(e) => (e.currentTarget.src = defaultAvatar)}
                     />
                     <div>
                         <p className="font-semibold text-white">{staffProfile.username}</p>

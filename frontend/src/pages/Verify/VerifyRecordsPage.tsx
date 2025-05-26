@@ -6,6 +6,7 @@ import { formatRecordCreatorDisplay, formatDateTime, getRecordTypeDisplay } from
 import { Loader2, AlertCircle, ShieldCheck, Syringe, BookOpenCheck, FileText, Thermometer, AlertTriangle, Info} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Footer from '@/components/layout/Footer';
+import logoImageD from '@/assets/images/SF-Logo1-D.png';
 
 /**
  * VerifyRecordsPage - Displays signed medical records for a pet, accessed via a temporary token.
@@ -68,7 +69,7 @@ const VerifyRecordsPage = (): JSX.Element => {
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#070913] to-[#0c1225] text-white">
             <header className="p-4 sm:p-6 text-center border-b border-[#FFECAB]/20">
                  <Link to="/" className="inline-flex items-center gap-2 mb-2">
-                    <img src="/src/assets/images/SF-Logo1-D.png" alt="PetConnect Logo" className="h-10 w-10" />
+                    <img src={logoImageD} alt="PetConnect Logo" className="h-10 w-10" />
                     <h1 className="text-2xl font-bold text-[#FFECAB]">PetConnect</h1>
                 </Link>
                 <p className="text-sm text-gray-400">Securely shared medical history</p>

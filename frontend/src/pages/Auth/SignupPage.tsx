@@ -2,6 +2,7 @@ import { useState, JSX, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react'; 
 import { registerOwner } from '@/services/authService';
+import logoImage from "@/assets/images/SF-Logo1-D.png";
 
 /**
  * SignupPage Component - Handles new Owner user registration.
@@ -92,7 +93,7 @@ const SignupPage = (): JSX.Element => {
           <div className="text-center lg:text-left mb-8 lg:mb-0 lg:flex-1 lg:pr-12">
             <div className="flex justify-center lg:justify-start mb-3">
               <img
-                src="/src/assets/images/SF-Logo1-D.png"
+                src={logoImage}
                 alt="PetConnect"
                 className="w-16 h-16 lg:w-24 lg:h-24"
               />

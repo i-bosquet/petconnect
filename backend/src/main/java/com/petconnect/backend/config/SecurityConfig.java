@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petconnect.backend.security.JwtUtils;
 import com.petconnect.backend.user.application.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,14 +27,12 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Configures Spring Security settings including filter chain, authentication providers,
@@ -46,18 +46,24 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
 
     private final JwtUtils jwtUtils;
     private final UserService userService;
     private final ObjectMapper objectMapper;
 
-
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_VET = "VET";
     public static final String ROLE_OWNER = "OWNER";
     public static final String MESSAGE = "message";
     public static final String RECORD_ID_URL = "/api/records/{recordId}";
+
+    @Value("${app.frontend.prod.url:#{null}}")
+    private String frontendProdUrl;
+
+    @Value("${app.frontend.dev.url:#{null}}")
+    private String frontendDevUrl;
 
 
     /**
@@ -161,7 +167,26 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        List<String> allowedOriginsList  = new ArrayList<>();
+
+        if (StringUtils.hasText(frontendDevUrl)) {
+            log.debug("CORS: Adding dev frontend URL to allowed origins: {}", frontendDevUrl);
+            allowedOriginsList.add(frontendDevUrl);
+        }
+
+        if (StringUtils.hasText(frontendProdUrl) && !allowedOriginsList.contains(frontendProdUrl)) {
+            log.debug("CORS: Adding prod frontend URL to allowed origins: {}", frontendProdUrl);
+            allowedOriginsList.add(frontendProdUrl);
+        }
+
+        if (allowedOriginsList.isEmpty()) {
+            log.warn("CORS Misconfiguration: No 'allowedOrigins' were determined. " +
+                    "Frontend applications might be unable to connect to the API. " +
+                    "Please verify 'app.frontend.prod.url' and 'app.frontend.dev.url' in your properties files.");
+        }
+
+        configuration.setAllowedOrigins(allowedOriginsList );
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList(
                 HttpHeaders.AUTHORIZATION,

@@ -4,6 +4,7 @@ import io.micrometer.common.lang.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -27,7 +28,7 @@ public class MvcConfig implements WebMvcConfigurer {
      * Base path (filesystem) where user-uploaded images are stored.
      * Injected from the 'app.external.images.path' property.
      */
-    @Value("${app.external.images.path}")
+    @Value("${app.external.images.path:#{null}}")
     private String externalImagesPath;
 
     /**
@@ -66,7 +67,8 @@ public class MvcConfig implements WebMvcConfigurer {
         }
 
         // --- Handler for Uploaded Images (from Filesystem) ---
-        if (!registry.hasMappingForPattern(UPLOADED_IMAGES_URL_PATTERN)) {
+        if (StringUtils.hasText(externalImagesPath)) {
+            if (!registry.hasMappingForPattern(UPLOADED_IMAGES_URL_PATTERN)) {
             // Resolve and normalize the absolute path on the filesystem
             Path uploadDir = Paths.get(externalImagesPath).toAbsolutePath().normalize();
             // Convert a path to a resource location URI format
@@ -81,6 +83,9 @@ public class MvcConfig implements WebMvcConfigurer {
                     UPLOADED_IMAGES_URL_PATTERN, uploadLocationUri);
             registry.addResourceHandler(UPLOADED_IMAGES_URL_PATTERN) // Requests starting with /storage/
                     .addResourceLocations(uploadLocationUri);
+            }
+        } else {
+            log.info("(Profile without local image path) Skipping configuration for filesystem-based uploaded image handler for pattern '{}'. Images expected from S3/CDN in this profile.", UPLOADED_IMAGES_URL_PATTERN);
         }
     }
 }

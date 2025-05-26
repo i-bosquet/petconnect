@@ -237,19 +237,20 @@ const PetCertificatesTab = ({ pet }: { pet: PetProfileDto }): JSX.Element => {
                             const validityInfo = getAhcValidityInfo(cert.createdAt);
                             return (
                                 <div key={cert.id} className={`bg-gray-800/60 p-3 sm:p-4 rounded-lg border hover:border-cyan-600/50 ${validityInfo.entryEuExpiry ? 'border-red-700/50 opacity-70' : 'border-gray-700'}`}>
-                                    <div className="flex flex-col sm:flex-row justify-between items-start">
-                                        <div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-1.5 justify-between items-start">
                                             <h4 className="font-semibold text-base text-white mb-0.5 flex items-center gap-1.5">
                                                 <ShieldCheck size={16} className={
                                                     validityInfo.overallStatus === 'VALID_FOR_TRAVEL' ? "text-green-400" :
                                                     validityInfo.overallStatus === 'VALID_FOR_ENTRY' ? "text-yellow-400" :
                                                     "text-red-400"
                                                 }/>
-                                                Certificate No: {cert.certificateNumber}
+                                               <span>Certificate No: {cert.certificateNumber}</span> 
+                                                </h4>
+                                            <div className="mt-1 sm:mt-0 sm:ml-2">
                                                 {validityInfo.overallStatus === 'VALID_FOR_TRAVEL' && <Badge className="ml-2 text-xs bg-green-600">Active for EU Travel</Badge>}
                                                 {validityInfo.overallStatus === 'VALID_FOR_ENTRY' && <Badge variant="outline" className="ml-2 text-xs border-yellow-500 text-yellow-300">Valid for EU Entry Only</Badge>}
                                                 {validityInfo.overallStatus === 'EXPIRED' && <Badge variant="destructive" className="ml-2 text-xs">Expired</Badge>}
-                                            </h4>
+                                            
                                             <p className="text-xs text-amber-400 mt-1">{validityInfo.statusMessage}</p> 
                                             <p className="text-xs text-gray-400">Issued: {formatDateTime(cert.createdAt)}</p>
                                             <p className="text-xs text-gray-400">

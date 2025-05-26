@@ -9,6 +9,7 @@ import {  UserProfile,
     ClinicStaffProfileUpdateResponseDto} from '@/types/apiTypes'; 
 import { updateCurrentOwnerProfile, updateCurrentClinicStaffProfile } from '@/services/userService'; 
 import { Button } from "@/components/ui/button";
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface ProfileEditFormProps {
     userProfile: UserProfile; // The current profile data
@@ -156,7 +157,7 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
 
 
     // Determine image to display (preview or existing avatar)
-    const displayImage = previewUrl || '/src/assets/images/avatars/users/default_avatar.png';
+    const displayImage = previewUrl || defaultAvatar;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -167,7 +168,7 @@ const ProfileEditForm = ({ userProfile, onSaveSuccess, onCancel }: ProfileEditFo
                          src={displayImage}
                          alt="Avatar Preview"
                          className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-[#FFECAB]/60 bg-gray-700"
-                         onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}
+                         onError={(e) => (e.currentTarget.src = defaultAvatar)}
                      />
                      <button
                          type="button"

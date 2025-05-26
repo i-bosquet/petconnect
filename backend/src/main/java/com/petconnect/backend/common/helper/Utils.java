@@ -1,7 +1,10 @@
 package com.petconnect.backend.common.helper;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -15,6 +18,8 @@ import java.util.function.Supplier;
  */
 @Slf4j
 public class Utils {
+
+    private static final List<String> ALLOWED_KEY_EXTENSIONS = List.of(".pem", ".crt");
 
     /**
      * Private constructor to prevent instantiation.
@@ -82,5 +87,43 @@ public class Utils {
             log.debug("Skipping field '{}': Effective value '{}' is the same as current '{}'.", fieldName, effectiveSourceValue, currentValue);
             return false;
         }
+    }
+
+    /**
+     * Validates the MIME type (by extension) of an uploaded key file.
+     *
+     * @param file The MultipartFile representing the uploaded key.
+     * @throws IllegalArgumentException if the file's extension is not in the allowed list.
+     */
+    public static void validateKeyFileType(MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf('.')).toLowerCase();
+        }
+        if (!ALLOWED_KEY_EXTENSIONS.contains(extension)) {
+            log.error("Invalid key file extension: '{}'. Allowed extensions: {}", extension, ALLOWED_KEY_EXTENSIONS);
+            throw new IllegalArgumentException("Invalid key file type. Please upload a .pem or .crt file. Found: " + extension);
+        }
+    }
+
+    /**
+     * Generates a final filename for a key file, ensuring a valid extension (.pem or .crt).
+     *
+     * @param file The uploaded MultipartFile.
+     * @param desiredFilenameBase The base name for the file, without extension.
+     * @return The final filename including a validated extension (e.g., "mykey.pem").
+     */
+    public static String generateFinalFilenameForKey(MultipartFile file, String desiredFilenameBase) {
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        String fileExtension = "";
+        int extensionIndex = originalFilename.lastIndexOf('.');
+        if (extensionIndex > 0) {
+            fileExtension = originalFilename.substring(extensionIndex).toLowerCase();
+        }
+        if (!ALLOWED_KEY_EXTENSIONS.contains(fileExtension)) {
+            fileExtension = ".pem"; // Default to .pem if extension is not allowed or missing
+        }
+        return StringUtils.cleanPath(desiredFilenameBase) + fileExtension;
     }
 }

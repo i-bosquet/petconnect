@@ -2,6 +2,7 @@ import { JSX } from 'react';
 import Modal from '@/components/common/Modal';
 import { VetSummaryDto } from '@/types/apiTypes';
 import { Mail, Phone, Building, MapPin, Globe } from 'lucide-react';
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface VetDetailModalProps {
     isOpen: boolean;
@@ -32,10 +33,10 @@ const VetDetailModal = ({ isOpen, onClose, vet }: VetDetailModalProps): JSX.Elem
                 <div className="pb-4 border-b border-[#FFECAB]/20">
                     <div className="flex items-center gap-4 mb-3">
                         <img
-                            src={vet.avatar || '/src/assets/images/avatars/users/default_avatar.png'}
+                            src={vet.avatar || defaultAvatar}
                             alt={`Dr. ${vet.name} ${vet.surname}`}
                             className="w-20 h-20 rounded-full object-cover border-2 border-cyan-500"
-                            onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}
+                            onError={(e) => (e.currentTarget.src = defaultAvatar)}
                         />
                         <div>
                             <h3 className="text-xl font-semibold text-white">Dr. {vet.name} {vet.surname}</h3>

@@ -1,7 +1,7 @@
 import React, { JSX } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
- LayoutDashboard,
+  LayoutDashboard,
   User,
   Users,
   LogOut,
@@ -16,6 +16,7 @@ import { ClinicStaffProfile } from '@/types/apiTypes';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from '@/components/ui/button';
 import logoImageL from '@/assets/images/SF-Logo1-L.png';
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface ClinicSidebarProps {
     closeMobileMenu: () => void;
@@ -118,7 +119,7 @@ const ClinicSidebar = ({
                      <div className="flex items-center gap-3 mb-1">
                          <div className="w-10 h-10 rounded-full bg-gray-300/70 flex items-center justify-center overflow-hidden border-2 border-[#090D1A]/50">
                              {currentStaff.avatar ? (
-                                <img src={currentStaff.avatar} alt="Staff Avatar" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}/>
+                                <img src={currentStaff.avatar} alt="Staff Avatar" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = defaultAvatar)}/>
                             ) : (
                                 <User size={22} className="text-[#090D1A]/70" />
                             )}

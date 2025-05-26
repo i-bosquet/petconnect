@@ -22,8 +22,8 @@ interface ShowTempAccessModalProps {
  */
 const ShowTempAccessModal = ({ isOpen, onClose, accessToken, petName }: ShowTempAccessModalProps): JSX.Element | null => {
     const [copied, setCopied] = useState(false);
-    const qrValue = accessToken; 
     const shareableLink = `${window.location.origin}/verify-pet-records?token=${accessToken}`; 
+    const qrValue = shareableLink; 
 
     const handleCopyToClipboard = async () => {
         try {

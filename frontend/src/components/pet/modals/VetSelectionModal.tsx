@@ -5,6 +5,7 @@ import { getVetsByClinicId } from '@/services/petService';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckSquare, AlertCircle } from 'lucide-react';
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface VetSelectionModalProps {
     isOpen: boolean;
@@ -70,7 +71,7 @@ const VetSelectionModal = ({ isOpen, onClose, clinic, onVetSelected, isLoading: 
                         <li key={vet.id} className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg hover:bg-gray-600/70">
                             <div className="flex items-center gap-3">
                                 <img
-                                    src={vet.avatar || '/src/assets/images/avatars/users/default_avatar.png'}
+                                    src={vet.avatar || defaultAvatar}
                                     alt={`Dr. ${vet.name} ${vet.surname}`}
                                     className="w-10 h-10 rounded-full object-cover border border-cyan-600"
                                 />

@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, JSX, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Bell, User, ChevronDown, UserCog, LogOut, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; 
-import ProfileModal from '../profile/ProfileModal'; 
+import ProfileModal from '@/components/profile/ProfileModal'; 
 import { PetProfileDto } from '@/types/apiTypes';
+import logoImageD from '@/assets/images/SF-Logo1-D.png';
 
 /**
  * Represents the basic user information needed for the TopBar.
@@ -144,7 +145,7 @@ const TopBar = ({ selectedPetForChat }: TopBarProps): JSX.Element => {
             <header className="flex justify-between items-center">
                 {/* Logo/Brand */}
                 <Link  to={homePath} className="flex items-center gap-2 ">
-                    <img src="/src/assets/images/SF-Logo1-D.png" alt="PetConnect Logo" className="h-10 w-10" />
+                    <img src={logoImageD} alt="PetConnect Logo" className="h-10 w-10" />
                     <h1 className="text-2xl font-bold text-[#FFECAB]">PetConnect</h1>
                 </Link>
 

@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { PetProfileDto, PetStatus } from '@/types/apiTypes';
 import { Button } from '@/components/ui/button';
 import { Tooltip,TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import defaultAvatar from '@/assets/images/default_pet.png';
 
 interface PetDetailHeaderProps {
     pet: PetProfileDto; 
@@ -50,12 +51,12 @@ const PetDetailHeader = ({pet, onBack, onEdit, onDeactivate, onRequestActivation
           <div className="flex items-center gap-4">
             <img
               src={
-                pet.image || "/src/assets/images/avatars/pets/default_pet.png"
+                pet.image || defaultAvatar
               }
               alt={pet.name}
               className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-[#FFECAB]/50 bg-gray-700"
               onError={(e) =>
-                (e.currentTarget.src = `/src/assets/images/avatars/pets/${pet.specie?.toLowerCase()}.png`)
+                (e.currentTarget.src = defaultAvatar)
               }
             />
             <div className="flex-1 text-center sm:text-left">

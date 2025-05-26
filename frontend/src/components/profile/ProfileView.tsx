@@ -2,6 +2,7 @@ import { JSX } from 'react';
 import { UserProfile, ClinicStaffProfile } from '@/types/apiTypes'; 
 import { Edit, Mail, Phone, Building, UserCheck, KeySquare, Hash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface ProfileViewProps {
     userProfile: UserProfile;
@@ -35,10 +36,10 @@ const ProfileView = ({ userProfile, onEdit }: ProfileViewProps): JSX.Element => 
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-6">
                 <div className="flex-shrink-0">
                     <img
-                        src={userProfile.avatar || '/src/assets/images/avatars/users/default_avatar.png'}
+                        src={userProfile.avatar || defaultAvatar}
                         alt={`${userProfile.username}'s avatar`}
                         className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-[#FFECAB]/60 bg-gray-700"
-                        onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}
+                        onError={(e) => (e.currentTarget.src = defaultAvatar)}
                     />
                 </div>
                 <div className="text-center sm:text-left pt-2">

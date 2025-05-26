@@ -104,10 +104,8 @@ public class PetMapper {
                 recordHelper.findValidCheckupRecord(pet.getId());
                 canRequestAhc = true;
             } catch (MissingRabiesVaccineException | MissingRecentCheckupException e) {
-                canRequestAhc = false;
                 log.debug("Pet {} does not meet AHC prerequisites: {}", pet.getId(), e.getMessage());
             } catch (Exception e) {
-                canRequestAhc = false;
                 log.warn("Unexpected error checking AHC prerequisites for pet {}: {}", pet.getId(), e.getMessage());
             }
         }

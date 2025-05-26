@@ -28,6 +28,7 @@ import {
   deactivateStaffMember,
 } from "@/services/clinicStaffService";
 import { useAuth } from "@/hooks/useAuth";
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 /**
  * StaffManagementPage - Allows Admins to manage clinic staff members.
@@ -290,13 +291,13 @@ const StaffManagementPage = (): JSX.Element => {
                         <img
                           src={
                             staff.avatar ||
-                            "/src/assets/images/avatars/users/default_avatar.png"
+                            defaultAvatar
                           }
                           alt={staff.username}
                           className="w-8 h-8 rounded-full object-cover"
                           onError={(e) =>
                             (e.currentTarget.src =
-                              "/src/assets/images/avatars/users/default_avatar.png")
+                              defaultAvatar)
                           }
                         />
                         <div>

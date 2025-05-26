@@ -6,6 +6,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,10 +24,12 @@ import java.util.UUID;
 /**
  * Implementation of ImageService for storing images in the local filesystem.
  * Uses the base path configured in application properties.
+ * Active when the 'dev' profile is active
  *
  * @author ibosquet
  */
 @Service
+@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class ImageServiceImpl implements ImageService {

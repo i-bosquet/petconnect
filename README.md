@@ -65,13 +65,9 @@ JWT_SECRET_KEY=YOUR_SECURE_JWT_SECRET_KEY_HERE_REPLACE_ME_PLEASE
 # Issuer name for the token (optional, can be your app name)
 JWT_SECRET_GENERATOR=PetConnectApp
 
-# --- Digital Signature Keys (Paths relative to project root) ---
-# Ensure the .pem files exist in the 'keys/' directory.
-# See section '3.1 Generating Signing Keys' if they don't exist.
-VET_KEY_PATH=../keys/vet_private_key.pem
-VET_KEY_PASSWORD=1234 # IMPORTANT: Change this default password!
-CLINIC_KEY_PATH=../keys/clinic_private_key.pem
-CLINIC_KEY_PASSWORD=1234 # IMPORTANT: Change this default password!
+# --- Email Service ---
+GMAIL_USERNAME=your_gmail_address@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password
 ```
 ![sonarqube-token](.github/readme-assets/sonarqube-token.png)
 
@@ -84,32 +80,33 @@ The application uses RSA keys for digital signatures. For the development enviro
 
 - Create the `keys` directory if it doesn't exist:
 ```bash
-mkdir keys
+mkdir -p keys_public/clinics keys_public/vets
+mkdir -p keys_private/clinics keys_private/vets
 ```
 - Generate the Veterinarian's private key (encrypted):
 (You will be prompted for the password defined in VET_KEY_PASSWORD in your .env file - default '1234')
 
 ```bash
 # Replace '1234' if you changed VET_KEY_PASSWORD in .env
-openssl genpkey -algorithm RSA -spi keys/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -spi keys_private/vets/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extract the Veterinarian's public key:
 (You will be prompted for the private key password)
 ```bash
 # Replace '1234' if you changed VET_KEY_PASSWORD in .env
-openssl rsa -pubout -in keys/vet_private_key.pem -spi keys/vet_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/vets/vet_private_key.pem -spi keys_public/vets/vet_public_key.pem -passin pass:1234
 ```
 - Generate the Clinic's private key (encrypted):
 (You will be prompted for the password defined in CLINIC_KEY_PASSWORD in your .env file - default '1234')
 ```bash
 # Replace '1234' if you changed CLINIC_KEY_PASSWORD in .env
-openssl genpkey -algorithm RSA -spi keys/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -spi keys_private/clinics/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extract the Clinic's public key:
 (You will be prompted for the private key password)
 ```bash
 # Replace '1234' if you changed CLINIC_KEY_PASSWORD in .env
-openssl rsa -pubout -in keys/clinic_private_key.pem -spi keys/clinic_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -spi keys_public/clinics/clinic_public_key.pem -passin pass:1234
 ```
 > [!NOTE]
 > On Windows using Git Bash, you might need to prefix the openssl commands with winpty. 

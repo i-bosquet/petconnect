@@ -7,6 +7,7 @@ import {
   ClinicStaffProfile
 } from "@/types/apiTypes";
 import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
+import logoImage from "@/assets/images/SF-Logo1-D.png";
 
 /**
  * Represents the user data stored in session/local storage after successful login.
@@ -162,7 +163,7 @@ const LoginPage = (): JSX.Element => {
         <div className="text-center mx-8 lg:text-left mb-8 lg:mb-0 lg:flex-1 lg:pr-12">
           <div className="flex justify-center lg:justify-start mb-3">
             <img
-              src="/src/assets/images/SF-Logo1-D.png"
+              src={logoImage}
               alt="PetConnect"
               className="w-16 h-16 lg:w-24 lg:h-24"
             />

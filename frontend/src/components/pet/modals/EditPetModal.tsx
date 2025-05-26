@@ -38,6 +38,7 @@ import { updatePetByOwner, getBreedsBySpecie } from "@/services/petService";
 import { useAuth } from "@/hooks/useAuth";
 import { BACKEND_BASE_URL } from "@/config";
 import { TooltipTrigger, TooltipContent, Tooltip } from "@/components/ui/tooltip";
+import defaultAvatar from '@/assets/images/default_pet.png';
 
 interface EditPetModalProps {
   petInitialData: PetProfileDto;
@@ -89,8 +90,7 @@ const EditPetModal = ({
   const displayImage =
     previewImage ||
     petInitialData.image ||
-    `${BACKEND_BASE_URL}${defaultImages[petInitialData.specie]}` ||
-    "/src/assets/images/avatars/pets/default_pet.png";
+    `${BACKEND_BASE_URL}${defaultImages[petInitialData.specie]}` || defaultAvatar;
 
   const [breeds, setBreeds] = useState<BreedDto[]>([]);
   const [breedsLoading, setBreedsLoading] = useState<boolean>(false);

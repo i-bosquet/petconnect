@@ -4,6 +4,7 @@ import { formatDateTime } from '@/utils/formatters';
 import {  Mail, Building, UserCheck, KeySquare, Hash, Calendar, Clock, UserCog, Edit } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import defaultAvatar from '@/assets/images/default_avatar.png';
 
 interface StaffDetailViewProps {
     staffProfile: ClinicStaffProfile;
@@ -39,10 +40,10 @@ const StaffDetailView = ({ staffProfile, onEdit }: StaffDetailViewProps): JSX.El
              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-4 pb-4 border-b border-[#FFECAB]/20">
              <div className="flex-shrink-0">
              <img
-                src={staffProfile.avatar || '/src/assets/images/avatars/users/default_avatar.png'}
+                src={staffProfile.avatar || defaultAvatar}
                 alt={`${staffProfile.username}'s avatar`}
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-[#FFECAB]/60 bg-gray-700"
-                onError={(e) => (e.currentTarget.src = '/src/assets/images/avatars/users/default_avatar.png')}
+                onError={(e) => (e.currentTarget.src = defaultAvatar)}
              />
              </div>
              <div className="text-center sm:text-left flex-grow">

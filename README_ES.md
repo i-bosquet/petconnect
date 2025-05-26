@@ -61,13 +61,9 @@ POSTGRES_PASSWORD=1234 # ¡Cambia esto si quieres una contraseña más segura!
 # Ve a: Account -> My Account -> Security -> Generate Tokens
 SONAR_TOKEN=TU_TOKEN_DE_SONARQUBE_AQUI
 
-# --- Claves de Firma Digital (Rutas relativas a la raíz del proyecto) ---
-# Asegúrate de que los archivos .pem existan en el directorio 'keys/'.
-# Consulta la sección '3.1 Generación de Claves de Firma' si no existen.
-VET_KEY_PATH=../keys/vet_private_key.pem
-VET_KEY_PASSWORD=1234 # IMPORTANTE: ¡Cambia esta contraseña por defecto!
-CLINIC_KEY_PATH=../keys/clinic_private_key.pem
-CLINIC_KEY_PASSWORD=1234 # IMPORTANTE: ¡Cambia esta contraseña por defecto!
+# --- Email Service ---
+GMAIL_USERNAME=your_gmail_address@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password
 ```
 ![sonarqube-token](.github/readme-assets/sonarqube-token.png)
 
@@ -80,32 +76,33 @@ La aplicación utiliza claves RSA para firmas digitales. Para el entorno de desa
 
 - Crea el directorio `keys` si no existe:
 ```bash
-mkdir keys
+mkdir -p keys_public/clinics keys_public/vets
+mkdir -p keys_private/clinics keys_private/vets
 ```
 - Genera la clave privada del Veterinario (encriptada):
   (Se te pedirá la contraseña definida en VET_KEY_PASSWORD en tu archivo .env - por defecto '1234')
-
+- 
 ```bash
 # Reemplaza '1234' si cambiaste VET_KEY_PASSWORD en .env
-openssl genpkey -algorithm RSA -spi keys/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -spi keys_private/vets/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extrae la clave pública del Veterinario:
   (Se te pedirá la contraseña de la clave privada)
 ```bash
 # Reemplaza '1234' si cambiaste VET_KEY_PASSWORD en .env
-openssl rsa -pubout -in keys/vet_private_key.pem -spi keys/vet_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/vets/vet_private_key.pem -spi keys_public/vets/vet_public_key.pem -passin pass:1234
 ```
 - Genera la clave privada de la Clínica (encriptada):
   (Se te pedirá la contraseña definida en CLINIC_KEY_PASSWORD en tu archivo .env - por defecto '1234')
 ```bash
 #  Reemplaza '1234' si cambiaste CLINIC_KEY_PASSWORD en .env
-openssl genpkey -algorithm RSA -spi keys/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -spi keys_private/clinics/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extrae la clave pública de la Clínica:
   (Se te pedirá la contraseña de la clave privada)
 ```bash
 #  Reemplaza '1234' si cambiaste CLINIC_KEY_PASSWORD en .env
-openssl rsa -pubout -in keys/clinic_private_key.pem -spi keys/clinic_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -spi keys_public/clinics/clinic_public_key.pem -passin pass:1234
 ```
 > [!NOTE]
 > En Windows usando Git Bash, podrías necesitar prefijar los comandos openssl con winpty.

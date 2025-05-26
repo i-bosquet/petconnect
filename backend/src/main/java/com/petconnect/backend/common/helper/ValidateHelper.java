@@ -42,7 +42,6 @@ public class ValidateHelper {
             "image/gif"
     );
 
-
     /**
      * Validates that the provided RoleEnum is either VET or ADMIN for clinic staff assignment.
      * @param role The RoleEnum to validate.
@@ -88,36 +87,6 @@ public class ValidateHelper {
         boolean exists = vetRepository.existsByLicenseNumber(licenseNumber);
         if (exists) {
             throw new LicenseNumberAlreadyExistsException(licenseNumber);
-        }
-    }
-
-    /**
-     * Validates a Veterinarian's public key for presence and uniqueness.
-     * Can optionally exclude a specific Vet ID during uniqueness check (for updates).
-     * Requires a read-only transaction.
-     *
-     * @param vetPublicKey The public key to validate.
-     * @param vetIdToExclude The ID of the Vet being updated (null if creating a new Vet).
-     * @throws IllegalArgumentException if the public key is blank/null when required.
-     * @throws VetPublicKeyAlreadyExistsException if a public key is already in use by another Vet.
-     */
-    @Transactional(readOnly = true)
-    public void validateVetPublicKey(String vetPublicKey, Long vetIdToExclude) {
-        if (!StringUtils.hasText(vetPublicKey)) {
-            throw new IllegalArgumentException("Veterinarian public key is required for VET role.");
-        }
-        log.debug("Validating public key uniqueness: key={}, excludingId={}", vetPublicKey, vetIdToExclude);
-        // Check public key uniqueness
-        boolean keyExists;
-        if (vetIdToExclude == null) {
-            keyExists = vetRepository.existsByVetPublicKey(vetPublicKey);
-        } else {
-            keyExists = vetRepository.existsByVetPublicKeyAndIdNot(vetPublicKey, vetIdToExclude);
-        }
-
-        log.debug("Uniqueness check result for public key: {}", keyExists);
-        if (keyExists) {
-            throw new VetPublicKeyAlreadyExistsException();
         }
     }
 
