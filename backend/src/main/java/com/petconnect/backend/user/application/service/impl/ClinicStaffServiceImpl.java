@@ -80,7 +80,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
                 // Create a predictable filename, e.g., vet_<username>_pub
                 String desiredFilenameBase = "vet_" + creationDTO.username() + "_pub";
                 // Save in the "vets" subdirectory
-                savedPublicKeyPath  = keyStorageService.storePublicKey(publicKeyFile, "vets", desiredFilenameBase);
+                savedPublicKeyPath  = keyStorageService.storePublicKey(publicKeyFile, "public_keys/vets", desiredFilenameBase);
                 log.info("Stored public key for new vet {} at path: {}", creationDTO.username(), savedPublicKeyPath );
             } catch (IOException | IllegalArgumentException e) {
                 log.error("Failed to store public key file for vet {}: {}", creationDTO.username(), e.getMessage(), e);
@@ -94,7 +94,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
                 // Create a predictable filename, e.g., vet_<username>_priv
                 String desiredPrivKeyFilenameBase = "vet_" + creationDTO.username() + "_priv";
                 // Save in the "vets" subdirectory
-                savedPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(privateKeyFileEncrypted, "vets", desiredPrivKeyFilenameBase);
+                savedPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(privateKeyFileEncrypted, "private_encrypted_keys/vets", desiredPrivKeyFilenameBase);
                 log.info("Stored encrypted private key for new vet {} at path: {}", creationDTO.username(), savedPrivateKeyPath);
             } catch (IOException | IllegalArgumentException e) {
                 log.error("Failed to store encrypted private key file for vet {}: {}", creationDTO.username(), e.getMessage(), e);
@@ -142,7 +142,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         if (isTargetRoleVet && newPublicKeyFile != null && !newPublicKeyFile.isEmpty()) {
             try {
                 String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_pub";
-                finalNewPublicKeyPath = keyStorageService.storePublicKey(newPublicKeyFile, "vets", desiredFilenameBase);
+                finalNewPublicKeyPath = keyStorageService.storePublicKey(newPublicKeyFile, "public_keys/vets", desiredFilenameBase);
                 publicKeyChanged = !Objects.equals(oldPublicKeyPath, finalNewPublicKeyPath);
             } catch (IOException | IllegalArgumentException e) {
                 log.error("Failed to store new public key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
@@ -153,7 +153,7 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         if (isTargetRoleVet && newPrivateKeyFile != null && !newPrivateKeyFile.isEmpty()) {
             try {
                 String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_priv";
-                finalNewPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(newPrivateKeyFile, "vets", desiredFilenameBase);
+                finalNewPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(newPrivateKeyFile, "private_encrypted_keys/vets", desiredFilenameBase);
                 privateKeyChanged = !Objects.equals(oldPrivateKeyPath, finalNewPrivateKeyPath);
             } catch (IOException | IllegalArgumentException e) {
                 log.error("Failed to store new encrypted private key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
