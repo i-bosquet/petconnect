@@ -21,6 +21,7 @@ import com.petconnect.backend.user.domain.model.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -59,11 +60,30 @@ public class PetServiceImpl implements PetService {
     private final BreedMapper breedMapper;
     private final EntityFinderHelper entityFinderHelper;
     private final AuthorizationHelper authorizationHelper;
-    private final PetEventPublisherPort petEventPublisher;
     private final ImageService imageService;
 
     @Value("${app.default.pet.image.path:images/avatars/pets/}")
     private String defaultPetImagePathBase;
+
+    private PetEventPublisherPort petEventPublisher;
+
+    /**
+     * Sets the PetEventPublisherPort instance to be used by the service. This method is
+     * marked as optional, and the absence of a PetEventPublisherPort may disable event
+     * publishing functionality.
+     *
+     * @param petEventPublisher the PetEventPublisherPort instance to be injected. If null,
+     * logging will indicate skipped event publishing.
+     */
+    @Autowired(required = false)
+    public void setPetEventPublisher(PetEventPublisherPort petEventPublisher) {
+        this.petEventPublisher = petEventPublisher;
+        if (this.petEventPublisher != null) {
+            log.info("PetEventPublisherPort was successfully injected into PetServiceImpl.");
+        } else {
+            log.warn("PetEventPublisherPort was NOT injected into PetServiceImpl (likely due to profile configuration). Event publishing will be skipped.");
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -133,19 +153,22 @@ public class PetServiceImpl implements PetService {
         petRepository.save(pet);
         log.info("Owner {} associated PENDING pet {} with clinic {} for activation.", ownerId, petId, clinicId);
 
-        try {
-            PetActivationRequestedEvent event = new PetActivationRequestedEvent(
-                    petId,
-                    ownerId,
-                    clinicId,
-                    LocalDateTime.now()
-            );
-            petEventPublisher.publishPetActivationRequested(event);
-        } catch (Exception e) {
-            log.error("Failed to publish PetActivationRequestedEvent for petId {} after association.", petId, e);
+        if (this.petEventPublisher != null) {
+            try {
+                PetActivationRequestedEvent event = new PetActivationRequestedEvent(
+                        petId,
+                        ownerId,
+                        clinicId,
+                        LocalDateTime.now()
+                );
+                this.petEventPublisher.publishPetActivationRequested(event);
+                log.info("Owner {} associated PENDING pet {} with clinic {}. Event published (attempted).", ownerId, petId, clinicId);
+            } catch (Exception e) {
+                log.error("Failed to publish PetActivationRequestedEvent for petId {} after association.", petId, e);
+            }
+        } else {
+            log.warn("PetEventPublisherPort not available. Skipping PetActivationRequestedEvent for petId {}.", petId);
         }
-
-        log.info("Owner {} associated PENDING pet {} with clinic {}. Event published (attempted).", ownerId, petId, clinicId);
     }
 
     /**
@@ -176,16 +199,21 @@ public class PetServiceImpl implements PetService {
 
         Pet activatedPet = petRepository.save(petToActivate);
 
-        try {
-            PetActivatedEvent event = new PetActivatedEvent(
-                    petId,
-                    activatedPet.getOwner().getId(),
-                    staffId,
-                    LocalDateTime.now()
-            );
-            petEventPublisher.publishPetActivated(event);
-        } catch (Exception e) {
-            log.error("Failed to publish PetActivatedEvent for petId {} after activation.", petId, e);
+        if (this.petEventPublisher != null) { 
+            try {
+                PetActivatedEvent event = new PetActivatedEvent(
+                        petId,
+                        activatedPet.getOwner().getId(),
+                        staffId,
+                        LocalDateTime.now()
+                );
+                this.petEventPublisher.publishPetActivated(event);
+                log.info("PetActivatedEvent published (attempted) for petId {}.", petId);
+            } catch (Exception e) {
+                log.error("Failed to publish PetActivatedEvent for petId {} after activation.", petId, e);
+            }
+        } else {
+            log.warn("PetEventPublisherPort not available. Skipping PetActivatedEvent for petId {}.", petId);
         }
 
         log.info("Vet {} activated Pet {}. Assigned Vet: {}", staffId, petId, assignedVet.getId());
@@ -223,70 +251,27 @@ public class PetServiceImpl implements PetService {
      */
     @Override
     @Transactional
-    public PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto, Long ownerId,  @Nullable MultipartFile imageFile ) {
+    public PetProfileDto updatePetByOwner(Long petId, PetOwnerUpdateDto updateDto, Long ownerId, @Nullable MultipartFile imageFile) {
         Pet petToUpdate = findPetByIdAndOwnerOrFail(petId, ownerId);
-        String oldImagePath = petToUpdate.getImage();
-        boolean imageChanged = false;
 
-        if (imageFile != null && !imageFile.isEmpty()) {
-            log.debug("New image file provided for pet update (Pet ID: {})", petId);
-            try {
-                String newImagePath = imageService.storeImage(imageFile, "pets/avatars");
-                log.info("New image stored for pet {}. New path: {}", petId, newImagePath);
-                petToUpdate.setImage(newImagePath);
-                imageChanged = true;
-                if (!Objects.equals(oldImagePath, newImagePath)) {
-                    imageService.deleteImage(oldImagePath);
-                }
-            } catch (IOException | IllegalArgumentException e) {
-                log.error("Failed to store updated image for pet {}. Update failed. Error: {}", petId, e.getMessage());
-                throw new RuntimeException("Failed to process updated image: " + e.getMessage(), e);
-            }
-        }
+        // Handle image update if provided
+        boolean imageChanged = updatePetImage(petToUpdate, imageFile);
 
-        Breed resolvedBreed = petToUpdate.getBreed();
-        if (updateDto.breedId() != null && !Objects.equals(updateDto.breedId(), petToUpdate.getBreed().getId())) {
-            resolvedBreed = resolveBreed(updateDto.breedId(), petToUpdate.getBreed().getSpecie());
-        }
+        // Resolve breed if changed
+        Breed resolvedBreed = resolvePetBreed(petToUpdate, updateDto.breedId());
+
+        // Validate microchip update
         validateMicrochipUpdate(updateDto.microchip(), petToUpdate);
 
+        // Update fields from DTO
         boolean otherFieldsChanged = petMapper.updateFromOwnerDto(updateDto, petToUpdate, resolvedBreed);
-        boolean travelDatesChanged = false;
-        if (updateDto.newEuEntryDate() != null) {
-            LocalDate newEntry = updateDto.newEuEntryDate();
-            if (petToUpdate.getLastEuExitDate() != null && !newEntry.isAfter(petToUpdate.getLastEuExitDate())) {
-                throw new IllegalArgumentException("New EU entry date must be after the last EU exit date.");
-            }
-            if (!newEntry.equals(petToUpdate.getLastEuEntryDate())) {
-                petToUpdate.setLastEuEntryDate(newEntry);
-                travelDatesChanged = true;
-                log.info("Pet {} EU entry date updated to: {}", petId, newEntry);
-            }
-        }
 
-        if (updateDto.newEuExitDate() != null) {
-            LocalDate newExit = updateDto.newEuExitDate();
-            if (petToUpdate.getLastEuEntryDate() == null) {
-                throw new IllegalArgumentException("Cannot set EU exit date without an EU entry date.");
-            }
-            if (!newExit.isAfter(petToUpdate.getLastEuEntryDate())) {
-                throw new IllegalArgumentException("EU exit date must be after the current EU entry date.");
-            }
-            if (!newExit.equals(petToUpdate.getLastEuExitDate())) {
-                petToUpdate.setLastEuExitDate(newExit);
-                travelDatesChanged = true;
-                log.info("Pet {} EU exit date updated to: {}", petId, newExit);
-            }
-        }
+        // Handle EU dates updates
+        updateEuDates(petToUpdate, updateDto);
 
-        Pet updatedPet = petToUpdate;
-        if (imageChanged || otherFieldsChanged) {
-            log.info("Changes detected (image: {}, other: {}), saving Pet {}", imageChanged, otherFieldsChanged, petId);
-            updatedPet = petRepository.save(petToUpdate);
-            log.info("Owner {} successfully updated Pet {}", ownerId, petId);
-        } else {
-            log.info("No effective changes detected for Pet {}, update by owner {} skipped.", petId, ownerId);
-        }
+        // Save changes if needed
+        Pet updatedPet = persistChangesIfNeeded(petToUpdate, imageChanged, otherFieldsChanged, ownerId, petId);
+
         return petMapper.toProfileDto(updatedPet);
     }
 
@@ -644,5 +629,134 @@ public class PetServiceImpl implements PetService {
         pet.setMicrochip(dto.microchip());
         pet.setBreed(resolvedBreed);
         log.debug("Pet {} details (color, gender, birthDate, microchip, breed) updated from activation DTO. Image remains: '{}'", pet.getId(), pet.getImage());
+    }
+
+    /**
+     * Updates the image of a given pet with a new image file.
+     * The method stores the new image, updates the pet's image path,
+     * and deletes the old image if it is replaced.
+     *
+     * @param pet the pet object whose image is to be updated
+     * @param imageFile the new image file to be associated with the pet
+     * @return {@code true} if the image was successfully updated, {@code false} if the provided image file is null or empty
+     * @throws RuntimeException if there is an error during the image processing or storage
+     */
+    private boolean updatePetImage(Pet pet, MultipartFile imageFile) {
+        if (imageFile == null || imageFile.isEmpty()) {
+            return false;
+        }
+
+        String oldImagePath = pet.getImage();
+        try {
+            String newImagePath = imageService.storeImage(imageFile, "pets/avatars");
+            pet.setImage(newImagePath);
+            if (!Objects.equals(oldImagePath, newImagePath)) {
+                imageService.deleteImage(oldImagePath);
+            }
+            log.info("New image stored for pet {}. New path: {}", pet.getId(), newImagePath);
+            return true;
+        } catch (IOException | IllegalArgumentException e) {
+            log.error("Failed to store updated image for pet {}. Error: {}", pet.getId(), e.getMessage());
+            throw new RuntimeException("Failed to process updated image: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Resolves and returns the appropriate breed for the provided pet based on the given breed ID.
+     *
+     * @param pet the pet for which the breed is being resolved
+     * @param newBreedId the ID of the new breed to resolve, or null to keep the current breed
+     * @return the resolved breed; returns the pet's current breed if newBreedId is null
+     *         or matches the current breed's ID
+     */
+    private Breed resolvePetBreed(Pet pet, Long newBreedId) {
+        if (newBreedId == null || Objects.equals(newBreedId, pet.getBreed().getId())) {
+            return pet.getBreed();
+        }
+        return resolveBreed(newBreedId, pet.getBreed().getSpecie());
+    }
+
+    /**
+     * Updates the European entry and exit dates for a given pet based on the provided update data.
+     * Validates and sets the dates if they are present in the update data.
+     *
+     * @param pet the pet object whose European travel dates are to be updated
+     * @param updateDto the data transfer object containing the new European entry and exit dates
+     */
+    private void updateEuDates(Pet pet, PetOwnerUpdateDto updateDto) {
+        if (updateDto.newEuEntryDate() != null) {
+            validateAndSetEuEntryDate(pet, updateDto.newEuEntryDate());
+        }
+
+        if (updateDto.newEuExitDate() != null) {
+            validateAndSetEuExitDate(pet, updateDto.newEuExitDate());
+        }
+    }
+
+    /**
+     * Validates the new EU entry date for the given pet and sets it if valid.
+     * Ensures the new entry date is after the last EU exit date and updates
+     * the pet's last EU entry date if it has changed.
+     *
+     * @param pet the pet whose EU entry date is being validated and updated
+     * @param newEntry the new proposed EU entry date
+     * @throws IllegalArgumentException if the new entry date is not after the last EU exit date
+     */
+    private void validateAndSetEuEntryDate(Pet pet, LocalDate newEntry) {
+        if (pet.getLastEuExitDate() != null && !newEntry.isAfter(pet.getLastEuExitDate())) {
+            throw new IllegalArgumentException("New EU entry date must be after the last EU exit date.");
+        }
+        if (!newEntry.equals(pet.getLastEuEntryDate())) {
+            pet.setLastEuEntryDate(newEntry);
+            log.info("Pet {} EU entry date updated to: {}", pet.getId(), newEntry);
+        }
+    }
+
+    /**
+     * Validates and sets the EU exit date for the specified pet. The method ensures
+     * that the exit date is valid based on the pet's EU entry date and any existing
+     * exit date.
+     *
+     * @param pet the pet whose EU exit date is to be updated; must have a valid
+     *            EU entry date set
+     * @param newExit the new EU exit date to be set; must be after the pet's
+     *                last EU entry date and different from the current EU exit date
+     * @throws IllegalArgumentException if the pet's last EU entry date is null, or
+     *                                  if the new exit date is not after the last EU entry date
+     */
+    private void validateAndSetEuExitDate(Pet pet, LocalDate newExit) {
+        if (pet.getLastEuEntryDate() == null) {
+            throw new IllegalArgumentException("Cannot set EU exit date without an EU entry date.");
+        }
+        if (!newExit.isAfter(pet.getLastEuEntryDate())) {
+            throw new IllegalArgumentException("EU exit date must be after the current EU entry date.");
+        }
+        if (!newExit.equals(pet.getLastEuExitDate())) {
+            pet.setLastEuExitDate(newExit);
+            log.info("Pet {} EU exit date updated to: {}", pet.getId(), newExit);
+        }
+    }
+
+    /**
+     * Persists changes to a Pet entity if any modifications are detected, such as changes to the image or other fields.
+     * Logs the operations and returns the updated or unchanged Pet entity.
+     *
+     * @param pet the Pet entity to be evaluated and possibly persisted if changes are detected
+     * @param imageChanged a boolean indicating whether the Pet's image has been changed
+     * @param otherFieldsChanged a boolean indicating whether any other fields of the Pet have been changed
+     * @param ownerId the unique identifier of the owner attempting to update the Pet
+     * @param petId the unique identifier of the Pet being evaluated
+     * @return the updated Pet entity if changes were detected; otherwise, returns the original Pet
+     */
+    private Pet persistChangesIfNeeded(Pet pet, boolean imageChanged, boolean otherFieldsChanged, Long ownerId, Long petId) {
+        if (imageChanged || otherFieldsChanged) {
+            log.info("Changes detected (image: {}, other: {}), saving Pet {}", imageChanged, otherFieldsChanged, petId);
+            Pet updatedPet = petRepository.save(pet);
+            log.info("Owner {} successfully updated Pet {}", ownerId, petId);
+            return updatedPet;
+        } else {
+            log.info("No effective changes detected for Pet {}, update by owner {} skipped.", petId, ownerId);
+            return pet;
+        }
     }
 }

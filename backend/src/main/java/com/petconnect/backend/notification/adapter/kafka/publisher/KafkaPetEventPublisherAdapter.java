@@ -7,6 +7,7 @@ import com.petconnect.backend.pet.port.spi.PetEventPublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
@@ -14,11 +15,12 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Kafka Adapter implementation for the PetEventPublisherPort.
+ * Kafka Adapter implementation for the PetEventPublisherPort interface.
  * Sends Pet-related domain events to the configured Kafka topics.
  *
  * @author ibosquet
  */
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
 @Slf4j

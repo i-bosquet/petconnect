@@ -18,6 +18,7 @@ import com.petconnect.backend.user.domain.model.ClinicStaff;
 import com.petconnect.backend.user.domain.model.Vet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,8 +48,29 @@ public class CertificateServiceImpl implements CertificateService {
     private final RecordHelper recordHelper;
     private final CertificateHelper certificateHelper;
     private final QrCodeService qrCodeService;
-    private final CertificateEventPublisherPort certificateEventPublisher;
     private final PetRepository petRepository;
+
+    private CertificateEventPublisherPort certificateEventPublisher;
+
+    /**
+     * Sets the certificate event publisher for the application, enabling or disabling
+     * the publishing of certificate-related events. If an instance of
+     * {@code CertificateEventPublisherPort} is provided, event publishing is enabled
+     * and a log entry is recorded for successful injection. If no instance is provided,
+     * a warning is logged and event publishing will be skipped.
+     *
+     * @param certificateEventPublisher an implementation of {@code CertificateEventPublisherPort},
+     *                                   or {@code null} if event publishing should be skipped
+     */
+    @Autowired(required = false)
+    public void setCertificateEventPublisher(CertificateEventPublisherPort certificateEventPublisher) {
+        this.certificateEventPublisher = certificateEventPublisher;
+        if (certificateEventPublisher != null) {
+            log.info("CertificateEventPublisherPort was successfully injected into CertificateServiceImpl.");
+        } else {
+            log.warn("CertificateEventPublisherPort was NOT injected into CertificateServiceImpl (likely due to profile configuration). Event publishing will be skipped.");
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -107,18 +129,23 @@ public class CertificateServiceImpl implements CertificateService {
                     savedCertificate.getId(), pet.getId(), pet.getPendingCertificateClinic().getId());
         }
 
-        try {
-            CertificateGeneratedEvent event = new CertificateGeneratedEvent(
-                    savedCertificate.getId(),
-                    pet.getId(),
-                    pet.getOwner().getId(),
-                    generatingVetId,
-                    savedCertificate.getCertificateNumber(),
-                    LocalDateTime.now()
-            );
-            certificateEventPublisher.publishCertificateGenerated(event);
-        } catch (Exception e) {
-            log.error("Failed to publish CertificateGeneratedEvent for certId {} after generation.", savedCertificate.getId(), e);
+        if (this.certificateEventPublisher != null) {
+            try {
+                CertificateGeneratedEvent event = new CertificateGeneratedEvent(
+                        savedCertificate.getId(),
+                        pet.getId(),
+                        pet.getOwner().getId(),
+                        generatingVetId,
+                        savedCertificate.getCertificateNumber(),
+                        LocalDateTime.now()
+                );
+                this.certificateEventPublisher.publishCertificateGenerated(event);
+                log.info("CertificateGeneratedEvent published (attempted) for Cert ID {}.", savedCertificate.getId());
+            } catch (Exception e) {
+                log.error("Failed to publish CertificateGeneratedEvent for certId {} after generation.", savedCertificate.getId(), e);
+            }
+        } else {
+            log.warn("CertificateEventPublisherPort not available. Skipping event publication for Cert ID {}.", savedCertificate.getId());
         }
 
 

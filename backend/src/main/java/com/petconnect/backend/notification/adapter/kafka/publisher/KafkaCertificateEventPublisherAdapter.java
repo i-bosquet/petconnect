@@ -5,6 +5,7 @@ import com.petconnect.backend.certificate.port.spi.CertificateEventPublisherPort
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
@@ -12,11 +13,12 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Kafka Adapter implementation for the CertificateEventPublisherPort.
+ * Kafka Adapter implementation for the CertificateEventPublisherPort interface.
  * Sends Certificate-related domain events to the configured Kafka topics.
  *
  * @author ibosquet
  */
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
 @Slf4j

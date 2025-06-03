@@ -18,6 +18,7 @@ import com.petconnect.backend.user.domain.repository.ClinicStaffRepository;
 import com.petconnect.backend.user.port.spi.ClinicEventPublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -64,7 +65,26 @@ public class ClinicServiceImpl implements ClinicService {
     private final KeyStorageService keyStorageService;
     private final AuthorizationHelper authorizationHelper;
     private final EmailService emailService;
-    private final ClinicEventPublisherPort clinicEventPublisher;
+    
+    private ClinicEventPublisherPort clinicEventPublisher;
+
+    /**
+     * Sets the ClinicEventPublisherPort instance used for event publishing within the clinic service.
+     * If the instance is successfully injected, a log message is recorded to indicate the successful
+     * injection. If it is not injected, a warning message is logged, and event publishing will not occur.
+     *
+     * @param clinicEventPublisher the ClinicEventPublisherPort instance to be injected. If null,
+     *                              no events will be published, and a warning message is logged.
+     */
+    @Autowired(required = false)
+    public void setClinicEventPublisher(ClinicEventPublisherPort clinicEventPublisher) {
+        this.clinicEventPublisher = clinicEventPublisher;
+        if (this.clinicEventPublisher != null) {
+            log.info("ClinicEventPublisherPort was successfully injected into ClinicServiceImpl.");
+        } else {
+            log.warn("ClinicEventPublisherPort was NOT injected into ClinicServiceImpl (likely due to profile configuration). Event publishing will be skipped.");
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -111,37 +131,8 @@ public class ClinicServiceImpl implements ClinicService {
 
         String oldPublicKeyPath = existingClinic.getPublicKey();
         String oldPrivateKeyPath = existingClinic.getPrivateKey();
-        boolean publicKeyChanged = false;
-        boolean privateKeyChanged = false;
-
-        if (newPublicKeyFile != null && !newPublicKeyFile.isEmpty()) {
-            try {
-                String desiredFilenameBase = "clinic_" + id + "_pub";
-                String newPath = keyStorageService.storePublicKey(newPublicKeyFile, "clinics", desiredFilenameBase);
-                if (!Objects.equals(oldPublicKeyPath, newPath)) {
-                    existingClinic.setPublicKey(newPath);
-                    publicKeyChanged = true;
-                }
-            } catch (IOException | IllegalArgumentException e) {
-                log.error("Failed to store new public key file for clinic {}: {}", id, e.getMessage(), e);
-                throw new RuntimeException("Failed to store new public key file: " + e.getMessage(), e);
-            }
-        }
-
-        if (newEncryptedPrivateKeyFile != null && !newEncryptedPrivateKeyFile.isEmpty()) {
-            try {
-                String desiredFilenameBase = "clinic_" + id + "_priv";
-                String newPath = keyStorageService.storeEncryptedPrivateKey(newEncryptedPrivateKeyFile, "clinics", desiredFilenameBase);
-                if (!Objects.equals(oldPrivateKeyPath, newPath)) {
-                    existingClinic.setPrivateKey(newPath);
-                    privateKeyChanged = true;
-                }
-            } catch (IOException | IllegalArgumentException e) {
-                log.error("Failed to store new encrypted private key file for clinic {}: {}", id, e.getMessage(), e);
-                throw new RuntimeException("Failed to store new encrypted private key file: " + e.getMessage(), e);
-            }
-        }
-
+        boolean publicKeyChanged = processKeyUpdate(newPublicKeyFile, existingClinic, oldPublicKeyPath, id, true);
+        boolean privateKeyChanged = processKeyUpdate(newEncryptedPrivateKeyFile, existingClinic, oldPrivateKeyPath, id, false);
         boolean otherFieldsChanged = applyClinicDtoUpdates(clinicUpdateDTO, existingClinic);
 
         if (otherFieldsChanged || publicKeyChanged || privateKeyChanged) {
@@ -149,25 +140,7 @@ public class ClinicServiceImpl implements ClinicService {
                     otherFieldsChanged, publicKeyChanged, privateKeyChanged, id);
             Clinic savedClinic = clinicRepository.save(existingClinic);
 
-            if (publicKeyChanged && StringUtils.hasText(oldPublicKeyPath) && !oldPublicKeyPath.equals(savedClinic.getPublicKey())) {
-                log.info("Attempting to delete old public key: {}", oldPublicKeyPath);
-                keyStorageService.deleteKey(oldPublicKeyPath);
-            }
-            if (privateKeyChanged && StringUtils.hasText(oldPrivateKeyPath) && !oldPrivateKeyPath.equals(savedClinic.getPrivateKey())) {
-                log.info("Attempting to delete old private key: {}", oldPrivateKeyPath);
-                keyStorageService.deleteKey(oldPrivateKeyPath);
-            }
-
-             if (publicKeyChanged || privateKeyChanged) {
-                String adminEmail = adminStaff.getEmail();
-                Long adminId = adminStaff.getId();
-                String clinicName = savedClinic.getName();
-                emailService.sendClinicKeysChangedNotification(adminEmail,clinicName);
-                clinicEventPublisher.publishClinicKeysChangedEvent(
-                     new ClinicKeysChangedEvent(savedClinic.getId(), adminId, LocalDateTime.now(), publicKeyChanged, privateKeyChanged)
-                 );
-                 log.info("ClinicKeysChangedEvent published for clinic {}, admin {}.", clinicName, adminEmail);
-             }
+            handleKeyChanges(savedClinic, oldPublicKeyPath, oldPrivateKeyPath, publicKeyChanged, privateKeyChanged, adminStaff);
 
             return clinicMapper.toDto(savedClinic);
         } else {
@@ -302,5 +275,87 @@ public class ClinicServiceImpl implements ClinicService {
         changed |= Utils.updateFieldIfChanged(clinic,       dto.country(), clinic::getCountry, Clinic::setCountry, "country");
         changed |= Utils.updateStringFieldIfChanged(clinic, dto.phone(),   clinic::getPhone, Clinic::setPhone,   "phone");
         return changed;
+    }
+
+    /**
+     * Processes the update of a clinic's public or private key. This involves storing the new key file and,
+     * if successful, updating the clinic's record with the new key path.
+     *
+     * @param keyFile      the key file to be uploaded. Must not be null or empty.
+     * @param clinic       the clinic entity whose key is being updated. Must not be null.
+     * @param oldKeyPath   the path of the old key. Can be null or empty if there is no pre-existing key.
+     * @param id           the unique identifier of the clinic. Must not be null.
+     * @param isPublic     indicates whether the key being updated is a public key (true) or private key (false).
+     * @return             {@code true} if the key update is successful and changes are applied, {@code false} if the
+     *                     key file is invalid or if the new key path matches the old path.
+     */
+    private boolean processKeyUpdate(MultipartFile keyFile, Clinic clinic, String oldKeyPath, Long id, boolean isPublic) {
+        if (keyFile == null || keyFile.isEmpty()) {
+            return false;
+        }
+        try {
+            String desiredFilenameBase = "clinic_" + id + (isPublic ? "_pub" : "_priv");
+            String newPath = isPublic ?
+                    keyStorageService.storePublicKey(keyFile, "clinics", desiredFilenameBase) :
+                    keyStorageService.storeEncryptedPrivateKey(keyFile, "clinics", desiredFilenameBase);
+
+            if (!Objects.equals(oldKeyPath, newPath)) {
+                if (isPublic) {
+                    clinic.setPublicKey(newPath);
+                } else {
+                    clinic.setPrivateKey(newPath);
+                }
+                return true;
+            }
+        } catch (IOException | IllegalArgumentException e) {
+            String keyType = isPublic ? "public" : "private";
+            log.error("Failed to store new {} key file for clinic {}: {}", keyType, id, e.getMessage(), e);
+            throw new RuntimeException("Failed to store new " + keyType + " key file: " + e.getMessage(), e);
+        }
+        return false;
+    }
+
+    /**
+     * Handles changes to the public and private keys of a clinic. Deletes old keys if they have been updated,
+     * notifies the admin staff via email, and attempts to publish a clinic keys changed event if applicable.
+     *
+     * @param savedClinic          The clinic entity containing updated key paths.
+     * @param oldPublicKeyPath     The path to the clinic's old public key.
+     * @param oldPrivateKeyPath    The path to the clinic's old private key.
+     * @param publicKeyChanged     A flag indicating whether the public key has changed.
+     * @param privateKeyChanged    A flag indicating whether the private key has changed.
+     * @param adminStaff           The admin staff member associated with the clinic, used for notifications.
+     */
+    private void handleKeyChanges(Clinic savedClinic, String oldPublicKeyPath, String oldPrivateKeyPath,
+                                  boolean publicKeyChanged, boolean privateKeyChanged, ClinicStaff adminStaff) {
+        if (publicKeyChanged && StringUtils.hasText(oldPublicKeyPath) && !oldPublicKeyPath.equals(savedClinic.getPublicKey())) {
+            log.info("Attempting to delete old public key: {}", oldPublicKeyPath);
+            keyStorageService.deleteKey(oldPublicKeyPath);
+        }
+        if (privateKeyChanged && StringUtils.hasText(oldPrivateKeyPath) && !oldPrivateKeyPath.equals(savedClinic.getPrivateKey())) {
+            log.info("Attempting to delete old private key: {}", oldPrivateKeyPath);
+            keyStorageService.deleteKey(oldPrivateKeyPath);
+        }
+
+        if (publicKeyChanged || privateKeyChanged) {
+            String adminEmail = adminStaff.getEmail();
+            Long adminId = adminStaff.getId();
+            String clinicName = savedClinic.getName();
+            emailService.sendClinicKeysChangedNotification(adminEmail, clinicName);
+
+            if (this.clinicEventPublisher != null) {
+                try {
+                    this.clinicEventPublisher.publishClinicKeysChangedEvent(
+                            new ClinicKeysChangedEvent(savedClinic.getId(), adminId, LocalDateTime.now(), publicKeyChanged, privateKeyChanged)
+                    );
+                    log.info("ClinicKeysChangedEvent published (attempted) for clinic {}, admin {}.", clinicName, adminEmail);
+                } catch (Exception e) {
+                    log.error("Exception caught while trying to publish ClinicKeysChangedEvent for clinicId {}: {}",
+                            savedClinic.getId(), e.getMessage(), e);
+                }
+            } else {
+                log.warn("ClinicEventPublisherPort not available. Skipping ClinicKeysChangedEvent for clinic {}.", clinicName);
+            }
+        }
     }
 }

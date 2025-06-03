@@ -7,6 +7,7 @@ import com.petconnect.backend.pet.application.event.PetActivatedEvent;
 import com.petconnect.backend.pet.application.event.PetActivationRequestedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  *
  * @author ibosquet
  */
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
 @Slf4j
