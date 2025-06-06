@@ -352,6 +352,7 @@ const RecordManagementPage = (): JSX.Element => {
                     isOpen={showViewModal}
                     onClose={handleCloseAllModals}
                     record={selectedRecord}
+                    isPetActive={true}
                     canEditRecord={ 
                         !selectedRecord.vetSignature &&
                         selectedRecord.type !== RecordType.VACCINE &&

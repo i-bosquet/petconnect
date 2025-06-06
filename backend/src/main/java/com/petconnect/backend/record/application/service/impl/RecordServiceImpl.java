@@ -9,6 +9,7 @@ import com.petconnect.backend.common.service.SigningService;
 import com.petconnect.backend.exception.RecordSignedException;
 import com.petconnect.backend.exception.RecordUpdateVaccineException;
 import com.petconnect.backend.pet.domain.model.Pet;
+import com.petconnect.backend.pet.domain.model.PetStatus;
 import com.petconnect.backend.record.application.dto.*;
 import com.petconnect.backend.record.application.mapper.RecordMapper;
 import com.petconnect.backend.record.application.mapper.VaccineMapper;
@@ -64,6 +65,11 @@ public class RecordServiceImpl implements RecordService {
     public RecordViewDto createRecord(RecordCreateDto createDto, Long creatorUserId) {
         Long petId = createDto.petId();
         Pet pet = entityFinderHelper.findPetByIdOrFail(petId);
+
+        if (pet.getStatus() == PetStatus.INACTIVE) {
+            throw new IllegalStateException("Cannot create a new record for an inactive pet (ID: " + petId + ").");
+        }
+
         UserEntity creator = entityFinderHelper.findUserOrFail(creatorUserId);
         authorizationHelper.verifyUserAuthorizationForPet(creatorUserId, pet, "create record for");
         validateHelper.validateRecordCreationDto(createDto);
@@ -198,6 +204,11 @@ public class RecordServiceImpl implements RecordService {
     public void deleteRecord(Long recordId, Long requesterUserId) {
         log.info("Attempting to delete Record ID {} by User ID {}", recordId, requesterUserId);
         Record recordToDelete = entityFinderHelper.findRecordByIdOrFail(recordId);
+
+        if (recordToDelete.getPet().getStatus() == PetStatus.INACTIVE) {
+            throw new IllegalStateException("Cannot delete a record for an inactive pet (ID: " + recordToDelete.getPet().getId() + ").");
+        }
+
         UserEntity requester = entityFinderHelper.findUserOrFail(requesterUserId);
 
         authorizationHelper.verifyUserAuthorizationForRecordDeletion(requester, recordToDelete);

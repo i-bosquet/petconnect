@@ -5,6 +5,7 @@ import {
   RecordViewDto,
   Page,
   RecordType,
+  PetStatus
 } from "@/types/apiTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -191,6 +192,8 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
     }
   };
 
+  const isPetInactive = pet.status === PetStatus.INACTIVE;
+
   return (
     <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
       <CardHeader>
@@ -223,7 +226,7 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
                 <Button
                   onClick={handleOpenAddModal}
                   size="sm"
-                  className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer" disabled={isPetInactive} title={isPetInactive ? "Cannot add records to an inactive pet" : "Add New Record"}
                 >
                   <PlusCircle size={16} className="sm:mr-2" />
                   <p>Add <span className="hidden sm:inline">New Record</span></p>
@@ -314,7 +317,7 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
                       {canDeleteThisRecord && (
                         <Button
                           size="sm"
-                          className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50 cursor-pointer"
+                          className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 text-[#FFECAB] hover:bg-red-800 hover:text-[#FFECAB] focus-visible:ring-red-500 disabled:opacity-50 cursor-pointer" disabled={isPetInactive}
                           onClick={() => handleOpenDeleteConfirmModal(record)}
                         >
                           <Trash size={14} className="mr-1" />
@@ -369,6 +372,7 @@ const PetRecordsTab = ({ pet }: PetRecordsTabProps): JSX.Element => {
             setSelectedRecord(null);
           }}
           record={selectedRecord}
+          isPetActive={pet.status === PetStatus.ACTIVE}
           canEditRecord={
             !!user &&
             selectedRecord.creator?.id === user.id &&

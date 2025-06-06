@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, JSX } from 'react';
 import { formatRecordCreatorDisplay, formatDateTime, getRecordTypeDisplay  } from '@/utils/formatters';
-import { PetProfileDto,  VetSummaryDto, RecordViewDto, RecordType, } from '@/types/apiTypes';
+import { PetProfileDto,  VetSummaryDto, RecordViewDto, RecordType, PetStatus } from '@/types/apiTypes';
 import { UserCircle, Edit, Mail, Phone, FileText, PlusCircle, Trash, Eye as EyeIcon, Loader2, AlertCircle, ShieldCheck,  Thermometer, Syringe, AlertTriangle, Info, BookOpenCheck } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from '@/hooks/useAuth'; 
-import { findRecordsByPetId } from '@/services/recordService'; 
+import { findRecordsByPetId, deleteRecord } from '@/services/recordService'; 
 import Pagination from '@/components/common/Pagination';
 import AddRecordModal from '@/components/pet/modals/AddRecordModal'; 
 import ViewRecordModal from '@/components/pet/modals/ViewRecordModal';
@@ -119,7 +119,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
         if (!token || !selectedRecord) return;
         setIsRecordActionLoading(true);
         try {
-            // await deleteRecord(token, selectedRecord.id); 
+            await deleteRecord(token, selectedRecord.id); 
             toast.success(`Record (ID: ${selectedRecord.id}) deleted successfully.`); 
             handleRecordActionSuccess();
         } catch (err) {
@@ -276,6 +276,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                     isOpen={showViewRecordModal}
                     onClose={handleCloseAllRecordModals}
                     record={selectedRecord}
+                    isPetActive={petProfile.status === PetStatus.ACTIVE} 
                     canEditRecord={ 
                         !selectedRecord.vetSignature &&
                         selectedRecord.type !== RecordType.VACCINE &&

@@ -11,6 +11,7 @@ interface ViewRecordModalProps {
     record: RecordViewDto;
     canEditRecord: boolean; 
     onEditRequest: () => void; 
+    isPetActive: boolean;
 }
 
 /**
@@ -20,7 +21,7 @@ interface ViewRecordModalProps {
  * @returns {JSX.Element | null} The modal component or null if not open.
  * @author ibosquet
  */
-const ViewRecordModal = ({ isOpen, onClose, record, canEditRecord, onEditRequest }: ViewRecordModalProps): JSX.Element | null => {
+const ViewRecordModal = ({ isOpen, onClose, record, canEditRecord, onEditRequest,  isPetActive }: ViewRecordModalProps): JSX.Element | null => {
 
     const getRecordTypeIcon = (type: RecordType): JSX.Element => {
         switch (type) {
@@ -92,7 +93,8 @@ const ViewRecordModal = ({ isOpen, onClose, record, canEditRecord, onEditRequest
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-[#FFECAB]/20 mt-5">
                     {canEditRecord && (
-                        <Button onClick={onEditRequest} className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer">
+                        <Button onClick={onEditRequest} className="px-5 py-2.5 rounded-lg border border-[#FFECAB]/50 bg-cyan-800 text-[#FFECAB] hover:bg-cyan-600 focus-visible:ring-cyan-500 disabled:opacity-50 cursor-pointer" disabled={!isPetActive} 
+                            title={!isPetActive ? "Cannot edit records for an inactive pet" : "Edit this record"}>
                             <Edit3 size={16} className="mr-2"/>Edit Record
                         </Button>
                     )}

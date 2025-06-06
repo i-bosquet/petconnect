@@ -1,5 +1,5 @@
 import { useState, JSX } from 'react';
-import { PetProfileDto, VetSummaryDto, ClinicDto } from '@/types/apiTypes'; 
+import { PetProfileDto, VetSummaryDto, ClinicDto, PetStatus } from '@/types/apiTypes'; 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserPlus, Trash2, Info, } from 'lucide-react';
@@ -91,13 +91,15 @@ const PetHomeTab = ({ pet, onPetAssociationChange }: PetHomeTabProps): JSX.Eleme
         setShowVetDetailModal(true);
     };
 
+    const isPetInactive = pet.status === PetStatus.INACTIVE;
+
   return (
         <div className="space-y-6">
             <Card className="border-2 border-[#FFECAB]/50 bg-[#0c1225]/70 shadow-xl">
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle className="text-[#FFECAB] text-xl">Associated Veterinarians</CardTitle>
-                        <Button onClick={handleOpenClinicSelection} size="sm" className="bg-cyan-800 hover:bg-cyan-600 text-[#FFECAB] border border-[#FFECAB] cursor-pointer">
+                        <Button onClick={handleOpenClinicSelection} size="sm" className="bg-cyan-800 hover:bg-cyan-600 text-[#FFECAB] border border-[#FFECAB] cursor-pointer" disabled={isPetInactive} title={isPetInactive ? "Cannot associate vets to an inactive pet" : "Associate New Vet"}>
                             <UserPlus size={16} className="mr-2" />
                             Associate New Vet
                         </Button>
