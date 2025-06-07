@@ -123,66 +123,14 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
                                                    @Nullable MultipartFile newPublicKeyFile,
                                                    @Nullable MultipartFile newPrivateKeyFile,
                                                    Long updatingAdminId) {
-        ClinicStaff staffToUpdate = entityFinderHelper.findClinicStaffOrFail(staffId, "update");
-        authorizationHelper.verifyAdminActionOnStaff(updatingAdminId, staffToUpdate, "update");
+        ClinicStaff staffToUpdate = validateAndAuthorizeUpdate(staffId, updatingAdminId);
 
-        String oldPublicKeyPath = (staffToUpdate instanceof Vet v) ? v.getVetPublicKey() : null;
-        String oldPrivateKeyPath = (staffToUpdate instanceof Vet v) ? v.getVetPrivateKey() : null;
+        KeyUpdateResult keyUpdateResult = handleKeyUpdates(staffToUpdate, updateDTO, newPublicKeyFile, newPrivateKeyFile);
 
-        String finalNewPublicKeyPath = oldPublicKeyPath;
-        String finalNewPrivateKeyPath = oldPrivateKeyPath;
-        boolean publicKeyChanged = false;
-        boolean privateKeyChanged = false;
+        boolean otherFieldsChanged = clinicStaffHelper.applyStaffUpdates(staffToUpdate, updateDTO,
+                keyUpdateResult.finalPublicKeyPath(), keyUpdateResult.finalPrivateKeyPath());
 
-        boolean isTargetRoleVet = (updateDTO.roles() != null && !updateDTO.roles().isEmpty())
-                ? updateDTO.roles().contains(RoleEnum.VET)
-                : staffToUpdate.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.VET);
-
-
-        if (isTargetRoleVet && newPublicKeyFile != null && !newPublicKeyFile.isEmpty()) {
-            try {
-                String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_pub";
-                finalNewPublicKeyPath = keyStorageService.storePublicKey(newPublicKeyFile, "public_keys/vets", desiredFilenameBase);
-                publicKeyChanged = !Objects.equals(oldPublicKeyPath, finalNewPublicKeyPath);
-            } catch (IOException | IllegalArgumentException e) {
-                log.error("Failed to store new public key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
-                throw new RuntimeException("Failed to store new public key file: " + e.getMessage(), e);
-            }
-        }
-
-        if (isTargetRoleVet && newPrivateKeyFile != null && !newPrivateKeyFile.isEmpty()) {
-            try {
-                String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_priv";
-                finalNewPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(newPrivateKeyFile, "private_encrypted_keys/vets", desiredFilenameBase);
-                privateKeyChanged = !Objects.equals(oldPrivateKeyPath, finalNewPrivateKeyPath);
-            } catch (IOException | IllegalArgumentException e) {
-                log.error("Failed to store new encrypted private key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
-                throw new RuntimeException("Failed to store new encrypted private key file: " + e.getMessage(), e);
-            }
-        }
-
-        boolean otherFieldsChanged = clinicStaffHelper.applyStaffUpdates(staffToUpdate, updateDTO, finalNewPublicKeyPath, finalNewPrivateKeyPath);
-
-        ClinicStaff updatedStaffEntity = staffToUpdate;
-        if (otherFieldsChanged || publicKeyChanged || privateKeyChanged) {
-            if (publicKeyChanged && StringUtils.hasText(oldPublicKeyPath)) {
-                keyStorageService.deleteKey(oldPublicKeyPath);
-            }
-            if (privateKeyChanged && StringUtils.hasText(oldPrivateKeyPath)) {
-                keyStorageService.deleteKey(oldPrivateKeyPath);
-            }
-            updatedStaffEntity = clinicStaffRepository.save(staffToUpdate);
-            log.info("Admin {} updated staff {}", updatingAdminId, updatedStaffEntity.getUsername());
-
-            if (staffToUpdate instanceof Vet && (publicKeyChanged || privateKeyChanged)) {
-                emailService.sendVetKeysChangedNotification(updatedStaffEntity.getEmail(), updatedStaffEntity.getName());
-                log.info("Vet keys changed for {}. Notification would be sent.", updatedStaffEntity.getUsername());
-            }
-
-        } else {
-            log.info("No changes detected for staff ID {}, update skipped.", staffId);
-        }
-        return userMapper.toClinicStaffProfileDto(updatedStaffEntity);
+        return processStaffUpdates(staffToUpdate, keyUpdateResult, otherFieldsChanged, updatingAdminId);
     }
 
     /**
@@ -247,5 +195,127 @@ public class ClinicStaffServiceImpl implements ClinicStaffService {
         authorizationHelper.verifyClinicStaffAccess(requesterUserId, clinicId, "view all staff for");
         List<ClinicStaff> staffList = clinicStaffRepository.findByClinicId(clinicId);
         return userMapper.toClinicStaffProfileDtoList(staffList);
+    }
+    
+    /**
+     * Validates and authorizes an update operation for a clinic staff member.
+     * This method checks if the staff member with the given ID is active and,
+     * if so, verifies whether the administrator performing the operation is authorized 
+     * to make updates to the staff member's record.
+     *
+     * @param staffId The ID of the staff member to update.
+     * @param updatingAdminId The ID of the administrator attempting to perform the update.
+     * @return The ClinicStaff entity that is being updated.
+     * @throws IllegalStateException If the staff member is inactive and cannot be updated.
+     * @throws SecurityException If the administrator is not authorized to perform the update.
+     */
+    // Private methods
+    private ClinicStaff validateAndAuthorizeUpdate(Long staffId, Long updatingAdminId) {
+        ClinicStaff staffToUpdate = entityFinderHelper.findClinicStaffOrFail(staffId, "update");
+        if (!staffToUpdate.isActive()) {
+            throw new IllegalStateException("Cannot update an inactive staff member (ID: " + staffId + "). Please activate the account first.");
+        }
+        authorizationHelper.verifyAdminActionOnStaff(updatingAdminId, staffToUpdate, "update");
+        return staffToUpdate;
+    }
+
+    /**
+     * Represents the result of a key update process, including the paths for the updated
+     * public and private keys, flags indicating whether the keys were changed, and paths to
+     * the old key files.
+     */
+    private record KeyUpdateResult(
+            String finalPublicKeyPath,
+            String finalPrivateKeyPath,
+            boolean publicKeyChanged,
+            boolean privateKeyChanged,
+            String oldPublicKeyPath,
+            String oldPrivateKeyPath
+    ) {
+    }
+
+    /**
+     * Handles the update of key files for a given clinic staff member, particularly if they are assigned
+     * the role of a veterinarian. Updates include storing new public and private keys and tracking changes.
+     *
+     * @param staffToUpdate the clinic staff member whose keys are to be updated
+     * @param updateDTO the data transfer object containing the updated details for the clinic staff member
+     * @param newPublicKeyFile the multipart file containing the new public key, if provided
+     * @param newPrivateKeyFile the multipart file containing the new private key, if provided
+     * @return a {@code KeyUpdateResult} instance containing the paths of the updated keys, the status of 
+     *         key changes, and the old key paths
+     */
+    private KeyUpdateResult handleKeyUpdates(ClinicStaff staffToUpdate, ClinicStaffUpdateDto updateDTO,
+                                             MultipartFile newPublicKeyFile, MultipartFile newPrivateKeyFile) {
+        String oldPublicKeyPath = (staffToUpdate instanceof Vet v) ? v.getVetPublicKey() : null;
+        String oldPrivateKeyPath = (staffToUpdate instanceof Vet v) ? v.getVetPrivateKey() : null;
+
+        String finalNewPublicKeyPath = oldPublicKeyPath;
+        String finalNewPrivateKeyPath = oldPrivateKeyPath;
+        boolean publicKeyChanged = false;
+        boolean privateKeyChanged = false;
+
+        boolean isTargetRoleVet = (updateDTO.roles() != null && !updateDTO.roles().isEmpty())
+                ? updateDTO.roles().contains(RoleEnum.VET)
+                : staffToUpdate.getRoles().stream().anyMatch(r -> r.getRoleEnum() == RoleEnum.VET);
+
+        if (isTargetRoleVet && newPublicKeyFile != null && !newPublicKeyFile.isEmpty()) {
+            try {
+                String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_pub";
+                finalNewPublicKeyPath = keyStorageService.storePublicKey(newPublicKeyFile, "public_keys/vets", desiredFilenameBase);
+                publicKeyChanged = !Objects.equals(oldPublicKeyPath, finalNewPublicKeyPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store new public key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
+                throw new RuntimeException("Failed to store new public key file: " + e.getMessage(), e);
+            }
+        }
+
+        if (isTargetRoleVet && newPrivateKeyFile != null && !newPrivateKeyFile.isEmpty()) {
+            try {
+                String desiredFilenameBase = "vet_" + staffToUpdate.getUsername() + "_priv";
+                finalNewPrivateKeyPath = keyStorageService.storeEncryptedPrivateKey(newPrivateKeyFile, "private_encrypted_keys/vets", desiredFilenameBase);
+                privateKeyChanged = !Objects.equals(oldPrivateKeyPath, finalNewPrivateKeyPath);
+            } catch (IOException | IllegalArgumentException e) {
+                log.error("Failed to store new encrypted private key file for staff {}: {}", staffToUpdate.getUsername(), e.getMessage(), e);
+                throw new RuntimeException("Failed to store new encrypted private key file: " + e.getMessage(), e);
+            }
+        }
+
+        return new KeyUpdateResult(finalNewPublicKeyPath, finalNewPrivateKeyPath, publicKeyChanged,
+                privateKeyChanged, oldPublicKeyPath, oldPrivateKeyPath);
+    }
+
+    /**
+     * Processes updates to a clinic staff's profile, including key updates and other field changes.
+     * If key changes are detected, old keys are removed, and notifications may be sent for specific staff types.
+     * The updated staff entity is saved to the repository, and a corresponding DTO is returned.
+     *
+     * @param staffToUpdate       The clinic staff entity to be updated.
+     * @param keyResult           The result object containing information about key changes (public and private).
+     * @param otherFieldsChanged  A flag indicating whether other fields (besides keys) have changed.
+     * @param updatingAdminId     The ID of the admin performing the update.
+     * @return A ClinicStaffProfileDto representing the updated profile of the clinic staff.
+     */
+    private ClinicStaffProfileDto processStaffUpdates(ClinicStaff staffToUpdate, KeyUpdateResult keyResult,
+                                                      boolean otherFieldsChanged, Long updatingAdminId) {
+        ClinicStaff updatedStaffEntity = staffToUpdate;
+        if (otherFieldsChanged || keyResult.publicKeyChanged() || keyResult.privateKeyChanged()) {
+            if (keyResult.publicKeyChanged() && StringUtils.hasText(keyResult.oldPublicKeyPath())) {
+                keyStorageService.deleteKey(keyResult.oldPublicKeyPath());
+            }
+            if (keyResult.privateKeyChanged() && StringUtils.hasText(keyResult.oldPrivateKeyPath())) {
+                keyStorageService.deleteKey(keyResult.oldPrivateKeyPath());
+            }
+            updatedStaffEntity = clinicStaffRepository.save(staffToUpdate);
+            log.info("Admin {} updated staff {}", updatingAdminId, updatedStaffEntity.getUsername());
+
+            if (staffToUpdate instanceof Vet && (keyResult.publicKeyChanged() || keyResult.privateKeyChanged())) {
+                emailService.sendVetKeysChangedNotification(updatedStaffEntity.getEmail(), updatedStaffEntity.getName());
+                log.info("Vet keys changed for {}. Notification would be sent.", updatedStaffEntity.getUsername());
+            }
+        } else {
+            log.info("No changes detected for staff ID {}, update skipped.", staffToUpdate.getId());
+        }
+        return userMapper.toClinicStaffProfileDto(updatedStaffEntity);
     }
 }

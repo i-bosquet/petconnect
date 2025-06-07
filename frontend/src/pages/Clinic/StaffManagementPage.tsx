@@ -284,7 +284,7 @@ const StaffManagementPage = (): JSX.Element => {
               {filteredStaffList.map((staff) => (
                   <TableRow
                     key={staff.id}
-                    className="border-b-[#FFECAB]/10 hover:bg-[#FFECAB]/5"
+                    className={`border-b-[#FFECAB]/10 hover:bg-[#FFECAB]/5 ${!staff.isActive ? 'opacity-70' : ''}`} 
                   >
                     <TableCell className="pl-6">
                       <div className="flex items-center gap-3">

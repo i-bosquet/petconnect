@@ -50,7 +50,7 @@ const StaffDetailModal = ({ isOpen, onClose, staffProfileInitial, onStaffUpdate 
             ) : (
                 <StaffDetailView
                     staffProfile={currentStaffData} 
-                    onEdit={handleStartEditing}   
+                     onEdit={currentStaffData.isActive ? handleStartEditing : undefined}    
                 />
             )}
         </Modal>
