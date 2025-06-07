@@ -188,15 +188,19 @@ const fetchPetRecords = useCallback(async (page: number) => {
                             <p className="text-gray-400 italic text-center py-6">No medical records found for {petProfile.name}.</p>
                         )}
                         {!isLoadingRecords && !recordsError && petRecords.length > 0 && (
+                            console.log("petRecords"),
                             <div className="space-y-2">
                                 {petRecords.map(record => {
+                                    console.log(`Record ID: ${record.id}, isImmutable: ${record.isImmutable}`);
                                     const isRecordCreatorVet = record.creator?.roles?.includes('VET');
                                     const isCurrentUserCreator = record.creator?.id === user?.id;
                                     const isRecordFromThisClinic = record.createdInClinicId === user?.clinicId;
+                                    
 
                                     let canStaffDelete = false;
 
-                                    if (user?.roles?.includes('ADMIN') || user?.roles?.includes('VET')) {
+                                    if (!record.isImmutable){
+                                        if (user?.roles?.includes('ADMIN') || user?.roles?.includes('VET')) {
                                         if (!record.vetSignature && isRecordFromThisClinic) {
                                             canStaffDelete = true; // Admins and Vets can delete unsigned from their clinic
                                         }
@@ -204,6 +208,8 @@ const fetchPetRecords = useCallback(async (page: number) => {
                                             // Only the VET who signed can delete his own signed record
                                             canStaffDelete = true;
                                         }
+                                    }
+
                                     }
 
                                     return (
@@ -219,7 +225,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-1">
-                                                    <Tooltip>
+                                                <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <Button size="icon" className="h-7 w-7 text-[#FFECAB] hover:text-[#090D1A]  hover:bg-[#FFECAB] cursor-pointer" onClick={() => handleOpenViewRecordModal(record)}>
                                                                 <EyeIcon size={15}/>
@@ -228,14 +234,16 @@ const fetchPetRecords = useCallback(async (page: number) => {
                                                     <TooltipContent className="bg-gray-950 text-white border border-cyan-700"><p>View Details</p></TooltipContent>
                                                 </Tooltip>    
                                                     {(canStaffDelete) && (
-                                                         <Tooltip>
+                                                        console.log(`Record ID: ${record.id}, canStaffDelete: ${canStaffDelete}`),
+                                                    <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                        <Button size="icon" className="h-7 w-7 text-red-400 hover:text-gray-800 hover:bg-red-400 cursor-pointer"
-                                                            onClick={() => handleOpenDeleteRecordModal(record)}
-                                                        ><Trash size={15}/></Button>
+                                                            <Button size="icon" className="h-7 w-7 text-red-400 hover:text-gray-800 hover:bg-red-400 cursor-pointer" 
+                                                               onClick={() => handleOpenDeleteRecordModal(record)}
+                                                            ><Trash size={15}/></Button>
                                                          </TooltipTrigger>
-                                                    <TooltipContent className="bg-gray-950 text-white border border-red-700"><p>Delete Record</p></TooltipContent>
-                                                </Tooltip> 
+                                                        <TooltipContent className="bg-gray-950 text-white border border-red-700"><p>Delete Record</p>
+                                                        </TooltipContent>
+                                                    </Tooltip> 
                                                     )}
                                                 </div>
                                             </div>
@@ -262,6 +270,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                     {petProfile.updatedAt && <p>Last updated: {formatDateTime(petProfile.updatedAt)}</p>}
                 </div>
             )}
+
             {/* Modals */}
             {showAddRecordModal && petProfile?.id && (
                 <AddRecordModal
@@ -271,6 +280,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                     petId={petProfile.id}
                 />
             )}
+
             {showViewRecordModal && selectedRecord && user &&(
                 <ViewRecordModal
                     isOpen={showViewRecordModal}
@@ -290,6 +300,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                     }}
                 />
             )}
+
             {showEditRecordModal && selectedRecord && (
                  <EditRecordModal
                     isOpen={showEditRecordModal}
@@ -298,6 +309,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                     onRecordUpdated={() => {handleRecordActionSuccess(); toast.success("Record updated!");}}
                 />
             )}
+
             {showDeleteRecordModal && selectedRecord && (
                 <ConfirmationModal
                     isOpen={showDeleteRecordModal}
@@ -309,6 +321,7 @@ const fetchPetRecords = useCallback(async (page: number) => {
                     isLoading={isRecordActionLoading}
                 />
             )}
+
         </div>
     );
 };

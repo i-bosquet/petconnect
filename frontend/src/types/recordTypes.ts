@@ -31,6 +31,7 @@ export interface RecordViewDto {
     petId: number | string;
     petName: string | null; 
     petSpecie: Specie | null; 
+    isImmutable: boolean; 
 }
 
 // --- DTOs mirroring backend API Payloads ---

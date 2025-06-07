@@ -1,5 +1,6 @@
 package com.petconnect.backend.common.helper;
 
+import com.petconnect.backend.certificate.domain.model.Certificate;
 import com.petconnect.backend.exception.EntityNotFoundException;
 import com.petconnect.backend.exception.RecordImmutableException;
 import com.petconnect.backend.exception.UsernameAlreadyExistsException;
@@ -368,5 +369,37 @@ public class AuthorizationHelper {
                 requesterClinic != null &&
                 creatorClinic != null &&
                 Objects.equals(requesterClinic.getId(), creatorClinic.getId());
+    }
+
+    /**
+     * Verifies if a user is authorized to view a specific Certificate.
+     * Authorization is granted if the user is the owner of the associated pet
+     * or if the user is staff of the clinic that issued the certificate.
+     * This allows historical access even if the pet is inactive.
+     *
+     * @param requesterUserId The ID of the user requesting access.
+     * @param certificate The Certificate entity to be accessed.
+     * @throws AccessDeniedException if the user is not authorized.
+     */
+    public void verifyUserAuthorizationForCertificate(Long requesterUserId, Certificate certificate) {
+        UserEntity requesterUser = entityFinderHelper.findUserOrFail(requesterUserId);
+        Pet pet = certificate.getPet();
+
+        // Allow if the requester is the owner of the pet
+        if (isOwner(requesterUser, pet)) {
+            log.debug("Authorization for Certificate ID {} granted: Requester {} is the owner.", certificate.getId(), requesterUserId);
+            return;
+        }
+
+        // Allow if the requester is staff of the clinic that issued the certificate
+        if (requesterUser instanceof ClinicStaff staff && staff.getClinic() != null && certificate.getIssuingClinic() != null &&
+                staff.getClinic().getId().equals(certificate.getIssuingClinic().getId())) {
+            log.debug("Authorization for Certificate ID {} granted: Requester {} is staff of the issuing clinic.", certificate.getId(), requesterUserId);
+            return;
+        }
+
+        // If neither rule passed, deny access.
+        log.warn("Authorization DENIED for User ID {} attempting to access Certificate ID {}", requesterUserId, certificate.getId());
+        throw new AccessDeniedException("User " + requesterUserId + " is not authorized to access certificate " + certificate.getId());
     }
 }

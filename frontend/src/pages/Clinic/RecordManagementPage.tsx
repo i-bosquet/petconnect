@@ -246,14 +246,18 @@ const RecordManagementPage = (): JSX.Element => {
                   {filteredRecords.map((record) => {
                     const isRecordCreatorVet = record.creator?.roles?.includes('VET');
                     const isCurrentUserCreator = record.creator?.id === user?.id;
+                    // Determine if staff can delete this record
                     let canStaffDeleteThisRecord = false;
-                    if (user?.roles?.includes('ADMIN') || user?.roles?.includes('VET')) { 
-                                        if (!record.vetSignature) {
-                                            canStaffDeleteThisRecord = true;
-                                        } else if (isRecordCreatorVet && isCurrentUserCreator) {
-                                            canStaffDeleteThisRecord = true;
-                                        }
-                                    }
+
+                    if (!record.isImmutable) {
+                      if (user?.roles?.includes('ADMIN') || user?.roles?.includes('VET')) { 
+                                          if (!record.vetSignature) {
+                                              canStaffDeleteThisRecord = true;
+                                          } else if (isRecordCreatorVet && isCurrentUserCreator) {
+                                              canStaffDeleteThisRecord = true;
+                                          }
+                        }
+                    }
                     return (
                       <TableRow key={record.id} className="border-b-[#FFECAB]/10 hover:bg-[#FFECAB]/5">
                         <TableCell className="pl-6 text-xs text-gray-300 tabular-nums">{formatDateTime(record.createdAt)}</TableCell>

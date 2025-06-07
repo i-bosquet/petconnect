@@ -49,6 +49,7 @@ public record RecordViewDto(
         String createdInClinicName,
         Long petId,
         String petName,
-        Specie petSpecie
+        Specie petSpecie,
+        boolean isImmutable
 ) {
 }

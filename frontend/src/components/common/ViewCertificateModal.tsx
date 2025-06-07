@@ -29,7 +29,7 @@ const ViewCertificateModal = ({ isOpen, onClose, certificate }: ViewCertificateM
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        if (isOpen && certificate && token && !qrData) { 
+        if (isOpen && certificate && token && !isLoadingQr && qrData === null && qrError === null) { 
             setIsLoadingQr(true);
             setQrError(null);
             setQrData(null); 
@@ -38,7 +38,6 @@ const ViewCertificateModal = ({ isOpen, onClose, certificate }: ViewCertificateM
                 .catch(err => {
                     const errMsg = err instanceof Error ? err.message : "Failed to load QR data.";
                     setQrError(errMsg);
-                    toast.error(errMsg);
                 })
                 .finally(() => setIsLoadingQr(false));
         } else if (!isOpen) {

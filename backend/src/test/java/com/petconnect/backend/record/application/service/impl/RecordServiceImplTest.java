@@ -127,11 +127,11 @@ class RecordServiceImplTest {
                 RecordType.OTHER, "Observation by owner",
                 null, record1.getCreatedAt(),
                 null, null, null, null, null, null, null, null, null,
-                null);
+                null, false);
         recordDto2 = new RecordViewDto(recordId2,
                 RecordType.ANNUAL_CHECK, "Annual checkup results", "SIGNED_BY_VET_XYZ",
                 record2.getCreatedAt(),  null, null, null, null, null, null, null, null, null,
-                null);
+                null, false);
 
         adminSameClinic = new ClinicStaff();
         adminSameClinic.setId(50L);
@@ -175,11 +175,11 @@ class RecordServiceImplTest {
             expectedOwnerRecordViewDto = new RecordViewDto(200L, ownerRecordDto.type(),
                     ownerRecordDto.description(), null, LocalDateTime.now(),
                     null, null, null, null, null, null, null,
-            null, null, null);
+            null, null, null, false);
             expectedVetVaccineViewDto = new RecordViewDto(201L, vetVaccineDto.type(),
                     vetVaccineDto.description(), "TEMP_SIGNATURE", LocalDateTime.now(),
                     null, null, null, null, null, null, null,
-                    null, null, null);
+                    null, null, null, false);
         }
 
         @Test
@@ -257,7 +257,8 @@ class RecordServiceImplTest {
                     vet.getClinic() != null ? vet.getClinic().getName() : null,
                     pet.getId(),
                     pet.getName(),
-                    pet.getBreed() != null ? pet.getBreed().getSpecie() : null
+                    pet.getBreed() != null ? pet.getBreed().getSpecie() : null,
+                    false
             );
             given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedVetVaccineViewDto);
 
@@ -659,7 +660,7 @@ class RecordServiceImplTest {
             RecordViewDto expectedDto = new RecordViewDto(recordOwnerRecId, updateDtoBoth.type(),
                     updateDtoBoth.description(), null, recordToUpdateOwner.getCreatedAt(),
                     null, null, null, null, null, null, null,
-                    null, null,null);
+                    null, null,null, false);
             given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
 
             // Act
@@ -690,7 +691,7 @@ class RecordServiceImplTest {
                     updateDtoWithChanges.description(),
                     null, recordToUpdateStaff.getCreatedAt(), null, null,
                     null, null, null, null, null, null, null,
-                    null);
+                    null, false);
 
             given(recordMapper.toViewDto(any(Record.class))).willReturn(expectedDto);
 

@@ -92,6 +92,7 @@ class CertificateServiceImplTest {
     private Certificate savedCertificate;
     private CertificateViewDto expectedViewDto;
     private Record validRabiesRecord;
+    private Record validCheckupRecord;
 
     private final Long vetId = 1L;
     private final String certNumber = "AHC-12345-XYZ";
@@ -146,6 +147,15 @@ class CertificateServiceImplTest {
         validRabiesRecord.setType(RecordType.VACCINE);
         validRabiesRecord.setCreatedAt(LocalDateTime.now().minusMonths(6));
         validRabiesRecord.setVaccineDetails(rabiesVaccine);
+
+        Long checkupRecordId = 11L;
+        validCheckupRecord = new Record();
+        validCheckupRecord.setId(checkupRecordId);
+        validCheckupRecord.setPet(pet);
+        validCheckupRecord.setCreator(generatingVet);
+        validCheckupRecord.setVetSignature("CHECKUP_SIG_BY_CERT_VET");
+        validCheckupRecord.setType(RecordType.ANNUAL_CHECK);
+        validCheckupRecord.setCreatedAt(LocalDateTime.now().minusMonths(3));
 
         generationRequestDto = new CertificateGenerationRequestDto(
                 petId,
@@ -203,6 +213,7 @@ class CertificateServiceImplTest {
         void generateCertificateTestSetup() {
             vetPassChars = CertificateServiceImplTest.this.generationRequestDto.vetPrivateKeyPassword().toCharArray();
             clinicPassChars = CertificateServiceImplTest.this.generationRequestDto.clinicPrivateKeyPassword().toCharArray();
+            certificateService.setCertificateEventPublisher(certificateEventPublisher);
         }
 
         @Test
@@ -221,7 +232,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
             given(entityFinderHelper.findPetByIdOrFail(currentPetId)).willReturn(pet);
             given(validateHelper.findValidRabiesRecord(currentPetId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(currentPetId);
+            given(recordHelper.findValidCheckupRecord(currentPetId)).willReturn(validCheckupRecord);
             willDoNothing().given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), currentCertNumber);
             given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, currentCertNumber))
                     .willReturn(mockPayloadMap);
@@ -257,7 +268,7 @@ class CertificateServiceImplTest {
 
             given(certificateMapper.toViewDto(any(Certificate.class))).willReturn(expectedViewDto);
             willDoNothing().given(certificateEventPublisher).publishCertificateGenerated(any());
-            CertificateViewDto result = certificateService.generateCertificate(CertificateServiceImplTest.this.generationRequestDto, vetId);
+            CertificateViewDto result = certificateService.generateCertificate(generationRequestDto, vetId);
 
             assertThat(result).isNotNull();
             assertThat(result.id()).isEqualTo(expectedViewDto.id());
@@ -274,7 +285,10 @@ class CertificateServiceImplTest {
             assertThat(capturedCertificate.getHash()).isEqualTo(payloadHash);
             assertThat(capturedCertificate.getVetSignature()).isEqualTo(vetSig);
             assertThat(capturedCertificate.getClinicSignature()).isEqualTo(clinicSig);
-            assertThat(capturedCertificate.getMedicalRecord().isImmutable()).isTrue();
+
+            assertThat(validRabiesRecord.isImmutable()).isTrue();
+            assertThat(validCheckupRecord.isImmutable()).isTrue();
+            assertThat(capturedCertificate.getMedicalRecord()).isEqualTo(validRabiesRecord);
 
             then(certificateEventPublisher).should().publishCertificateGenerated(any(CertificateGeneratedEvent.class));
             then(certificateMapper).should().toViewDto(capturedCertificate);
@@ -333,7 +347,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
             given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
+            given(recordHelper.findValidCheckupRecord(petId)).willReturn(validCheckupRecord);
             willThrow(new CertificateAlreadyExistsForRecordException(validRabiesRecord.getId()))
                     .given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
 
@@ -361,7 +375,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
 
             given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
+            given(recordHelper.findValidCheckupRecord(petId)).willReturn(validCheckupRecord);
 
             willThrow(new CertificateNumberAlreadyExistsException(certNumber))
                     .given(validateHelper).validateCertificateUniqueness(eq(validRabiesRecord.getId()), eq(certNumber));
@@ -389,7 +403,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
             given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            doNothing().when(recordHelper).findValidCheckupRecord(petId);
+            given(recordHelper.findValidCheckupRecord(petId)).willReturn(validCheckupRecord);
             doNothing().when(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
             given(certificateHelper.buildPayload(any(), any(), any(), any(), anyString())).willReturn(Map.of("key", "value"));
             given(recordHelper.serializePayload(anyMap(), anyLong())).willReturn("{\"key\":\"value\"}");
@@ -427,7 +441,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
             given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            doNothing().when(recordHelper).findValidCheckupRecord(petId);
+            given(recordHelper.findValidCheckupRecord(petId)).willReturn(validCheckupRecord);
             doNothing().when(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
             given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
                     .willReturn(Map.of("key", "value"));
@@ -476,7 +490,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findVetOrFail(vetId)).willReturn(generatingVet);
             given(entityFinderHelper.findPetByIdOrFail(petId)).willReturn(pet);
             given(validateHelper.findValidRabiesRecord(petId)).willReturn(validRabiesRecord);
-            willDoNothing().given(recordHelper).findValidCheckupRecord(petId);
+            given(recordHelper.findValidCheckupRecord(petId)).willReturn(validCheckupRecord);
             willDoNothing().given(validateHelper).validateCertificateUniqueness(validRabiesRecord.getId(), certNumber);
             given(certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, certNumber))
                     .willReturn(mockPayloadMap);
@@ -647,9 +661,7 @@ class CertificateServiceImplTest {
             // Arrange
             String expectedQrData = "HC1:BASE45DATA...";
             given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
-            Pet associatedPet = savedCertificate.getPet();
-            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterOwnerId,
-                    associatedPet, "get QR data for certificate");
+            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForCertificate(requesterOwnerId, savedCertificate);
             given(qrCodeService.generateQrData(savedCertificate)).willReturn(expectedQrData);
 
             // Act
@@ -658,8 +670,7 @@ class CertificateServiceImplTest {
             // Assert
             assertThat(actualQrData).isEqualTo(expectedQrData);
             then(entityFinderHelper).should().findCertificateOrFail(certificateId);
-            then(authorizationHelper).should().verifyUserAuthorizationForPet(requesterOwnerId,
-                    associatedPet, "get QR data for certificate");
+            then(authorizationHelper).should().verifyUserAuthorizationForCertificate(requesterOwnerId, savedCertificate);
             then(qrCodeService).should().generateQrData(savedCertificate);
         }
 
@@ -672,8 +683,7 @@ class CertificateServiceImplTest {
             given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
             Pet associatedPet = savedCertificate.getPet();
             assertThat(associatedPet).isNotNull();
-            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterVetId,
-                    associatedPet, "get QR data for certificate");
+            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForCertificate(requesterVetId, savedCertificate);
             given(qrCodeService.generateQrData(savedCertificate)).willReturn(expectedQrData);
 
             // Act
@@ -682,8 +692,7 @@ class CertificateServiceImplTest {
             // Assert
             assertThat(actualQrData).isEqualTo(expectedQrData);
             then(entityFinderHelper).should().findCertificateOrFail(certificateId);
-            then(authorizationHelper).should().verifyUserAuthorizationForPet(requesterVetId,
-                    associatedPet, "get QR data for certificate");
+            then(authorizationHelper).should().verifyUserAuthorizationForCertificate(requesterVetId, savedCertificate);
             then(qrCodeService).should().generateQrData(savedCertificate);
         }
 
@@ -705,10 +714,8 @@ class CertificateServiceImplTest {
         @DisplayName("should throw AccessDeniedException if requester not authorized for pet")
         void getQrData_Failure_Unauthorized() {
             given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
-            Pet associatedPet = savedCertificate.getPet();
-            willThrow(new AccessDeniedException("User not authorized for pet"))
-                    .given(authorizationHelper).verifyUserAuthorizationForPet(unauthorizedUserId,
-                            associatedPet, "get QR data for certificate");
+            willThrow(new AccessDeniedException("User not authorized for certificate"))
+                    .given(authorizationHelper).verifyUserAuthorizationForCertificate(unauthorizedUserId, savedCertificate);
 
             assertThatThrownBy(() -> certificateService.getQrDataForCertificate(certificateId, unauthorizedUserId))
                     .isInstanceOf(AccessDeniedException.class);
@@ -720,9 +727,7 @@ class CertificateServiceImplTest {
         @DisplayName("should throw RuntimeException if QrCodeService fails")
         void getQrData_Failure_QrServiceError() {
             given(entityFinderHelper.findCertificateOrFail(certificateId)).willReturn(savedCertificate);
-            Pet associatedPet = savedCertificate.getPet();
-            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForPet(requesterOwnerId,
-                    associatedPet, "get QR data for certificate");
+            willDoNothing().given(authorizationHelper).verifyUserAuthorizationForCertificate(requesterOwnerId, savedCertificate);
 
             given(qrCodeService.generateQrData(savedCertificate)).willThrow(new RuntimeException("CBOR failed"));
 

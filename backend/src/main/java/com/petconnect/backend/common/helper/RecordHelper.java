@@ -88,14 +88,16 @@ public class RecordHelper {
      * @param petId The ID of the pet.
      * @throws MissingRecentCheckupException if no valid checkup is found.
      */
-    public void findValidCheckupRecord(Long petId) {
+    public Record findValidCheckupRecord(Long petId) {
         LocalDateTime checkupCutoff = LocalDate.now().minusYears(1).atStartOfDay();
         List<RecordType> checkupTypes = List.of(RecordType.ANNUAL_CHECK);
         List<Record> potentialCheckupRecords = recordRepository.findSignedCheckupsAfterDateDesc(petId, checkupTypes, checkupCutoff);
         if (potentialCheckupRecords.isEmpty()) {
             throw new MissingRecentCheckupException(petId, checkupCutoff.toLocalDate());
         }
+        Record validCheckup = potentialCheckupRecords.getFirst();
         log.debug("Found valid recent checkup record ID: {}", potentialCheckupRecords.getFirst().getId());
+        return validCheckup;
     }
 
     /**

@@ -88,7 +88,9 @@ public class CertificateServiceImpl implements CertificateService {
         Record validRabiesRecord = validateHelper.findValidRabiesRecord(pet.getId());
         log.debug("Found valid rabies vaccine record ID: {}", validRabiesRecord.getId());
 
-        recordHelper.findValidCheckupRecord(pet.getId());
+        Record validCheckupRecord = recordHelper.findValidCheckupRecord(pet.getId());
+        log.debug("Found valid annual checkup record ID: {}", validCheckupRecord.getId());
+
         validateHelper.validateCertificateUniqueness(validRabiesRecord.getId(), requestDto.certificateNumber());
 
         Map<String, Object> payloadMap = certificateHelper.buildPayload(pet, validRabiesRecord, generatingVet, clinic, requestDto.certificateNumber());
@@ -114,6 +116,11 @@ public class CertificateServiceImpl implements CertificateService {
         if (!validRabiesRecord.isImmutable()) {
             validRabiesRecord.setImmutable(true);
             log.info("Marking Record ID {} as immutable.", validRabiesRecord.getId());
+        }
+
+        if (!validCheckupRecord.isImmutable()) {
+            validCheckupRecord.setImmutable(true);
+            log.info("Marking Annual Checkup Record ID {} as immutable.", validCheckupRecord.getId());
         }
 
         Certificate savedCertificate = certificateRepository.save(newCertificate);
@@ -190,8 +197,7 @@ public class CertificateServiceImpl implements CertificateService {
         log.debug("Request received for QR data for certificate ID: {} by User ID: {}", certificateId, requesterUserId);
         Certificate certificate = entityFinderHelper.findCertificateOrFail(certificateId);
 
-        Pet pet = Objects.requireNonNull(certificate.getPet(), "Certificate must have an associated Pet.");
-        authorizationHelper.verifyUserAuthorizationForPet(requesterUserId, pet, "get QR data for certificate");
+        authorizationHelper.verifyUserAuthorizationForCertificate(requesterUserId, certificate);
 
         return qrCodeService.generateQrData(certificate);
     }

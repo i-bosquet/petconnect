@@ -74,7 +74,8 @@ public class RecordMapper {
                 createdInClinicName,
                 petId,
                 petName,
-                petSpecie
+                petSpecie,
+                entity.isImmutable()
         );
     }
 
