@@ -1,15 +1,19 @@
 package com.petconnect.backend.common.service.impl;
 
 import com.petconnect.backend.common.service.EmailService;
+import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async; // Para envío asíncrono
 import org.springframework.stereotype.Service;
+
+import java.util.Arrays;
 
 /**
  * Implementation of the EmailService using Spring Boot Mail.
@@ -25,12 +29,38 @@ import org.springframework.stereotype.Service;
 public class EmailServiceImpl implements EmailService  {
     public static final String ENCODING = "utf-8";
     private final JavaMailSender mailSender;
+    private final Environment environment;
 
-    @Value("${app.frontend.base-url:http://localhost:5173}")
-    private String frontendBaseUrl;
+    @Value("${app.frontend.dev.url:#{null}}")
+    private String frontendDevUrl;
+
+    @Value("${app.frontend.prod.url:#{null}}")
+    private String frontendProdUrl;
 
     @Value("${spring.mail.username}")
     private String mailFromAddress;
+
+    private String frontendBaseUrl;
+
+    /**
+     * Initializes the service by determining the correct frontend URL based on the active Spring profile.
+     */
+    @PostConstruct
+    public void init() {
+        // Check which profile is active and set the frontend base URL accordingly
+        if (Arrays.asList(environment.getActiveProfiles()).contains("prod")) {
+            this.frontendBaseUrl = this.frontendProdUrl;
+            log.info("EmailService initialized for 'prod' profile. Frontend URL: {}", this.frontendBaseUrl);
+        } else {
+            this.frontendBaseUrl = this.frontendDevUrl;
+            log.info("EmailService initialized for 'dev' profile. Frontend URL: {}", this.frontendBaseUrl);
+        }
+        // Fallback just in case no property resolves, even though it shouldn't happen
+        if (this.frontendBaseUrl == null) {
+            this.frontendBaseUrl = "http://localhost:5173";
+            log.warn("Could not determine frontend URL from profiles, using default: {}", this.frontendBaseUrl);
+        }
+    }
 
     /**
      * {@inheritDoc}
