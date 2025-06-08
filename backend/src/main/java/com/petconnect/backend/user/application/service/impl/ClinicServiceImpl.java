@@ -19,6 +19,7 @@ import com.petconnect.backend.user.port.spi.ClinicEventPublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,6 +35,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.io.IOException;
@@ -171,31 +173,28 @@ public class ClinicServiceImpl implements ClinicService {
 
         // Get the file path from the Clinic entity
         Clinic clinic = entityFinderHelper.findClinicOrFail(clinicId);
-        String relativePath = clinic.getPublicKey();
-        if (!StringUtils.hasText(relativePath)) {
+        String keyPathOrS3Key  = clinic.getPublicKey();
+        if (!StringUtils.hasText(keyPathOrS3Key )) {
             log.error("Clinic {} has no public key path configured.", clinicId);
             throw new EntityNotFoundException("Public key file path not configured for clinic " + clinicId);
         }
 
-        // Get the absolute path using KeyStorageService
-        Path absolutePath = keyStorageService.getAbsolutePathForPublicKey(relativePath);
-        log.debug("Attempting to load public key resource from: {}", absolutePath);
-
-        // Create the Resource object
-        Resource resource;
         try {
-            resource = new UrlResource(absolutePath.toUri());
-        } catch (MalformedURLException e) {
-            log.error("MalformedURLException for path {}: {}", absolutePath, e.getMessage());
-            throw new IOException("Could not create resource URL for the key file.", e);
-        }
+            InputStream keyContentStream = keyStorageService.getPublicKeyContent(keyPathOrS3Key);
 
-        // Verify that the file exists and is readable
-        if (resource.exists() && resource.isReadable()) {
+            // We create an InputStreamResource from the data stream.
+            Resource resource = new InputStreamResource(keyContentStream);
+
+            log.debug("Successfully created InputStreamResource for public key of clinic {}", clinicId);
             return resource;
-        } else {
-            log.error("Public key file not found or not readable at path: {}", absolutePath);
-            throw new FileNotFoundException("Public key file not found for clinic " + clinicId + " at path " + relativePath);
+
+        } catch (IOException e) {
+            log.error("Failed to retrieve public key content for clinic {}. Key/Path: {}. Error: {}",
+                    clinicId, keyPathOrS3Key, e.getMessage(), e);
+            if (e.getMessage().contains("not found")) {
+                throw new FileNotFoundException("Public key file not found for clinic " + clinicId);
+            }
+            throw new IOException("Could not read public key resource for clinic " + clinicId, e);
         }
     }
 
