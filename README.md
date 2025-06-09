@@ -11,7 +11,7 @@ Comprehensive digital platform for animal health management, featuring digital v
 - [1. Prerequisites](#1-prerequisites)
 - [2. Clone repository](#2-clone-repository)
 - [3. Initial configuration: Environment variables](#3-initial-configuration-environment-variables)
-  - [3.1 Generating signing keys (If they don't exist)](#31-generating-signing-keys-if-they-dont-exist)
+    - [3.1 Generating signing keys (If they don't exist)](#31-generating-signing-keys-if-they-dont-exist)
 - [4. Build and start the full development environment](#4-build-and-start-the-full-development-environment)
 - [5. Build the backend locally  (Manual - Optional for IDE/Debug)](#5-running-backend-locally-idedebug-alternative)
 - [6. Running tests](#6-running-tests)
@@ -72,6 +72,7 @@ GMAIL_APP_PASSWORD=your_gmail_app_password
 ![sonarqube-token](.github/readme-assets/sonarqube-token.png)
 
 > [!IMPORTANT]
+> The SonarQube token will be generated and added after starting the services in Step 4.
 > Replace `YOUR_SONARQUBE_TOKEN_HERE` with a real token generated from your local SonarQube instance once it's running.
 
 ## 3.1 Generating signing keys (If they don't exist)
@@ -84,33 +85,33 @@ mkdir -p keys_public/clinics keys_public/vets
 mkdir -p keys_private/clinics keys_private/vets
 ```
 - Generate the Veterinarian's private key (encrypted):
-(You will be prompted for the password defined in VET_KEY_PASSWORD in your .env file - default '1234')
+  (You will be prompted for the password defined in VET_KEY_PASSWORD in your .env file - default '1234')
 
 ```bash
 # Replace '1234' if you changed VET_KEY_PASSWORD in .env
-openssl genpkey -algorithm RSA -spi keys_private/vets/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out keys_private/vets/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extract the Veterinarian's public key:
-(You will be prompted for the private key password)
+  (You will be prompted for the private key password)
 ```bash
 # Replace '1234' if you changed VET_KEY_PASSWORD in .env
-openssl rsa -pubout -in keys_private/vets/vet_private_key.pem -spi keys_public/vets/vet_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/vets/vet_private_key.pem -out keys_public/vets/vet_public_key.pem -passin pass:1234
 ```
 - Generate the Clinic's private key (encrypted):
-(You will be prompted for the password defined in CLINIC_KEY_PASSWORD in your .env file - default '1234')
+  (You will be prompted for the password defined in CLINIC_KEY_PASSWORD in your .env file - default '1234')
 ```bash
 # Replace '1234' if you changed CLINIC_KEY_PASSWORD in .env
-openssl genpkey -algorithm RSA -spi keys_private/clinics/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out keys_private/clinics/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extract the Clinic's public key:
-(You will be prompted for the private key password)
+  (You will be prompted for the private key password)
 ```bash
 # Replace '1234' if you changed CLINIC_KEY_PASSWORD in .env
-openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -spi keys_public/clinics/clinic_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -out keys_public/clinics/clinic_public_key.pem -passin pass:1234
 ```
 > [!NOTE]
-> On Windows using Git Bash, you might need to prefix the openssl commands with winpty. 
-> These keys are for development and testing only. 
+> On Windows using Git Bash, you might need to prefix the openssl commands with winpty.
+> These keys are for development and testing only.
 > **Never use these keys or this method in production**.
 
 ![keys](.github/readme-assets/keys.png)
@@ -118,7 +119,7 @@ openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -spi keys_pu
 ## 4. Build and start the full development environment
 Docker Compose is used to orchestrate all the necessary services (database, backend, analysis tools, etc.). This is the standard way to run the application for development and testing.
 
-1.  **Ensure Prerequisites Met:** Make sure you have completed steps 1-4 (Prerequisites, Clone, `.env` Setup, Key Generation if needed).
+1.  **Ensure Prerequisites Met:** Make sure you have completed steps 1-3 (Prerequisites, Clone, `.env` Setup, Key Generation).
 2.  **Build and Start All Services:** From the project root directory (`petconnect/`), run the following single command:
     ```bash
     docker compose up --build -d
@@ -138,8 +139,18 @@ This command will download the necessary images (if not present) and create/star
     ```
     You should see `petconnect_db`, `petconnect_adminer`, `petconnect_backend`, `petconnect_sonarqube`, `petconnect_zookeeper`, and `petconnect_kafka` listed as 'running' or 'up.'
 
+### 4.1 Configure the SonarQube Token
 
-4.  **Check Backend Logs:** If needed, view the backend logs to confirm a successful startup:
+Once the containers are running, the final setup step is to generate and save the SonarQube token.
+
+1.  Open your browser and navigate to http://localhost:9000. It might take a minute or two to start up the first time.
+2.  Log in with the default credentials: username `admin` / password `admin`. The system will force you to change the password.
+3.  Navigate to your profile in the top-right corner > `My Account` > `Security`.
+4.  In the "Tokens" section, generate a new token by giving it a name (e.g., `local-dev`) and click `Generate`.
+5.  **Copy the generated token.** It is essential to save it, as SonarQube will not show it to you again.
+6.  Open the `.env` file in your project root and paste the token you just copied into the `SONAR_TOKEN` variable.
+
+4.  **Check Backend Logs (Optional):** If needed, view the backend logs to confirm a successful startup:
     ```bash
     docker compose logs -f backend
     ```
@@ -150,8 +161,7 @@ All services should now be running and accessible at the ports defined in Sectio
 > *   To stop all running services: `docker compose down`
 > *   To restart services: `docker compose restart` (or restart specific ones like `docker compose restart backend`)
 
-
- ![Docker Containers Running](.github/readme-assets/docker-ps.png)
+![Docker Containers Running](.github/readme-assets/docker-ps.png)
 
 ## 5. Running backend locally (IDE/Debug Alternative)
 
@@ -183,32 +193,32 @@ While Section 4 describes running the full environment via Docker Compose, you m
     ```
 
 *   **Option B: Using an IDE:**
-  *   Import the `backend` folder as a Maven project in your IDE.
-  *   Locate the `com.petconnect.backend.BackendApplication` class.
-  *   Run or Debug this class directly from the IDE. The IDE will typically handle the build process.
+*   Import the `backend` folder as a Maven project in your IDE.
+*   Locate the `com.petconnect.backend.BackendApplication` class.
+*   Run or Debug this class directly from the IDE. The IDE will typically handle the build process.
 
 The backend API will be available at `http://localhost:8080`, connecting to the database running in the `petconnect_db` Docker container.
 
 > [!IMPORTANT]
-> 
+>
 > This method runs the backend application **outside** its own Docker container, directly on your host machine. It relies on having the correct Java and Maven versions installed locally (see Section 1).
-> 
->**Note:** When running locally, the backend will connect to the containerized database via `localhost:5432`. 
+>
+>**Note:** When running locally, the backend will connect to the containerized database via `localhost:5432`.
 > However, it **will not** be able to connect to the containerized Kafka broker using the internal hostname `kafka:9092` specified in `application.properties`. For full functionality including asynchronous event publishing/consumption testing, use the complete Docker Compose environment (Section 4).
 
 ## 6. Running tests
 
 This project includes a comprehensive suite of unit and integration tests. To run all tests for the backend:
 
- **Ensure Docker services are running:** Integration tests require the database container (`petconnect_db`) to be active. Start it if needed: `docker compose up -d db`
+**Ensure Docker services are running:** Integration tests require the database container (`petconnect_db`) to be active. Start it if needed: `docker compose up -d db`
 
-**Run tests using Maven:** The `verify` lifecycle phase will compile code and execute both unit and integration tests. 
+**Run tests using Maven:** The `verify` lifecycle phase will compile code and execute both unit and integration tests.
 In the `petconnect/backend/` directory run:
 
 ```bash
     mvn clean verify
 ```
-### View Reports: 
+### View Reports:
 Open the following files in your web browser:
 - Unit Test Report: `backend/target/site/surefire-report.html`
 - Code Coverage Report: `backend/target/site/jacoco/index.html`
@@ -219,18 +229,31 @@ Open the following files in your web browser:
 > [!INFO] Comprehensive Analysis (including tests & coverage): Use the SonarQube dashboard (see Section 10).
 
 
-## 7. Run the frontend (Development Mode)
-- Open a terminal in the `petconnect/frontend/` directory.
-- Install dependencies (only needed the first time or after updates):
-```bash
-npm install
-```
-- Start the development server:
-```bash
-npm run dev
-```
-- Vite will start the development server.
-Open your web browser to the URL provided http://localhost:5173.
+## 7. Run the Frontend (Development Mode)
+
+For the frontend to communicate with the backend, you first need to create a configuration file that tells it where the API is located.
+
+1.  **Configure the Backend URL:**
+    *   Navigate to the frontend directory: `cd frontend`.
+    *   Create a new file named `.env` in this directory (`petconnect/frontend/.env`).
+    *   Add the following line to the file. This tells your React application where to find the backend server.
+      ```env
+      VITE_BACKEND_BASE_URL=http://localhost:8080
+      ```
+    > [!IMPORTANT]
+    > If you modify this file while the development server is running, you must stop it (`Ctrl + C`) and restart it for the changes to take effect.
+
+2.  **Install Dependencies and Start the Server:**
+    *   Make sure you are in the `petconnect/frontend/` directory.
+    *   **Install dependencies (only needed the first time or after updates):**
+        ```bash
+        npm install
+        ```
+    *   **Start the development server:**
+        ```bash
+        npm run dev
+        ```
+    *   Vite will start the server. Open your web browser to the URL provided in the terminal (usually http://localhost:5173).
 
 ## 8. Accessing tools & applications
 - Once everything is running:
@@ -245,11 +268,11 @@ Open your web browser to the URL provided http://localhost:5173.
 <!-- ![SonarQube Dashboard](.github/readme-assets/sonarqube.png) -->
 
 - Adminer (DB Management): http://localhost:8081
-  - System: PostgreSQL
-  - Server: petconnect_db (The service name/container name)
-  - Username: root (from  `.env` file)
-  - Password: 1234 (from  `.env` file)
-  - Database: petconnect_db (from `.env` file)
+    - System: PostgreSQL
+    - Server: petconnect_db (The service name/container name)
+    - Username: root (from  `.env` file)
+    - Password: 1234 (from  `.env` file)
+    - Database: petconnect_db (from `.env` file)
 
 <!-- ![Swagger UI](.github/readme-assets/swagger-ui.png) -->
 
@@ -260,12 +283,12 @@ Open your web browser to the URL provided http://localhost:5173.
 - Open a terminal in the project root (`petconnect/`).
 - Navigate to the `scripts/` directory: `cd scripts`
 - Execute the script appropriate for your operating system:
-  - Windows (PowerShell): `.\run-sonar-analysis.ps1`
-  - Linux / macOS (Bash): `bash run-sonar-analysis.sh` (or `./run-sonar-analysis.sh` after `chmod +x run-sonar-analysis.sh`)
+    - Windows (PowerShell): `.\run-sonar-analysis.ps1`
+    - Linux / macOS (Bash): `bash run-sonar-analysis.sh` (or `./run-sonar-analysis.sh` after `chmod +x run-sonar-analysis.sh`)
 *   **Analysis Results:** As shown in the screenshot, the analysis provides detailed metrics on code quality. The project currently achieves **86.3%** code coverage via unit and integration tests, successfully passing the default **SonarQube Quality Gate**. This coverage level focuses on the core business logic within services, controllers, and helpers, while appropriately excluding data structures (models, DTOs), configuration classes, and exceptions.
-*   You can view the detailed report, including code coverage breakdown, issues, and quality gate status, on your local SonarQube server at `http://localhost:9000/dashboard?id=petconnect_backend`.
+*   You can view the detailed report, including code coverage breakdown, issues, and quality gate status, on your local SonarQube server at http://localhost:9000/dashboard?id=petconnect_backend.
 
- ![sonarqube-report](.github/readme-assets/sonarqube-report.png) 
+![sonarqube-report](.github/readme-assets/sonarqube-report.png)
 
 
 ## 10. Testing the API with Postman

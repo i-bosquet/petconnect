@@ -1,4 +1,4 @@
-# Proyecto PetConnect 
+# Proyecto PetConnect
 
 [![English Version](https://img.shields.io/badge/Version-English-blue)](README.md)
 
@@ -68,6 +68,7 @@ GMAIL_APP_PASSWORD=your_gmail_app_password
 ![sonarqube-token](.github/readme-assets/sonarqube-token.png)
 
 > [!IMPORTANT]
+> El token de SonarQube se generará y añadirá después de iniciar los servicios en el Paso 4.
 > Reemplaza `TU_TOKEN_DE_SONARQUBE_AQUI` con un token real generado desde tu instancia local de SonarQube una vez que esté en ejecución.
 
 ## 3.1 Generación de claves de firma (Si no existen)
@@ -81,42 +82,42 @@ mkdir -p keys_private/clinics keys_private/vets
 ```
 - Genera la clave privada del Veterinario (encriptada):
   (Se te pedirá la contraseña definida en VET_KEY_PASSWORD en tu archivo .env - por defecto '1234')
-- 
+
 ```bash
 # Reemplaza '1234' si cambiaste VET_KEY_PASSWORD en .env
-openssl genpkey -algorithm RSA -spi keys_private/vets/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out keys_private/vets/vet_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extrae la clave pública del Veterinario:
   (Se te pedirá la contraseña de la clave privada)
 ```bash
 # Reemplaza '1234' si cambiaste VET_KEY_PASSWORD en .env
-openssl rsa -pubout -in keys_private/vets/vet_private_key.pem -spi keys_public/vets/vet_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/vets/vet_private_key.pem -out keys_public/vets/vet_public_key.pem -passin pass:1234
 ```
 - Genera la clave privada de la Clínica (encriptada):
   (Se te pedirá la contraseña definida en CLINIC_KEY_PASSWORD en tu archivo .env - por defecto '1234')
 ```bash
 #  Reemplaza '1234' si cambiaste CLINIC_KEY_PASSWORD en .env
-openssl genpkey -algorithm RSA -spi keys_private/clinics/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out keys_private/clinics/clinic_private_key.pem -aes256 -pass pass:1234 -pkeyopt rsa_keygen_bits:2048
 ```
 - Extrae la clave pública de la Clínica:
   (Se te pedirá la contraseña de la clave privada)
 ```bash
 #  Reemplaza '1234' si cambiaste CLINIC_KEY_PASSWORD en .env
-openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -spi keys_public/clinics/clinic_public_key.pem -passin pass:1234
+openssl rsa -pubout -in keys_private/clinics/clinic_private_key.pem -out keys_public/clinics/clinic_public_key.pem -passin pass:1234
 ```
 > [!NOTE]
 > En Windows usando Git Bash, podrías necesitar prefijar los comandos openssl con winpty.
-> Estas claves son solo para desarrollo y pruebas. 
+> Estas claves son solo para desarrollo y pruebas.
 > **Nunca uses estas claves o este método en producción**.
 
- ![keys](.github/readme-assets/keys.png)
+![keys](.github/readme-assets/keys.png)
 
 ## 4. Construir e iniciar el entorno de desarrollo completo
 
-Docker Compose se utiliza para orquestar todos los servicios necesarios (base de datos, backend, herramientas de análisis, etc.). 
+Docker Compose se utiliza para orquestar todos los servicios necesarios (base de datos, backend, herramientas de análisis, etc.).
 Esta es la forma estándar de ejecutar la aplicación para desarrollo y pruebas.
 
-1.  **Asegúrate de Cumplir los Prerrequisitos:** Verifica que has completado los pasos 1-4 (Prerrequisitos, Clonar, Configuración `.env`, Generación de Claves si fue necesario).
+1.  **Asegúrate de Cumplir los Prerrequisitos:** Verifica que has completado los pasos 1-3 (Prerrequisitos, Clonar, Configuración `.env`, Generación de Claves).
 2.  **Construye e Inicia Todos los Servicios:** Desde el directorio raíz del proyecto (`petconnect/`), ejecuta el siguiente único comando:
     ```bash
     docker compose up --build -d
@@ -136,7 +137,18 @@ Este comando descargará las imágenes necesarias (si no las tienes) y creará e
     ```
     Deberías ver `petconnect_db`, `petconnect_adminer`, `petconnect_backend`, `petconnect_sonarqube`, `petconnect_zookeeper` y `petconnect_kafka` listados como 'running' o 'up'.
 
-4.  **Revisa los Logs del Backend:** Si es necesario, mira los logs del backend para confirmar un inicio correcto:
+### 4.1 Configuración del Token de SonarQube
+
+Una vez que los contenedores están en ejecución, el último paso para completar la configuración es generar y guardar el token de SonarQube.
+
+1.  Abre tu navegador y ve a http://localhost:9000. Puede tardar uno o dos minutos en iniciarse la primera vez.
+2.  Inicia sesión con las credenciales por defecto: usuario `admin` / contraseña `admin`. El sistema te obligará a cambiar la contraseña.
+3.  Navega a tu perfil en la esquina superior derecha > `My Account` > `Security`.
+4.  En la sección "Tokens", genera un nuevo token dándole un nombre (ej. `local-dev`) y haz clic en `Generate`.
+5.  **Copia el token generado.** Es muy importante que lo guardes, ya que SonarQube no te lo mostrará de nuevo.
+6.  Abre el archivo `.env` en la raíz de tu proyecto y pega el token que acabas de copiar en la variable `SONAR_TOKEN`.
+
+4.  **Revisa los Logs del Backend (Opcional):** Si es necesario, mira los logs del backend para confirmar un inicio correcto:
     ```bash
     docker compose logs -f backend
     ```
@@ -147,9 +159,7 @@ Todos los servicios deberían estar ahora ejecutándose y accesibles en los puer
 > *   Para detener todos los servicios en ejecución: `docker compose down`
 > *   Para reiniciar servicios: `docker compose restart` (o reiniciar servicios específicos como `docker compose restart backend`)
 
-
 ![Contenedores Docker Corriendo](.github/readme-assets/docker-ps.png)
-
 
 ## 5. Ejecutar backend localmente (Alternativa IDE/Debug)
 
@@ -188,8 +198,8 @@ La API del backend estará disponible en `http://localhost:8080`, conectándose 
 
 > [!IMPORTANT]
 > Este método ejecuta la aplicación backend **fuera** de su propio contenedor Docker, directamente en tu máquina local. Depende de que tengas instaladas localmente las versiones correctas de Java y Maven (ver Sección 1).
-> 
->**Nota:** Al ejecutarse localmente, el backend se conectará a la base de datos contenerizada vía `localhost:5432`. Sin embargo, **no podrá conectarse** al broker Kafka contenerizado usando el hostname interno `kafka:9092` especificado en `application.properties`. 
+>
+>**Nota:** Al ejecutarse localmente, el backend se conectará a la base de datos contenerizada vía `localhost:5432`. Sin embargo, **no podrá conectarse** al broker Kafka contenerizado usando el hostname interno `kafka:9092` especificado en `application.properties`.
 > Para la funcionalidad completa incluyendo la publicación/consumo de eventos asíncronos, usa el entorno completo de Docker Compose (Sección 4).
 
 ## 6. Ejecutar pruebas (Tests)
@@ -200,12 +210,12 @@ Este proyecto incluye una suite completa de pruebas unitarias y de integración.
 
 **Ejecuta las pruebas usando Maven:** La fase del ciclo de vida `verify` compilará el código y ejecutará tanto las pruebas unitarias como las de integración.
 En el directorio `petconnect/backend/` ejecuta:
-    
+
 ```bash
     mvn clean verify
 ```
 
-### Ver Informes: 
+### Ver Informes:
 Abre los siguientes archivos en tu navegador web:
 - Informe Pruebas Unitarias: `backend/target/site/surefire-report.html`
 - Informe Cobertura de Código: `backend/target/site/jacoco/index.html`
@@ -219,16 +229,29 @@ Abre los siguientes archivos en tu navegador web:
 
 ## 7. Ejecutar el frontend (Modo Desarrollo)
 
-*   Abre una terminal en el directorio `petconnect/frontend/`.
-*   **Instala dependencias (solo necesario la primera vez o tras actualizaciones):**
-    ```bash
-    npm install
-    ```
-*   **Inicia el servidor de desarrollo:**
-    ```bash
-    npm run dev
-    ```
-*   Vite iniciará el servidor de desarrollo. Abre tu navegador web en la URL indicada (normalmente `http://localhost:5173`).
+Para que el frontend pueda comunicarse con el backend, primero necesitas crear un archivo de configuración que le indique dónde se encuentra la API.
+
+1.  **Configurar la URL del Backend:**
+    *   Navega hasta el directorio del frontend: `cd frontend`.
+    *   Crea un nuevo archivo llamado `.env` en este directorio (`petconnect/frontend/.env`).
+    *   Añade la siguiente línea al archivo. Esto le dice a tu aplicación React dónde encontrar el servidor del backend.
+      ```env
+      VITE_BACKEND_BASE_URL=http://localhost:8080
+      ```
+    > [!IMPORTANT]
+    > Si modificas este archivo mientras el servidor de desarrollo está en ejecución, deberás detenerlo (`Ctrl + C`) y reiniciarlo para que los cambios surtan efecto.
+
+2.  **Instalar Dependencias e Iniciar el Servidor:**
+    *   Asegúrate de estar en el directorio `petconnect/frontend/`.
+    *   **Instala las dependencias (solo es necesario la primera vez o tras una actualización):**
+        ```bash
+        npm install
+        ```
+    *   **Inicia el servidor de desarrollo:**
+        ```bash
+        npm run dev
+        ```
+    *   Vite iniciará el servidor. Abre tu navegador en la URL que te indique la terminal (normalmente http://localhost:5173).
 
 ## 8. Acceder a las herramientas y aplicación
 
@@ -260,7 +283,7 @@ Una vez todo esté en ejecución:
     - **Windows (PowerShell):** `.\run-sonar-analysis.ps1`
     - **Linux / macOS (Bash):** `bash run-sonar-analysis.sh` (o `./run-sonar-analysis.sh` tras `chmod +x run-sonar-analysis.sh`)
 *   **Resultados del Análisis:** Como muestra la captura de pantalla, el análisis proporciona métricas detalladas sobre la calidad del código. El proyecto alcanza actualmente una cobertura de código del **86.3%** mediante pruebas unitarias y de integración, superando con éxito el **"Quality Gate"** por defecto de SonarQube. Este nivel de cobertura se centra en la lógica de negocio principal dentro de los servicios, controladores y helpers, excluyendo apropiadamente estructuras de datos (modelos, DTOs), clases de configuración y excepciones.
-*   Puedes ver el informe detallado, incluyendo el desglose de la cobertura, los issues y el estado del "Quality Gate", en tu servidor SonarQube local en `http://localhost:9000/dashboard?id=petconnect_backend`.
+*   Puedes ver el informe detallado, incluyendo el desglose de la cobertura, los issues y el estado del "Quality Gate", en tu servidor SonarQube local en http://localhost:9000/dashboard?id=petconnect_backend.
 
 
 * ![Sonarqube Repor](.github/readme-assets/sonarqube-report.png)
@@ -273,7 +296,7 @@ Una vez todo esté en ejecución:
 -   Asegúrate de que el entorno "PetConnect Local Dev" está seleccionado en la esquina superior derecha.
 -   Ahora puedes explorar las carpetas y ejecutar las peticiones contra tu backend local (http://localhost:8080).
 
- ![Configuración Postman](.github/readme-assets/postman-setup.png)
+![Configuración Postman](.github/readme-assets/postman-setup.png)
 
 ---
 *For English instructions, please see [README.md](README.md).*
